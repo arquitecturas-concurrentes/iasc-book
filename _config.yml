@@ -1,0 +1,17 @@
+# Site settings
+title: Arquitecturas Concurrentes Book
+header-img: img/home-bg.jpg
+description: "Material de la materia de Arquitecturas concurrentes en forma de libro"
+baseurl: ""
+url: "http://arquitecturas-concurrentes.github.io/"
+github_username: "arquitecturas-concurrentes"
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+permalink: pretty
+gems: [jekyll-paginate, rouge]
+paginate: 5
+paginate_path: blog/page:num
+exclude: ["less","node_modules","Gruntfile.js","package.json","README.md"]
+plugins: ['jekyll-paginate', 'rouge']

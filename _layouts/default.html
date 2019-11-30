@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% include head.html %}
+
+<body>
+
+<div class="wrapper">
+
+    {% include sidebar.html %}
+
+    <div id="content">
+        {% include navbar.html %}
+
+        <div id="inner-content" class="col-lg-10 offset-lg-1 col-md-10 offset-md-2 col-sm-8 offset-sm-1">
+            {{ content }}
+        </div>
+
+        {% include sidebar-button.html %}
+    </div>
+</div>
+
+{% include footer.html %}
+
+
+</body>
+
+</html>
