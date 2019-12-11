@@ -2,8 +2,9 @@
 title: Arquitecturas Concurrentes Book
 header-img: img/home-bg.jpg
 description: "Material de la materia de Arquitecturas concurrentes en forma de libro"
-baseurl: ""
-url: "http://arquitecturas-concurrentes.github.io/"
+baseurl: "http://arquitecturas-concurrentes.github.io/"
+relative_url: "/iasc-book"
+url: "http://ernestobossi.com/"
 github_username: "arquitecturas-concurrentes"
 
 # Build settings
