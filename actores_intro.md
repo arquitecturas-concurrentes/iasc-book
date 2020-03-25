@@ -21,9 +21,9 @@ También estos escenarios suceden al tener múltiples actores que pueden ejecuta
 - Crear mas actores
 - ejecutar otro código después de procesar un mensaje.
 
-Mencionamos que los actores son también una abstracción que tiene un contexto de ejecución propio, quien se encarga entonces de ejecutar a los actores. En la VM de Erlang/Elixir, existe algo llamado Scheduler, que se encarga de la coordinación de los actores y de la ejecución sobre un procesador del actor.  Mas sobre el scheduler de BEAM: http://erlang.org/pipermail/erlang-questions/2001-April/003132.html
+Mencionamos que los actores son también una abstracción que tiene un contexto de ejecución propio, quien se encarga entonces de ejecutar a los actores. En la VM de Erlang/Elixir, existe algo llamado Scheduler, que se encarga de la coordinación de los actores y de la ejecución sobre un procesador del actor. [Mas sobre el scheduler de BEAM](http://erlang.org/pipermail/erlang-questions/2001-April/003132.html)
 
-Que pasa cuando un actor no tiene ningun mensaje mas para procesar? El mismo muere. El ciclo de vida de un actor es relativamente corto y está pensado para que realice una acción en particular, reciba, envíe mensajes y cree otros actores, pero cuando deja de tener acciones futuras a realizar el mismo muere. Cómo podemos evitar que esto suceda? Bueno si queremos que un actor pueda quedar vivo, esperando a que reciba un mensaje eventualmente, podemos tan solo hacer eso llamándose a sí mismo y haciendo eso. Podemos ver un ejemplo aquí: https://github.com/arquitecturas-concurrentes/iasc-actors-intro-elixir/blob/master/elixir/intro_actors/lib/intro_actors.ex
+Que pasa cuando un actor no tiene ningun mensaje mas para procesar? El mismo muere. El ciclo de vida de un actor es relativamente corto y está pensado para que realice una acción en particular, reciba, envíe mensajes y cree otros actores, pero cuando deja de tener acciones futuras a realizar el mismo muere. Cómo podemos evitar que esto suceda? Bueno si queremos que un actor pueda quedar vivo, esperando a que reciba un mensaje eventualmente, podemos tan solo hacer eso llamándose a sí mismo y haciendo eso. Podemos ver un ejemplo [aquí](https://github.com/arquitecturas-concurrentes/iasc-actors-intro-elixir/blob/master/elixir/intro_actors/lib/intro_actors.ex)
 
 Otro tema importante es que un actor no tiene métodos como los objetos, y el comportamiento de esta última está provista por las clases siempre. En Elixir/Erlang, existe algo más o menos similar que son los módulos, que podemos definir funciones que podemos pasarlas al actor para que las ejecute, es importante la siguiente línea del ejemplo anterior
 
@@ -37,11 +37,11 @@ Hay otra librería que nos ayuda mucho a no tener que preocuparnos por esto que 
 
 Que pasa si un actor falla por alguna razón? Bueno el mismo muere y hay que volver a crearlo y si recibió un mensaje en particular hay que enviarselo de nuevo, hay maneras de que podamos evitar esto mediante catcheo de excepciones, aunque puede ser a veces que pueda morir por otras razones, con lo cual a veces es mejor dejar de morir un actor solo… Entonces que hago para poder volver a levantar un actor que se murió sin que tenga que hacerlo uno a mano? Hay un módulo de OTP que veremos en la próxima sección que nos ayuda con este tema y son los supervisores.
 
-Más info sobre errores en el ecosistema de Erlang/Elixir: https://learnyousomeerlang.com/errors-and-exceptions#not-so-fast
+Más info sobre errores en el ecosistema de Erlang/Elixir [aqui](https://learnyousomeerlang.com/errors-and-exceptions#not-so-fast)
 
 
 Adicional:
 
 Leer principalmente la primera parte que describe brevemente el paradigma de actores junto con actores en Erlang y el scheduling en Erlang.
 
-https://rocketeer.be/articles/concurrency-in-erlang-scala/
+[https://rocketeer.be/articles/concurrency-in-erlang-scala/](https://rocketeer.be/articles/concurrency-in-erlang-scala/)

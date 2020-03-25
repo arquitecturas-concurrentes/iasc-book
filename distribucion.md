@@ -10,7 +10,7 @@ description: "Introduccion y nociones de distribucion"
 
 Antes de hablar de distribución, es a veces ideal tratar de explicarlo de cómo se llega a ella. En general cuando se plantea la arquitectura de una aplicación, en cuanto a la arquitectura, en donde queda afuera lo que es el diseño e implementación del mismo, en general se plantea o se despliega por primera vez como un monolito, es decir, solo implementar todo nuestro sistema en un solo servidor. Ya sea un prototipo, o una versión temprana (beta) de nuestra aplicación, en general se plantea el monolito como arquitectura inicial, por costos y tiempo en el que se despliega la aplicación, y también porque no tenemos problemas que nos puede causar un sistema distribuido.
 
-<img src="{{site.relative_url}}/images/distribucion/image2.png">
+<img style='width:500px;' src="{{site.relative_url}}/images/distribucion/image2.png">
 
 Esta es una imagen de una arquitectura monolitica tradicional, con una aplicacion y una base SQL, que en general esta desplegada en un solo servidor. Algunos problemas que puede generar esta arquitectura es la siguiente:
 
@@ -67,7 +67,7 @@ En vez de tener varias instancias o nodos del mismo sistema, cada uno conteniend
 Y como podemos descomponer a nuestra aplicación? 
 
 - Podemos descomponer por medio de la función técnica de lo que hace ya sea un endpoint, o una funcionalidad, por ejemplo, se puede descomponer una aplicación en servicios de capacidad (capability-services) como login, usuarios, productos, etc. Abajo hay un pequeño ejemplo de un servicio de discusión, estilo reddit.
-  <img src="{{site.relative_url}}/images/distribucion/image2.png">
+
 - Otra manera de descomponer es dividir por dominios a la aplicación, o sea por los recursos pero como un todo, y no por las funcionalidades, o sea si tenemos una aplicación de venta, podemos dividir la aplicación en: servicio al cliente, ventas, catalogo para el usuario. Esta división es más bien por entidades (Entity-Services)
 
 También pueden combinarse esta división o usarse otro tipo de división del sistema, el esquema no es estricto en este sentido, por lo que nos da la libertad de escalar nuestra aplicación o más bien de dividirla de acuerdo a nuestro dominio. No hay ya necesidad de clonar toda la aplicación de esta manera. El problema es que esto genera otras desventajas y son que ahora nuestros microservicios además de trabajar con la bbdd a veces tendrán que coordinarse los unos a los otros mediante mensajes o requests incluso, también puede haber un incremento en el uso del ancho de banda.
