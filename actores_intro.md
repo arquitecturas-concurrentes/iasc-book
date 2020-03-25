@@ -12,7 +12,7 @@ El modelo de actores tiene su unidad de computación más primitiva que es un ac
 Los Actores además tienen un mailbox (buzón), en donde van a poder recibir los mensajes de otros actores, y por qué es esto? Bueno porque el envío de mensajes entre actores es asincrónico, por lo cual nunca se sabe exactamente cuando un actor recibe un mensaje, y el modelo elige este modelo de envío de mensajes, ya que al ser una unidad de ejecucion tambien, si se hacen llamadas sincrónicas, el proceso se quedara esperando a una respuesta que puede tal vez nunca llegar o demorar mucho más tiempo, quedando este proceso bloqueado mientras tanto y no dejando de que se pueda ejecutar otro actor que tal vez puede procesar algo. Al poder un actor recibir más de un mensaje en poco tiempo, y al procesar estos de a uno, si se recibe otro mensaje, el actor no lo puede recibir y procesar inmediatamente, por lo que estos mensajes que por el momento el actor no puede procesar quedan encolados en el buzón.
 También estos escenarios suceden al tener múltiples actores que pueden ejecutarse al mismo tiempo, aunque un actor puede procesar un mensaje al mismo tiempo por lo que de nuevo, si un actor recibe al mismo tiempo 3 mensajes, va a ejecutar uno solo a la vez y por lo tanto hay que mantener un estado de que después hay dos mensajes más por ser procesados, esta es la razón de que los actores tengan un buzón. Si queremos que se ejecuten concurrentemente 3 mensajes, deberemos tener 3 actores y que se le envie un mensaje a cada uno. 
 
-<img src="/images/actors.png" height="350">
+<img src="/images/actors.png" height="350" class='center'>
 
 
 ## Que pueden hacer los actores

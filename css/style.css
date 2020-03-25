@@ -274,3 +274,9 @@ a.article, a.article:hover {
 #inner-content a:hover {
     color: #0d007e;
 }
+
+.center {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}

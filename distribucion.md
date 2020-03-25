@@ -10,7 +10,7 @@ description: "Introduccion y nociones de distribucion"
 
 Antes de hablar de distribución, es a veces ideal tratar de explicarlo de cómo se llega a ella. En general cuando se plantea la arquitectura de una aplicación, en cuanto a la arquitectura, en donde queda afuera lo que es el diseño e implementación del mismo, en general se plantea o se despliega por primera vez como un monolito, es decir, solo implementar todo nuestro sistema en un solo servidor. Ya sea un prototipo, o una versión temprana (beta) de nuestra aplicación, en general se plantea el monolito como arquitectura inicial, por costos y tiempo en el que se despliega la aplicación, y también porque no tenemos problemas que nos puede causar un sistema distribuido.
 
-<img style='width:500px;' src="{{site.relative_url}}/images/distribucion/image2.png">
+<img style='width:500px;' src="{{site.relative_url}}/images/distribucion/image2.png" class='center'>
 
 Esta es una imagen de una arquitectura monolitica tradicional, con una aplicacion y una base SQL, que en general esta desplegada en un solo servidor. Algunos problemas que puede generar esta arquitectura es la siguiente:
 
@@ -21,7 +21,7 @@ Ante el aumento de la carga de usuarios, tráfico y mayor interacción entre la 
 
 ### Escala Vertical (Scale Up)
 
-<img src="{{site.relative_url}}/images/distribucion/image6.png">
+<img src="{{site.relative_url}}/images/distribucion/image6.png" class='center'>
 
 Esta manera de escalar, también conocido como escalar para arriba o verticalmente (?) (scale up), es incrementando los recursos de un servidor o un nodo, o sea aumentar CPU, memoria, disco, etc. 
 Lo que nos permite este tipo de escala es que no necesitamos realizar cambios o desarrollo adicional en nuestro sistema, solo habrá un tiempo en el que nuestro sistema no estará disponible hasta una vez que hayan sido implementado estos cambios. 
@@ -30,17 +30,17 @@ También hay un momento en el que, si utilizamos servidores tradicionales y no m
 
 ### Escala Horizontal
 
-<img src="{{site.relative_url}}/images/distribucion/image12.png">
+<img src="{{site.relative_url}}/images/distribucion/image12.png" class='center'>
 
 La otra manera de escalar, es horizontalmente también (Scale Out) es cuando en vez de incrementar los recursos, se agregan nuevos servidores con los mismos recursos. Lo bueno de poder escalar horizontalmente es que la aplicación no deja de estar disponible al escalar de esta manera. El costo con esta metodología es mucho más económica por este medio, que escalando verticalmente, otro aspecto interesante es que es más tolerante a fallos, ya que más copias de la aplicación están corriendo al mismo tiempo. Las grandes desventajas son que la arquitectura se complica, junto con el aumento del ancho de banda entre los distintos componentes que puede llegar a tener nuestro sistema una vez que hagamos scale out.
 
 Con respecto a nuestra aplicación monolítica, podemos bien o replicar toda la aplicación con su bbdd, y que no tengan relación alguna cada una de las maquinas (imagen izquierda), o bien podemos solo replicar en cada uno de los servidores la aplicación y luego tener en otra instancia nuestra bbdd (imagen derecha). 
 
-<img src="{{site.relative_url}}/images/distribucion/image7.png">
+<img src="{{site.relative_url}}/images/distribucion/image7.png" class='center'>
 
 La motivación para la arquitectura de la imagen de la izquierda puede ser que se quiera distribuir por países el sistema, o sea, que en cada país que exista esta aplicación se dirija a un servidor que contiene todo su estado. La otra manera de escalar horizontalmente nuestro monolito nos permite que no tengamos tres bases de datos distintas, y que incluso el sistema pueda ser visto aun por el usuario como uno solo, o sea generalmente mediante alguna diferencia de endpoints, pero… como manejar la carga de manera que no se sobrecargue un solo servidor y los otros no?  Con un load balancer…
 
-<img src="{{site.relative_url}}/images/distribucion/image13.png">
+<img src="{{site.relative_url}}/images/distribucion/image13.png" class='center'>
 
 Un load balancer nos va a permitir usar alguna estrategia por la cual la carga sea distribuida de manera equitativa. Esto puede ser por un algoritmo simple, tal como puede ser un round robin, o puede tener algún feedback de los nodos o servidores, que pueden dar al load balancer un poco más de información sobre a dónde redirigir el tráfico.
 
@@ -48,7 +48,7 @@ Pero esta es la única manera de escalar?? La respuesta es no.
 
 Se puede escalar horizontalmente de varias maneras, existe un libro que es el de “Art of Scalability” de Michael Fisher que nos propone un interesante modelo de cubo de como escalar.
 
-<img src="{{site.relative_url}}/images/distribucion/image9.png">
+<img src="{{site.relative_url}}/images/distribucion/image9.png" class='center'>
 
 En esta representación el punto de origen concuerda con el sistema monolítico en una sola instancia, y la arista de arriba a la derecha del cubo, nos representa la máxima escalabilidad de la aplicación. Y como el cubo es en tres dimensiones, eso nos dice que no solo hay una manera de escalar nuestra aplicación sino que hay varias que incluso podríamos llegar a combinar, ahora veremos cada una de las dimensiones
 
@@ -62,7 +62,7 @@ Este esquema no nos resuelve aún el problema de una aplicación de alta complej
 
 En vez de tener varias instancias o nodos del mismo sistema, cada uno conteniendo todo el código del sistema, en este eje se va a descomponer nuestra aplicación entre los distintos nodos, esto es lo que se conoce generalmente como microservicios, y cada uno de estos va a ser responsable de una función. 
 
-<img src="{{site.relative_url}}/images/distribucion/image8.png">
+<img src="{{site.relative_url}}/images/distribucion/image8.png" class='center'>
 
 Y como podemos descomponer a nuestra aplicación? 
 
@@ -78,7 +78,7 @@ Hasta ahora vimos cómo dividir nuestro sistema pero a nivel de organización de
 
 Pero aún tenemos el estado, a lo sumo replicado, tal como lo teníamos con los servidores al escalarlo mediante clonación (eje x), y solo podemos tener una escritura a la vez, esto puede ser un cuello de botella si existen muchas escrituras sobre la base de datos. El esquema de este eje z, es el de dividir la base de datos o el estado en subsets, por lo que podemos dividir el estado bajo un criterio determinado, por ejemplo si tenemos un estado que son los productos, bien podemos dividir los mismos por rango de letras como el siguiente ejemplo.
 
-<img src="{{site.relative_url}}/images/distribucion/image4.png">
+<img src="{{site.relative_url}}/images/distribucion/image4.png" class='center'>
 
 Y como tenemos ahora el estado particionado, vamos a tener que tener algo que nos pueda despachar al nodo correcto los pedidos de lectura o escritura, que puede ser un load balancer, o bien que los nodos de estado o persistencia se puedan hablar entre ellos para devolver o persistir el estado, esto último es en el caso en el que no se tenga una base de datos relacional o tan solo se pueda implementar un shardeo de este tipo.
 Lo interesante de este esquema es que no tenemos más de un nodo de datos que pueda aceptar escrituras, aunque solo habrá una escritura por subset.
@@ -88,13 +88,13 @@ Lo interesante de este esquema es que no tenemos más de un nodo de datos que pu
 
 Como el modelo de escala es tridimensional, se puede incluso combinar para que nuestra arquitectura sea más robusta, por ejemplo, podemos tener un esquema de microservicios en el que además cada servicio, como el de login, puede esta clonado y tener más de un servicio de login disponible y el mismo esté tan solo distribuido por un segundo nivel de load balancer que redirige los request con un criterio, que nos da un esquema así? Como dijimos antes, mayor robustez, si bien escalar por microservicios divide la carga, aun todos los usuarios en gran medida, deberán loguearse, y ademas al separar los servicios, aun seguimos teniendo un solo punto de fallo, por lo que para que el servicio esté disponible si el servidor de login se cae, es el de escalar después este microservicio por medio de clonar el mismo en varios servidores idénticos con este microservicios.
 
-<img src="{{site.relative_url}}/images/distribucion/image5.png">
+<img src="{{site.relative_url}}/images/distribucion/image5.png" class='center'>
 
 ### Sesiones
 
 Otro tema que no hablamos antes es sobre las sesiones en nuestra aplicación ahora distribuida, en el primer caso que es el de replicar la aplicación, si tenemos varios nodos con toda nuestra aplicación y un load balancer, puede ocurrir que un usuario se loguee en un nodo y luego en otro request, pueda ser redirigido a otro nodo donde no se tiene registro de su login, como se resuelve esto? O bien teniendo un lugar, como una base de datos aparte donde se registren las sesiones o bien se puede optar por un esquema de sticky sessions
 
-<img src="{{site.relative_url}}/images/distribucion/image10.png">
+<img src="{{site.relative_url}}/images/distribucion/image10.png" class='center'>
 
 ELs sticky sessions permiten mediante una cookie, saber contra qué servidor se autenticaron, además de otra información de la sesión, el load balancer sabe a qué nodo redirigir los requests de un usuario en particular sobre un modelo de cloning o en el que nuestra aplicación esta solo replicada, en otros tipo de arquitecturas como microservicios, puede ser que no sea necesario a menos que exista solo nodo de login de usuarios.
 
