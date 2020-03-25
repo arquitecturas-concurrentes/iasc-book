@@ -265,3 +265,12 @@ a.article, a.article:hover {
     font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     color: #FFFFFF;
 }
+
+
+#inner-content a {
+    color: #627c7e;
+}
+
+#inner-content a:hover {
+    color: #0d007e;
+}

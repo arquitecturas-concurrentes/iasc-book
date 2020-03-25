@@ -242,4 +242,4 @@ Only in the poll phase Node.js checks the network socket for new requests. So do
 We’ll need to dig more to get better answers, but it is definitely clear now why setTimeout() helped: Every time we enqueue a timer callback, and the queue of the current phase has been exhausted, the event-loop has to loop through all the phases to reach the “Timers” phase, passing through the poll phase on the way, and handling the pending network requests.
 
 
-<img src="/images/event-loop-circle.png">
+<img src="{{site.relative_url}}/images/event-loop-circle.png">

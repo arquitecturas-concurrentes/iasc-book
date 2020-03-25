@@ -10,7 +10,7 @@ Hay alguna manera de que manteniendo la aplicación disponible durante intearlea
 La respuesta rápida es no. No hay manera que la aplicación funcione correctamente en un interleave. esta idea es conocida como el teorema CAP
 CAP es Consistency, Avaliability, Partition Tolerance
 
-<img src="/images/distribucion/image1.png">
+<img src="{{site.relative_url}}/images/distribucion/image1.png">
 
 Consistencia: Esta es la habilidad que nuestra sistema, tenga 2 o 312123243 nodos que pueda responder a consultas y que tenga el mismo estado, no importa al nodo al que se la hace la consulta. Esto es algo que se logra con transacciones o un mecanismo equivalente. Entonces se tiene que poder ver a todos los nodos como un bloque indivisible. Esto es lo que vimos al comienzo con los contadores, que siempre quede en un estado conocido para el sistema y que no haya por ej. dos nodos que respondan algo distinto al mismo tiempo de realizar la consulta.
 
@@ -38,7 +38,7 @@ AP: Tiene más flexibilidad y problemas que resolver, se utilizan distintas estr
 
 Este es el gráfico que vimos en clase sobre CAP y BBDD, el post en el que se detalla más el siguiente:  http://blog.nahurst.com/visual-guide-to-nosql-systems
 
-<img src="/images/distribucion/image14.png">
+<img src="{{site.relative_url}}/images/distribucion/image14.png">
 
 ## Cap Gradual
 
@@ -60,7 +60,7 @@ Entonces si tenemos particiones, tiene sentido elegir entre A y C? Elegir entre 
 
 En el caso en el que se deban manejar las particiones, estas solo dependen del tiempo en el que se generan y luego se debe unificar estas cuando se restauran, entonces una partición se ve como en la siguiente imagen: 
 
-<img src="/images/distribucion/image11.jpg">
+<img src="{{site.relative_url}}/images/distribucion/image11.jpg">
 
 y hay tres momentos en una partición
 
