@@ -259,8 +259,8 @@ a.article, a.article:hover {
 }
 
 .titulo {
-    padding-top: 5px;
-    padding-bottom: 5px;
+    padding-top: 10px;
+    padding-bottom: 10px;
     padding-left: 40px;
     font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     color: #FFFFFF;
