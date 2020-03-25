@@ -211,35 +211,3 @@ Moraleja: no es culpa del CPS, es culpa nuestra al no delegar convenientemente.
 
 Una aplicación típica de Node.js es básicamente una colección de devoluciones de llamada que se ejecutan en respuesta a varios eventos: una conexión entrante, finalización de E / S, vencimiento del tiempo de espera, resolución de promesa, etc. Hay un solo hilo principal (también conocido como Event-Loop ) que ejecuta todas estas devoluciones de llamada y, por lo tanto, las devoluciones de llamada deben completarse rápidamente ya que todas las demás devoluciones de llamada pendientes están esperando su turno. Esta es una limitación conocida y desafiante de Node y también se explica muy bien en los documentos:
 [https://nodejs.org/en/docs/guides/dont-block-the-event-loop/](https://nodejs.org/en/docs/guides/dont-block-the-event-loop/)
-
-
-Let’s add a new endpoint /compute-async where we’ll partition the long blocking loop by yielding the control back to the event-loop after every computation step (too much context switching? maybe… we can optimize later and yield only once every X iterations, but let’s start simple):
-
-Event-Loop Phases
-When something similar happened to me, I turned to Google for answers. Looking for stuff like “node async block event loop” one of the first results is this official Node.js guide: https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/. It really opened my eyes.
-
-It explains that the event-loop is not the magic scheduler I imaged it to be, but a pretty straight-forward loop with several phases in it. Here is a nice ASCII diagram of the main phases, copied from the guide:
-
-
-(later I’ve found that this loop is nicely implemented in libuv with functions named as in the diagram: https://github.com/libuv/libuv/blob/v1.22.0/src/unix/core.c#L359)
-
-The guide explains about the different phases, and gives the following overview:
-
-* timers: this phase executes callbacks scheduled by setTimeout() and setInterval().
-* pending callbacks: executes I/O callbacks deferred to the next loop iteration.
-* idle, prepare: only used internally.
-* poll: retrieve new I/O events; execute I/O related callbacks.
-* check: setImmediate() callbacks are invoked here.
-* close callbacks: some close callbacks, e.g. socket.on('close', ...).
-
-> “generally, when the event loop enters a given phase, it will perform any operations specific to that phase, then execute callbacks in that phase’s queue until the queue has been exhausted … Since any of these operations may schedule more operations …”.
-
-
-This (vaguely) suggests that when a callback enqueues another callback that can be handled in the same phase, then it will be handled before moving to the next phase.
-
-Only in the poll phase Node.js checks the network socket for new requests. So does that mean that what we did in /compute-async actually prevented the event-loop from leaving a certain phase, and thus never looping through the poll phase to even receive the /healthcheck request?
-
-We’ll need to dig more to get better answers, but it is definitely clear now why setTimeout() helped: Every time we enqueue a timer callback, and the queue of the current phase has been exhausted, the event-loop has to loop through all the phases to reach the “Timers” phase, passing through the poll phase on the way, and handling the pending network requests.
-
-
-<img src="{{site.relative_url}}/images/event-loop-circle.png">
