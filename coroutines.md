@@ -4,13 +4,13 @@ title: "Corrutinas (coroutines)"
 description: "Introduccion a las corrutinas"
 ---
 
-#Introduccion
+# Introduccion
 
 Una corrutina es una unidad de tratamiento semejante a una subrutina, con la diferencia de que, mientras que la salida de una subrutina pone fin a esta, la salida de una corrutina puede ser el resultado de una suspensión de su tratamiento hasta que se le indique retomar su ejecución. La suspensión de la corrutina y su reanudación pueden ir acompañadas de una transmisión de datos.
 
-###Ejemplo
+### Ejemplo
 
-####Sync Code
+#### Sync Code
 ```python
 import time
 
@@ -46,7 +46,7 @@ Tiempo total: 9.01 segundos
 
 Cada ciclo de IOs de cada tarea se ejecuta y termina una atras de la otra
 
-####Async Code
+#### Async Code
 ```python
 import time
 import asyncio
@@ -86,13 +86,13 @@ La diferencia en los tiempos es notable.
 
 >Un momento... esto se parece a un thread
 
-###Coroutines VS Thread
+### Coroutines VS Thread
 
 Son similares a los hilos. Sin embargo, las **corrutinas** son **“multitarea cooperativa”** y los **hilos** suelen ser **“multitarea apropiativa”**. Esto significa que **las corrutinas proveen concurrencia pero no paralelismo.**
 
 La ventaja que tienen sobre los hilos es que su funcionamiento **no involucra llamadas al sistema bloqueantes**, ni primitivas de sincronización como semáforos.
 
-###Links interesantes
+### Links interesantes
 
 Corrutinas en **Python** [https://docs.python.org/3.8/library/asyncio-task.html)
 
