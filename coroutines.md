@@ -52,8 +52,7 @@ import time
 import asyncio
 
 async def io():
-    '''Hay un async adelante del def, asi que soy una corrutina :D
-    https://docs.python.org/3/library/asyncio-task.html'''
+    #Hay un async adelante del def, asi que soy una corrutina :D
     await asyncio.sleep(1)
     print(1)
     await asyncio.sleep(1)
