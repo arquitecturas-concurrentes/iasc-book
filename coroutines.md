@@ -93,12 +93,12 @@ La ventaja que tienen sobre los hilos es que su funcionamiento **no involucra ll
 
 ### Links interesantes
 
-Corrutinas en **Python** [https://docs.python.org/3.8/library/asyncio-task.html)
+[Corrutinas en **Python**] (https://docs.python.org/3.8/library/asyncio-task.html)
 
-Framework de **Python** que levanta un server asincronico con **corrutinas** planificandolas con un **event loop** [https://www.tornadoweb.org/en/stable/)
+[Framework de **Python**] que levanta un server asincronico con **corrutinas** planificandolas con un **event loop** (https://www.tornadoweb.org/en/stable/)
 
-Corrutinas en **Go** [http://www.golangpatterns.info/concurrency/coroutines)
+[Corrutinas en **Go**] (http://www.golangpatterns.info/concurrency/coroutines)
 
-Para jugar con **Goroutines** [https://tour.golang.org/concurrency/1)
+[Para jugar con **Goroutines**] (https://tour.golang.org/concurrency/1)
 
 >Esto no es nada nuevo, C++, Smalltalk, Erlang y muchos más lo tienen desde hace mucho (hasta PHP!)
