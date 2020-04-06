@@ -90,7 +90,7 @@ Acá no hay intervención del SO, hay un solo proceso, un solo hilo, entonces, q
 
 Podemos decir que es como una simultanea de ajedrez, en donde una persona juega contra dos o más. Hace un movimiento y no se queda esperando la respuesta del oponente en ese tablero, pasa al siguiente y realiza un movimiento ahí. De esa forma trata las partidas (tareas) de forma concurrente, lo que resulta en que se terminen en menos tiempo.
 
-![](https://i.imgur.com/DEBSrGR.gif)
+![](https://i.ytimg.com/vi/Hp6827K1pFE/hqdefault.jpg)
 
 >Un momento... esto se parece a un thread
 
@@ -111,26 +111,32 @@ async def print_re_loco(algo):
   return print(algo,'loco')
 ```
 >print_loco
+
 ><function print_loco at 0x7fe7aa5a9310>
 
 >print_re_loco
+
 ><function print_re_loco at 0x7fe7aa5a93a0>
 
 Las dos funciones lucen similares, la diferencia vamos a notar cuando las usamos.
 
 >print_loco('bla')
+
 >bla loco
 
 Nada fuera de lo esperado.
 
 >print_re_loco('algo')
+
 ><coroutine object print_re_loco at 0x7fe7aa5e8640>
 
 Nos retorna un objeto "corrutina" que por defecto no va a ser planificar. Entonces cómo hago que se ejecute?, bueno, hay tres formas distintas para hacer eso.
 
 **1-** Simplemente usando la función run del modulo asyncio
 >prl = print_re_loco('algo')
+
 >asyncio.run(prl)
+
 >algo loco
 
 **2-** Usando await en una corrutina
@@ -146,7 +152,9 @@ async def main():
   await say_after(2, 'world')
 ```
 >asyncio.run(main())
+
 >hello
+
 >world
 
 >Nota aca se usa run para ejecutar la corrutina "main" y await para ejecutar las "corrutinas say_after"
