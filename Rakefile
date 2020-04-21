@@ -41,7 +41,7 @@ task publish: :generate do
     message = "Site updated at #{Time.now}"
     system "git commit -m #{message.inspect}"
     system "git remote add origin git@github.com:#{GITHUB_REPONAME}.git"
-    system 'git push origin gh-pages --force'
+    system 'git push origin master --force'
 
     Dir.chdir pwd
   end
