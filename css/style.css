@@ -227,7 +227,7 @@ a.article, a.article:hover {
 }
 
 .container-background {
-    background-image: url("{{site.relative_url}}/img/home-bg.jpg");
+    background-image: url("/iasc-book/img/home-bg.jpg");
     margin-top: -20px;
     margin-left: -80px;
     min-height: 150px;
