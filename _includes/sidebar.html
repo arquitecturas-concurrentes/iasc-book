@@ -2,14 +2,14 @@
 <nav id="sidebar">
     <div class="sidebar-header">
         <a href="{{site.relative_url}}">
-           <h3 class="title">IASC Notes</h3>
+            <h3 class="title">IASC Notes</h3>
         </a>
     </div>
 
     <ul class="list-unstyled components">
         <p>Apuntes y notas de IASC</p>
         <li>
-        <a href="{{site.relative_url}}/clase_3">CPS</a>
+            <a href="{{site.relative_url}}/clase_3">CPS</a>
         </li>
         <li>
             <a href="{{site.relative_url}}/coroutines">Corrutinas</a>
@@ -26,7 +26,8 @@
             </ul>
         </li>
         <li>
-            <a href="#stmSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">Memoria Transaccional</a>
+            <a href="#stmSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">Memoria
+                Transaccional</a>
             <ul class="collapse list-unstyled" id="stmSubmenu">
                 <li>
                     <a href="{{site.relative_url}}/efecto_lado_haskell">Efectos de lado en Haskell</a>
@@ -37,7 +38,8 @@
             </ul>
         </li>
         <li>
-            <a href="#distriSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">Distribucion</a>
+            <a href="#distriSubmenu" data-toggle="collapse" aria-expanded="false"
+               class="dropdown-toggle">Distribucion</a>
             <ul class="collapse list-unstyled" id="distriSubmenu">
                 <li>
                     <a href="{{site.relative_url}}/distribucion">Introduccion a distribucion</a>
@@ -54,4 +56,11 @@
             <a href="http://arquitecturas-concurrentes.github.io" class="article">Volver a la pagina IASC</a>
         </li>
     </ul>
+
+    <div class="sidebar-header">
+        <form action="/search" method="get">
+            <input type="text" class="search-leftbar" id="search_box" name="query">
+            <input type="submit" value="Buscar">
+        </form>
+    </div>
 </nav>

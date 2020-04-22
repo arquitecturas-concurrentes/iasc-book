@@ -296,3 +296,12 @@ div#footer {
     background-color: #333333;
     font-size: 0.9rem;
 }
+
+.search-results {
+    margin-top: 70px;
+}
+
+.search-leftbar {
+    max-width: 100%;
+    overflow: visible;
+}
