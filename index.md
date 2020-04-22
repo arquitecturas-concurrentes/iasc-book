@@ -3,8 +3,6 @@ layout: homeLayout
 title: "Pagina Principal"
 ---
 
-[![CircleCI](https://circleci.com/gh/arquitecturas-concurrentes/iasc-book/tree/source.svg?style=svg)](https://circleci.com/gh/arquitecturas-concurrentes/iasc-book/tree/source)
-
 Esta es una pagina donde se van a ir actualizando el material y contenido de la materia.
 
 ## Objetivo

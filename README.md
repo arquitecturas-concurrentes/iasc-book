@@ -1,5 +1,7 @@
 # Material formal de Arquitecturas Concurrentes
 
+Circle CI status => [![CircleCI](https://circleci.com/gh/arquitecturas-concurrentes/iasc-book/tree/source.svg?style=svg)](https://circleci.com/gh/arquitecturas-concurrentes/iasc-book/tree/source)
+
 Este repositorio contiene el codigo y material formal de la materia de Arquitecturas Concurentes.
 
 La idea de este repositorio es la de proveer un lugar donde se describan los conceptos y otro material adicional de la materia y que el mismo se pueda ir actualizando y mejorando iterativamente.
