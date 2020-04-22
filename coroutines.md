@@ -4,13 +4,23 @@ title: "Corrutinas (coroutines)"
 description: "Introduccion a las corrutinas"
 ---
 
-# Introduccion
+## Anteriormente... en Arquitecturas Concurrentes
 
-Una corrutina es una unidad de tratamiento semejante a una subrutina, con la diferencia de que, mientras que la salida de una subrutina pone fin a esta, la salida de una corrutina puede ser el resultado de una suspensión de su tratamiento hasta que se le indique retomar su ejecución. La suspensión de la corrutina y su reanudación pueden ir acompañadas de una transmisión de datos.
+Hasta ahora trabajamos sobre un modelo de concurrencia basado en un _event loop_. En este esquema, cada evento se procesa completamente antes de pasar a la ejecución del próximo, y todo esto ocurre en un único contexto de ejecución.
 
-### Ejemplo
+Una ventaja que esto implica es que cuando una función se está ejecutando, tenemos la seguridad de que no va a ser interrumpida por el planificador hasta que termine, lo cual evita los problemas de concurrencia tradicionales que habíamos visto al usar _threads_ y _locks_. Y esto lo logramos gracias a que el event loop le provee un _orden_ a la ejecución concurrente; la serializa.
 
-#### Sync Code
+Las corrutinas nos permiten lograr algo similar, sin utilizar (necesariamente) un event loop.
+
+>Nota al margen: las corrutinas no son nada nuevo. C++, Smalltalk, Erlang y muchos más (¡hasta PHP!) las tienen desde hace mucho. Pero recientemente han conseguido cierta notoriedad en la industria por su uso en lenguajes como Go, Kotlin y Python.
+
+## ¿Qué es una corrutina?
+
+Una corrutina es similar a una subrutina tradicional (piensen en las funciones/procedimientos que vieron en Algoritmos), pero con la diferencia de que, mientras que la salida de una subrutina pone fin a su ejecución, una corrutina puede además **suspenderse** (`yield`, en inglés), cediendo el control a otra hasta que se le indique que debe **retomar** (`resume`) su ejecución.
+
+Para entender mejor a qué nos referimos con esto, veamos un ejemplo en Python, uno de los lenguajes que cuenta con soporte para corrutinas.
+
+#### Sin corrutinas
 ```python
 import time
 
@@ -32,8 +42,8 @@ if __name__ == '__main__':
     tiempo2 = time.perf_counter() - tiempo
     print(f'Tiempo total: {tiempo2:0.2f} segundos')
 ```
->python3.8 sync_code.py
-1
+Este código imprime:
+>1
 2
 3
 1
@@ -44,9 +54,9 @@ if __name__ == '__main__':
 3
 Tiempo total: 9.01 segundos
 
-Cada ciclo de IOs de cada tarea se ejecuta y termina una atras de la otra
+Podemos ver que cada ciclo de IOs de cada tarea se ejecuta y termina una atrás de la otra. ¿Qué pasa si agregamos corrutinas?
 
-#### Async Code
+#### Con corrutinas
 ```python
 import time
 import asyncio
@@ -69,8 +79,7 @@ if __name__ == '__main__':
     tiempo2 = time.perf_counter() - tiempo
     print(f'Tiempo total: {tiempo2:0.2f} segundos')
 ```
->python3.8 async_code.py
-1
+>1
 1
 1
 2
@@ -81,26 +90,37 @@ if __name__ == '__main__':
 3
 Tiempo total: 3.00 segundos
 
-La diferencia en los tiempos es notable.
+La diferencia en los tiempos es notable. También observamos que el orden de ejecución fue distinto en este caso.
 
+## ¿Cómo funcionan?
 
-### Como funcionan?
+Cuando usamos corrutinas, no hay intervención del SO. Hay un sólo proceso, un sólo thread. Entonces... ¿qué es lo que esta pasando?
+ 
+Lo que ocurre es que las corrutinas liberan la CPU cuando están en "tiempo de espera" (`await`), permitiendo que otras puedan usar la CPU.
 
-Acá no hay intervención del SO, hay un solo proceso, un solo hilo, entonces, que es lo que esta pasando?... simplemente las corrutinas liberan la CPU cuando están en "tiempo de espera" (await), por lo tanto, otras pueden usar la CPU.
-
-Podemos decir que es como una simultanea de ajedrez, en donde una persona juega contra dos o más. Hace un movimiento y no se queda esperando la respuesta del oponente en ese tablero, pasa al siguiente y realiza un movimiento ahí. De esa forma trata las partidas (tareas) de forma concurrente, lo que resulta en que se terminen en menos tiempo.
+Podemos decir que es como una simultánea de ajedrez, en donde una persona juega contra dos o más. Hace un movimiento y no se queda esperando la respuesta del oponente en ese tablero, sino que pasa al siguiente y realiza un movimiento ahí. De esa forma, trata las partidas (tareas) de forma concurrente, lo que resulta en que se terminen en menos tiempo.
 
 ![](https://i.ytimg.com/vi/Hp6827K1pFE/hqdefault.jpg)
 
+Seguro están pensando:
 >Un momento... esto se parece a un thread
 
-### Coroutines VS Thread
+Lo que nos lleva a nuestra próxima sección...
 
-Son similares a los hilos. Sin embargo, las **corrutinas** son **“multitarea cooperativa”** y los **hilos** suelen ser **“multitarea apropiativa”**. Esto significa que **las corrutinas proveen concurrencia pero no paralelismo.**
+## Corrutinas vs Threads
 
-La ventaja que tienen sobre los hilos es que su funcionamiento **no involucra llamadas al sistema bloqueantes**, ni primitivas de sincronización como semáforos.
+La diferencia fundamental entre corrutinas y threads se da en la forma en la que se lleva a cabo la multitarea.
 
-### Cómo se declaran y como se ejecutan?
+Los threads, como ya vimos, manejan un esquema de **multitarea apropiativa** (en inglés, _preemptive multitasking_), donde el planificador es el encargado de asignar intervalos de uso de CPU a los threads que se están ejecutando, desalojándolos cuando este termina.
+
+Las corrutinas, en contraposición, permiten tener **multitarea cooperativa** (_cooperative/non-preemptive multitasking_). Esto significa que el cambio de contexto no es controlado por el planificador, sino que cada corrutina es la encargada de ceder el control cuando está inactiva o bloqueda.
+
+Otra diferencia, presente al menos en la visión "tradicional" de corrutinas, es que **las corrutinas proveen concurrencia pero no paralelismo**. De esta forma, evitan problemas de concurrencia, ya que corren en un **único contexto de ejecución**, y además **controlan cuándo se suspenden** (en vez de que el planificador las interrumpa en puntos arbitrarios).
+
+Una ventaja más que las corrutinas tienen sobre los hilos es que su funcionamiento no involucra llamadas al sistema bloqueantes para su creación ni para el cambio de contexto, ya que todo se maneja al nivel de la aplicación.
+
+## ¿Cómo se declaran y ejecutan en Python?
+Veamos nuevamente un ejemplo con corrutinas  y otro sin:
 ```python
 import asyncio
 
@@ -118,7 +138,7 @@ async def print_re_loco(algo):
 
 ><function print_re_loco at 0x7fe7aa5a93a0>
 
-Las dos funciones lucen similares, la diferencia vamos a notar cuando las usamos.
+Las dos funciones lucen similares, la diferencia vamos a notar cuando las usamos:
 
 >print_loco('bla')
 
@@ -130,16 +150,16 @@ Nada fuera de lo esperado.
 
 ><coroutine object print_re_loco at 0x7fe7aa5e8640>
 
-Nos retorna un objeto "corrutina" que por defecto no va a ser planificar. Entonces cómo hago que se ejecute?, bueno, hay tres formas distintas para hacer eso.
+Nos retorna un objeto "corrutina" que por defecto no se va a planificar. Entonces, ¿cómo hago que se ejecute? Bueno, hay tres formas distintas para hacer eso.
 
-**1-** Simplemente usando la función run del modulo asyncio
+**1-** Usando la función `run` del módulo `asyncio`
 >prl = print_re_loco('algo')
 
 >asyncio.run(prl)
 
 >algo loco
 
-**2-** Usando await en una corrutina
+**2-** Usando `await` en una corrutina
 ```python
 import asyncio
 
@@ -157,9 +177,9 @@ async def main():
 
 >world
 
->Nota aca se usa run para ejecutar la corrutina "main" y await para ejecutar las "corrutinas say_after"
+_Nota: acá usamos `run` para ejecutar la corrutina `main` y `await` para ejecutar las corrutinas `say_after`._
 
-**3-** Con la función create_task() de asyncio que ejecuta corrutinas concurrentemente wrappeandolas en Tasks. Que por detrás maneja un **event loop** para planificarlas.
+**3-** Con la función `create_task` de `asyncio`, que ejecuta corrutinas concurrentemente _wrappeándolas_ en `Tasks`, usando  por detrás un **event loop** para planificarlas.
 ```python
 import asyncio
 
@@ -171,9 +191,9 @@ async def main():
   await task2
 ```
 
->Nota create_task envia la corrutina al event loop, permitiendo que corra en segundo plano. Gather hace algo muy parecido pero podemos decir que es conveniente usarlo cuando nos interesa hacer algo con el resultado de las corrutinas.
+_Nota: `create_task` envía la corrutina al event loop, permitiendo que corra en segundo plano. `gather` hace algo muy parecido, pero podemos decir que es conveniente usarlo cuando nos interesa hacer algo con el resultado de las corrutinas._
 
-### Links interesantes
+## Links interesantes
 
 [Corrutinas en Python](https://docs.python.org/3.8/library/asyncio-task.html)
 
@@ -183,4 +203,6 @@ async def main():
 
 [Para jugar con Goroutines](https://tour.golang.org/concurrency/1)
 
->Esto no es nada nuevo, C++, Smalltalk, Erlang y muchos más lo tienen desde hace mucho (hasta PHP!)
+[Corrutinas en Kotlin](https://kotlinlang.org/docs/reference/coroutines/basics.html)
+
+[Comparación de técnicas programación asincrónica (threading, callbacks, Promises, corrutinas)](https://kotlinlang.org/docs/tutorials/coroutines/async-programming.html). Claramente enfocado para resaltar las ventajas de las corrutinas en Kotlin, pero de todos modos interesante para repasar las técnicas que vimos hasta ahora.
