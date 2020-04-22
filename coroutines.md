@@ -199,6 +199,8 @@ Si observaron con detalle se habrán dado cuenta de que cuando se usa sleep para
 
 Pero hay formas de evitarlo :D!, lo que se hace es que correr estas tareas **bloqueantes** y otras que vamos a llamar **CPU-bound-intensive**, sea conveniente ejecutarlas en otro thread. Concretamente en **Python** usando `loop.run_in_executor()` [Running Blocking Code](https://docs.python.org/3/library/asyncio-dev.html#running-blocking-code)
 
+_Nota: también es posible setear un timeout para que cuando se cumpla, se corte su ejecución [ver timeouts](https://docs.python.org/3/library/asyncio-task.html#timeouts) ._
+
 ## Links interesantes
 
 [Corrutinas en Python](https://docs.python.org/3.8/library/asyncio-task.html)
