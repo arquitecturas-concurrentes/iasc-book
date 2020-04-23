@@ -1,9 +1,3 @@
-/*
-    DEMO STYLE
-*/
-@import "https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700";
-
-
 body {
     font-family: 'Poppins', sans-serif;
     background: #fafafa;
@@ -34,7 +28,6 @@ a, a:hover, a:focus {
 
 .navbar-btn {
     box-shadow: none;
-    outline: none !important;
     border: none;
 }
 
@@ -61,7 +54,7 @@ a, a:hover, a:focus {
 }
 
 
-#sidebar {
+.sidebar {
     min-width: 250px;
     max-width: 250px;
     background: #6B7A8F;
@@ -70,37 +63,37 @@ a, a:hover, a:focus {
     transform-origin: bottom left;
 }
 
-#sidebar.active {
+.sidebar-inactive {
     margin-left: -250px;
     transform: rotateY(100deg);
 }
 
-#sidebar .sidebar-header {
+.sidebar .sidebar-header {
     padding: 20px;
     background: #6B7A8F;
 }
 
-#sidebar ul.components {
+.sidebar .components {
     padding: 20px 0;
     border-bottom: 1px solid #6B7A8F;
 }
 
-#sidebar ul p {
+.sidebar ul p {
     color: #fff;
     padding: 10px;
 }
 
-#sidebar ul li a {
+.sidebar ul li a {
     padding: 10px;
     font-size: 1.1em;
     display: block;
 }
-#sidebar ul li a:hover {
+.sidebar ul li a:hover {
     color: #7187a7;
     background: #fff;
 }
 
-#sidebar ul li.active > a, a[aria-expanded="true"] {
+.sidebar ul li.active > a, a[aria-expanded="true"] {
     color: #fff;
     background: #7187a7;
 }
@@ -119,16 +112,16 @@ a[data-toggle="collapse"] {
 }
 
 ul ul a {
-    font-size: 0.9em !important;
-    padding-left: 30px !important;
+    font-size: 0.9em;
+    padding-left: 30px;
     background: #6B7A8F;
 }
 
-ul.CTAs {
+.CTAs {
     padding: 20px;
 }
 
-ul.CTAs a {
+.CTAs a {
     text-align: center;
     font-size: 0.9em !important;
     display: block;
@@ -136,36 +129,36 @@ ul.CTAs a {
     margin-bottom: 5px;
 }
 
-a.download {
-    background: #fff;
-    color: #6B7A8F;
+.navbar-button, .navbar-button:hover {
+    background: #F7882F;
+    color: #fff;
 }
-
-a.article, a.article:hover {
-    background: #F7882F !important;
-    color: #fff !important;
-}
-
 
 
 /* ---------------------------------------------------
     CONTENT STYLE
 ----------------------------------------------------- */
-#content {
+.content {
     width: 100%;
     padding: 20px;
     min-height: 100vh;
     transition: all 0.3s;
 }
 
-#sidebarCollapse {
+.sidebarCollapse {
+    position:fixed;
+    bottom:40px;
+    right:40px;
     width: 40px;
     height: 40px;
     background: #f5f5f5;
     cursor: pointer;
+    border-radius:50px;
+    text-align:center;
+    box-shadow: 2px 2px 3px #999;
 }
 
-#sidebarCollapse span {
+.sidebarCollapse span {
     width: 80%;
     height: 2px;
     margin: 0 auto;
@@ -175,18 +168,18 @@ a.article, a.article:hover {
     transition-delay: 0.2s;
 }
 
-#sidebarCollapse span:first-of-type {
+.sidebarCollapse span:first-of-type {
     transform: rotate(45deg) translate(2px, 2px);
 }
-#sidebarCollapse span:nth-of-type(2) {
+.sidebarCollapse span:nth-of-type(2) {
     opacity: 0;
 }
-#sidebarCollapse span:last-of-type {
+.sidebarCollapse span:last-of-type {
     transform: rotate(-45deg) translate(1px, -1px);
 }
 
 
-#sidebarCollapse.active span {
+.sidebarCollapse.active span {
     transform: none;
     opacity: 1;
     margin: 5px auto;
@@ -197,31 +190,31 @@ a.article, a.article:hover {
     MEDIAQUERIES
 ----------------------------------------------------- */
 @media (max-width: 768px) {
-    #sidebar {
+    .sidebar {
         margin-left: -250px;
         transform: rotateY(90deg);
     }
-    #sidebar.active {
+    .sidebar-inactive {
         margin-left: 0;
         transform: none;
     }
-    #sidebarCollapse span:first-of-type,
-    #sidebarCollapse span:nth-of-type(2),
-    #sidebarCollapse span:last-of-type {
+    .sidebarCollapse span:first-of-type,
+    .sidebarCollapse span:nth-of-type(2),
+    .sidebarCollapse span:last-of-type {
         transform: none;
         opacity: 1;
         margin: 5px auto;
     }
-    #sidebarCollapse.active span {
+    .sidebarCollapse.active span {
         margin: 0 auto;
     }
-    #sidebarCollapse.active span:first-of-type {
+    .sidebarCollapse.active span:first-of-type {
         transform: rotate(45deg) translate(2px, 2px);
     }
-    #sidebarCollapse.active span:nth-of-type(2) {
+    .sidebarCollapse.active span:nth-of-type(2) {
         opacity: 0;
     }
-    #sidebarCollapse.active span:last-of-type {
+    .sidebarCollapse.active span:last-of-type {
         transform: rotate(-45deg) translate(1px, -1px);
     }
 }
@@ -234,34 +227,25 @@ a.article, a.article:hover {
     width: 100%;
 }
 
-.float{
-    position:fixed;
-    width:60px;
-    height:60px;
-    bottom:40px;
-    right:40px;
-    background-color:#0C9;
-    color:#FFF;
-    border-radius:50px;
-    text-align:center;
-    box-shadow: 2px 2px 3px #999;
-}
-
-.my-float{
-    margin-top:22px;
-}
-
-#inner-content {
+.inner-content {
     padding-top: 25px;
     font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 20px;
     color: #333333;
 }
 
-#inner-content p {
+.inner-content p {
     font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 20px;
     color: #404040;
+}
+
+.inner-content a {
+    color: #F7882F;
+}
+
+.inner-content a:hover {
+    color: #6B7A8F;
 }
 
 .titulo {
@@ -273,22 +257,13 @@ a.article, a.article:hover {
     text-shadow: 1px 1px 4px rgba(0,0,0,0.5);
 }
 
-
-#inner-content a {
-    color: #F7882F;
-}
-
-#inner-content a:hover {
-    color: #6B7A8F;
-}
-
 .center {
     display: block;
     margin-left: auto;
     margin-right: auto;
 }
 
-div#footer {
+.footer {
     height: 2em;
     bottom: 0;
     color: #aaa;
