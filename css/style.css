@@ -190,13 +190,17 @@ ul ul a {
     MEDIAQUERIES
 ----------------------------------------------------- */
 @media (max-width: 768px) {
-    .sidebar {
-        margin-left: -250px;
+    .sidebar-inactive {
+        margin-left: -150px;
         transform: rotateY(90deg);
     }
-    .sidebar-inactive {
-        margin-left: 0;
-        transform: none;
+    .sidebar {
+        min-width: 150px;
+        max-width: 150px;
+        background: #6B7A8F;
+        color: #fff;
+        transition: all 0.6s cubic-bezier(0.945, 0.020, 0.270, 0.665);
+        transform-origin: bottom left;
     }
     .sidebarCollapse span:first-of-type,
     .sidebarCollapse span:nth-of-type(2),
