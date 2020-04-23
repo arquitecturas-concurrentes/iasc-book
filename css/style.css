@@ -1,3 +1,6 @@
+---
+---
+
 body {
     font-family: 'Poppins', sans-serif;
     background: #fafafa;
@@ -185,46 +188,8 @@ ul ul a {
     margin: 5px auto;
 }
 
-
-/* ---------------------------------------------------
-    MEDIAQUERIES
------------------------------------------------------ */
-@media (max-width: 768px) {
-    .sidebar-inactive {
-        margin-left: -150px;
-        transform: rotateY(90deg);
-    }
-    .sidebar {
-        min-width: 150px;
-        max-width: 150px;
-        background: #6B7A8F;
-        color: #fff;
-        transition: all 0.6s cubic-bezier(0.945, 0.020, 0.270, 0.665);
-        transform-origin: bottom left;
-    }
-    .sidebarCollapse span:first-of-type,
-    .sidebarCollapse span:nth-of-type(2),
-    .sidebarCollapse span:last-of-type {
-        transform: none;
-        opacity: 1;
-        margin: 5px auto;
-    }
-    .sidebarCollapse.active span {
-        margin: 0 auto;
-    }
-    .sidebarCollapse.active span:first-of-type {
-        transform: rotate(45deg) translate(2px, 2px);
-    }
-    .sidebarCollapse.active span:nth-of-type(2) {
-        opacity: 0;
-    }
-    .sidebarCollapse.active span:last-of-type {
-        transform: rotate(-45deg) translate(1px, -1px);
-    }
-}
-
 .container-background {
-    background-image: url("/iasc-book/img/home-bg.jpg");
+    background-image: url("{{relative_url}}/img/home-bg.jpg");
     margin-top: -20px;
     margin-left: -80px;
     min-height: 150px;
@@ -283,4 +248,50 @@ ul ul a {
 .search-leftbar {
     max-width: 100%;
     overflow: visible;
+}
+
+/* ---------------------------------------------------
+    MEDIAQUERIES
+----------------------------------------------------- */
+@media (max-width: 768px) {
+    .sidebar-inactive {
+        margin-left: -170px;
+        transform: rotateY(90deg);
+    }
+    .sidebar {
+        min-width: 170px;
+        max-width: 170px;
+        background: #6B7A8F;
+        color: #fff;
+        transition: all 0.6s cubic-bezier(0.945, 0.020, 0.270, 0.665);
+        transform-origin: bottom left;
+    }
+    .sidebarCollapse span:first-of-type,
+    .sidebarCollapse span:nth-of-type(2),
+    .sidebarCollapse span:last-of-type {
+        transform: none;
+        opacity: 1;
+        margin: 5px auto;
+    }
+    .sidebarCollapse.active span {
+        margin: 0 auto;
+    }
+    .sidebarCollapse.active span:first-of-type {
+        transform: rotate(45deg) translate(2px, 2px);
+    }
+    .sidebarCollapse.active span:nth-of-type(2) {
+        opacity: 0;
+    }
+    .sidebarCollapse.active span:last-of-type {
+        transform: rotate(-45deg) translate(1px, -1px);
+    }
+
+    .content {
+        margin-left: -130px;
+    }
+
+    .container-background {
+        margin-left: 40px;
+        width: 130%;
+    }
 }
