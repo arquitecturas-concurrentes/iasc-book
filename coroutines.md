@@ -195,7 +195,7 @@ _Nota: `create_task` envía la corrutina al event loop, permitiendo que corra en
 
 ## ¿Qué pasa si ejecuto código bloqueante dentro de una corrutina?
 
-Si observaron con detalle se habrán dado cuenta de que cuando se usa sleep para suspender a la corrutina, se esta usando `asyncio.sleep` en lugar de `time.sleep`. Esto es porque el segundo es bloqueante. Entonces como ya dedujeron, las operaciones bloqueantes bloquean todo el event loop.
+Si observaron con detalle se habrán dado cuenta de que cuando se usa sleep para suspender a la corrutina, se esta usando `asyncio.sleep` en lugar de `time.sleep`. Esto es porque el segundo es bloqueante. Entonces como ya dedujeron, las operaciones bloqueantes bloquean todo el thread de sistema operativo subyacente.
 
 Pero hay formas de evitarlo :D!, lo que se hace es que correr estas tareas **bloqueantes** y otras que vamos a llamar **CPU-bound-intensive**, sea conveniente ejecutarlas en otro thread. Concretamente en **Python** usando `loop.run_in_executor()` [Running Blocking Code](https://docs.python.org/3/library/asyncio-dev.html#running-blocking-code)
 
