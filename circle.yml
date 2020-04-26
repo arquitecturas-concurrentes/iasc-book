@@ -6,6 +6,7 @@ jobs:
       - image: circleci/ruby:2.6.5
     environment:
       TZ: "/usr/share/zoneinfo/America/Argentina/Buenos_Aires"
+      JEKYLL_ENV: 'production'
     paralelism: 2
     steps:
       - add_ssh_keys:
