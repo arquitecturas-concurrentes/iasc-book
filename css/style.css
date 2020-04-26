@@ -25,7 +25,7 @@ a, a:hover, a:focus {
     background: #fff;
     border: none;
     border-radius: 0;
-    margin-bottom: 40px;
+    margin-bottom: 2px;
     box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -53,7 +53,8 @@ a, a:hover, a:focus {
     display: flex;
     width: 100%;
     align-items: stretch;
-    overflow-x: hidden;
+    overflow: hidden;
+    min-height: 650px;
 }
 
 
@@ -120,18 +121,6 @@ ul ul a {
     background: #6B7A8F;
 }
 
-.CTAs {
-    padding: 20px;
-}
-
-.CTAs a {
-    text-align: center;
-    font-size: 0.9em !important;
-    display: block;
-    border-radius: 5px;
-    margin-bottom: 5px;
-}
-
 .navbar-button, .navbar-button:hover {
     background: #F7882F;
     color: #fff;
@@ -188,15 +177,8 @@ ul ul a {
     margin: 5px auto;
 }
 
-.container-background {
-    background-image: url("{{relative_url}}/img/home-bg.jpg");
-    margin-top: -20px;
-    margin-left: -80px;
-    min-height: 150px;
-    width: 100%;
-}
-
 .inner-content {
+    margin-bottom: 50px;
     padding-top: 25px;
     font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 20px;
@@ -215,6 +197,15 @@ ul ul a {
 
 .inner-content a:hover {
     color: #6B7A8F;
+}
+
+.container-background {
+    background-image: url("{{site.relative_url}}/img/home-bg.jpg");
+    min-height: 150px;
+}
+
+.titulo-heading {
+    margin-bottom: 15px;
 }
 
 .titulo {
@@ -243,11 +234,17 @@ ul ul a {
 
 .search-results {
     margin-top: 70px;
+    margin-bottom: 50px;
 }
 
 .search-leftbar {
     max-width: 100%;
     overflow: visible;
+}
+
+.header {
+    padding-left: 0px;
+    padding-right: 0px;
 }
 
 /* ---------------------------------------------------
@@ -259,39 +256,7 @@ ul ul a {
         transform: rotateY(90deg);
     }
     .sidebar {
-        min-width: 170px;
-        max-width: 170px;
-        background: #6B7A8F;
-        color: #fff;
-        transition: all 0.6s cubic-bezier(0.945, 0.020, 0.270, 0.665);
-        transform-origin: bottom left;
-    }
-    .sidebarCollapse span:first-of-type,
-    .sidebarCollapse span:nth-of-type(2),
-    .sidebarCollapse span:last-of-type {
-        transform: none;
-        opacity: 1;
-        margin: 5px auto;
-    }
-    .sidebarCollapse.active span {
-        margin: 0 auto;
-    }
-    .sidebarCollapse.active span:first-of-type {
-        transform: rotate(45deg) translate(2px, 2px);
-    }
-    .sidebarCollapse.active span:nth-of-type(2) {
-        opacity: 0;
-    }
-    .sidebarCollapse.active span:last-of-type {
-        transform: rotate(-45deg) translate(1px, -1px);
-    }
-
-    .content {
-        margin-left: -130px;
-    }
-
-    .container-background {
-        margin-left: 40px;
-        width: 130%;
+        min-width: 40%;
+        max-width: 40%;
     }
 }

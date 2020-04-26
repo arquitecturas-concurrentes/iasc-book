@@ -3,7 +3,7 @@ layout: search
 title: Busqueda dentro del sitio
 ---
 
-<form action="/search" method="get">
+<form action="{{site.relative_url}}/search" method="get">
   <label for="search-box">Ingresa alguna palabra clave</label>
   <input type="text" id="search-box" name="query">
   <input type="submit" value="buscar">
