@@ -1,5 +1,5 @@
 ---
-layout: homeLayout
+layout: default
 title: "Pagina Principal"
 ---
 
