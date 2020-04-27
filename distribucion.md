@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Capitulo 7 - Distribucion"
+title: "Distribucion"
 description: "Introduccion y nociones de distribucion"
 ---
 
