@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Capitulo 3 - CPS"
+title: "CPS"
 description: "Introduccion a CPS"
 ---
 
@@ -151,6 +151,8 @@ function hijoDeVito(cont) {
 
 Se observa fácilmente que logramos las múltiples respuestas mediante la aplicación reiterada de la continuación: el mismo programa está continuando múltiples veces con argumento diferentes.
 
+CPS no nos da una restriccion sobre la cantidad de veces a las que se deba llamar la continuacion que recibe. Por lo que vamos a poder aplicar la continuacion 0 o múltiples veces, y eso lo vamos a tener que 
+
 ### Excepciones
 
 Todos conocemos las excepciones. Estas nos dan dos flujos de ejecución: uno de éxito y uno de fracaso, y en ambos hay resultados: el resultado normal del programa o el error en cuestión. Y esto lo podemos lograr pasando dos continaciones: la que contiene el flujo normal, y la que contiene el flujo de error.
@@ -181,14 +183,34 @@ duplicar(inversa(siguiente(x)))
 
 se convierte en una compleja estructura de continuaciones anidadas.
 ¿Podríamos delegar esto de mejor forma? Si analizamos cómo queda expresada esta computación en estilo directo, podemos ver que duplicar la inversa del siguiente, a fin de cuentas, está describiendo una composición de funciones: al resultado de aplicar una función se le pasa a la entrada la otra.
-Obviamente, no es la misma composición de funciones que conocemos en estilo directo: es una composición CPS. Y entender esto nos permite definir una función componer, que haga justamente esto, y utilizarla así:
+Obviamente, no es la misma composición de funciones que conocemos en estilo directo: es una composición CPS. Y entender esto nos permite definir una función componer, que haga justamente esto:
 
+```javascript
+ function componer(f, g) {
+     return function(x, cont) {
+         g(x, function(y){
+             f(y, cont);
+         })
+     }
+ }
+```
+
+y una vez que tenemos eso podemos ya utilizarla así:
 
 ```javascript
 var cuentaLoca = componer(duplicar, componer(inversa, siguiente))
 ```
 
-Y si le damos una vuelta de tuerca más, podemos observar que estamos ante la estructura de aplicación de un fold, y definir una función pipeline que componga todas las funciones cps:
+Y si le damos una vuelta de tuerca más, podemos observar que estamos ante la estructura de aplicación de un fold, y definir una función pipeline que componga todas las funciones cps
+
+
+```javascript
+ function pipeline(fs) {
+     return fs.reduce(componer);
+ }
+```
+
+Con este pipeline podemos reutilizar el componer aplicandole un fold sobre un array y de esta manera que se puedan componer todas las funciones que tenemos sin caer de nuevo en el Callback Hell:
 
 ```javascript
 var cuentaLoca = pipeline([duplicar, inversa, siguiente]);
@@ -198,16 +220,9 @@ Y así vemos como eliminar el callback hell, aun con CPS, es posible.
 Moraleja: no es culpa del CPS, es culpa nuestra al no delegar convenientemente.
 
 
-
 ### Conclusiones
 
 - CPS nos da gran poder, pero es difícil de manejar adecuadamente
 - CPS nos lleva, si no tenemos cuidado al callback hell. Sin embargo, no es inherente a CPS, sino que es consecuencia de una mala delegación. Es posible resolverlo si se delega apropiadamente y aplicando los conceptos de programación funcional de orden superior y creando combinadores apropiados
 - CPS nos permite implementar computaciones asincrónicas. NodeJS emplea CPS para soportarlas.
 - El uso de CPS en NodeJS: pésimo manejo de errores y ausencia de abstracciones para hacerlo mas tratable. Por eso es que la comunidad centró su atención en otra forma de estructurar programas con influencias funcionales: las promesas (promises).
-
-
-## 2da Parte Node.js 
-
-Una aplicación típica de Node.js es básicamente una colección de devoluciones de llamada que se ejecutan en respuesta a varios eventos: una conexión entrante, finalización de E / S, vencimiento del tiempo de espera, resolución de promesa, etc. Hay un solo hilo principal (también conocido como Event-Loop ) que ejecuta todas estas devoluciones de llamada y, por lo tanto, las devoluciones de llamada deben completarse rápidamente ya que todas las demás devoluciones de llamada pendientes están esperando su turno. Esta es una limitación conocida y desafiante de Node y también se explica muy bien en los documentos:
-[https://nodejs.org/en/docs/guides/dont-block-the-event-loop/](https://nodejs.org/en/docs/guides/dont-block-the-event-loop/)
