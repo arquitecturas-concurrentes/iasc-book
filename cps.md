@@ -151,7 +151,29 @@ function hijoDeVito(cont) {
 
 Se observa fácilmente que logramos las múltiples respuestas mediante la aplicación reiterada de la continuación: el mismo programa está continuando múltiples veces con argumento diferentes.
 
-CPS no nos da una restriccion sobre la cantidad de veces a las que se deba llamar la continuacion que recibe. Por lo que vamos a poder aplicar la continuacion 0 o múltiples veces, y eso lo vamos a tener que 
+CPS no nos da una restriccion sobre la cantidad de veces a las que se deba llamar la continuacion que recibe. Por lo que vamos a poder aplicar la continuacion 0 o múltiples veces.
+
+Tal vez el ejemplo de recien no fue tan convincente.... bueno tenemos el ejemplo mas basico que podemos encontrar en la documentacion de Node.js:
+
+```javascript
+const http = require('http');
+
+const hostname = '127.0.0.1';
+const port = 3000;
+
+const server = http.createServer((req, res) => {
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'text/plain');
+  res.end('Hello World');
+});
+
+server.listen(port, hostname, () => {
+  console.log(`Server running at http://${hostname}:${port}/`);
+});
+```
+> Shamelessly taken from [here](https://nodejs.org/ca/docs/guides/getting-started-guide/)
+
+Este pequeño ejemplo nos muestra claramente el no determinismo, porque es un servidor que podemos levantar, y nunca vamos a saber cuantos request nos van a llegar al servidor durante el tiempo que este levantado, tal vez recibimos 28392389 requests, tal vez 0. 
 
 ### Excepciones
 

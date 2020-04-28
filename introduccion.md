@@ -6,8 +6,6 @@ description: "De que se trata Arquitecturas Concurrentes??"
 
 
 La materia tiene un objetivo doble: por un lado, conocer tecnologías novedosas de aplicación en la industria de desarrollo de software, y por otro lado, transmitir conocimiento durables, ideas que trasciendan la tecnología, sobre la concurrencia, y la arquitectura de software.
-Empezando por este blogpost, iremos subiendo nuestros resúmenes de clase.
-
 
 ## ¿Arquitecturas Concurrentes? ¿Qué es eso?
 
