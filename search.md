@@ -21,7 +21,7 @@ title: Busqueda dentro del sitio
       "{{ page.url | slugify }}": {
         "title": "{{ page.title | xml_escape }}",
         "content": {{ page.content | strip_html | strip_newlines | jsonify }},
-        "url": "{{ page.url | xml_escape }}"
+        "url": "{{site.relative_url}}/{{ page.url | xml_escape }}"
       }
       {% unless forloop.last %},{% endunless %}
     {% endfor %}
