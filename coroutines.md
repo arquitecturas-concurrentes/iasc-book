@@ -6,7 +6,7 @@ description: "Introduccion a las corrutinas"
 
 ## Anteriormente... en Arquitecturas Concurrentes
 
-Hasta ahora trabajamos sobre un modelo de concurrencia basado en un _event loop_. En este esquema, cada evento se procesa completamente antes de pasar a la ejecución del próximo, y todo esto ocurre en un único contexto de ejecución.
+Hasta ahora trabajamos sobre un modelo de concurrencia basado en un _event loop_. En este esquema, cada evento se procesa completamente antes de pasar a la ejecución del próximo, y todo esto ocurre en un único thread.
 
 Una ventaja que esto implica es que cuando una función se está ejecutando, tenemos la seguridad de que no va a ser interrumpida por el planificador hasta que termine, lo cual evita los problemas de concurrencia tradicionales que habíamos visto al usar _threads_ y _locks_. Y esto lo logramos gracias a que el event loop le provee un _orden_ a la ejecución concurrente; la serializa.
 
