@@ -16,7 +16,7 @@ Las corrutinas nos permiten lograr algo similar, sin utilizar (necesariamente) u
 
 ## ¿Qué es una corrutina?
 
-Una corrutina es similar a una subrutina tradicional (piensen en las funciones/procedimientos que vieron en Algoritmos), pero con la diferencia de que, mientras que la salida de una subrutina pone fin a su ejecución, una corrutina puede además **suspenderse** (`yield`, en inglés), cediendo el control a otra hasta que se le indique que debe **retomar** (`resume`) su ejecución.
+Una corrutina es similar a una subrutina tradicional (piensen en las funciones/procedimientos que vieron en Algoritmos), pero con la diferencia de que, mientras que la salida de una subrutina pone fin a su ejecución, una corrutina puede además **suspenderse**, cediendo el control a otra hasta que se le indique que debe **retomar** su ejecución.
 
 Para entender mejor a qué nos referimos con esto, veamos un ejemplo en Python, uno de los lenguajes que cuenta con soporte para corrutinas.
 
@@ -119,8 +119,10 @@ Otra diferencia, presente al menos en la visión "tradicional" de corrutinas, es
 
 Una ventaja más que las corrutinas tienen sobre los hilos es que su funcionamiento no involucra llamadas al sistema bloqueantes para su creación ni para el cambio de contexto, ya que todo se maneja al nivel de la aplicación.
 
+[Interesante comparación de cuando usar corrutinas y cuando usar threads en Kotlin](https://www.baeldung.com/kotlin-threads-coroutines)
+
 ## ¿Cómo se declaran y ejecutan en Python?
-Veamos nuevamente un ejemplo con corrutinas  y otro sin:
+
 ```python
 import asyncio
 
@@ -153,9 +155,9 @@ Nada fuera de lo esperado.
 Nos retorna un objeto "corrutina" que por defecto no se va a planificar. Entonces, ¿cómo hago que se ejecute? Bueno, hay tres formas distintas para hacer eso.
 
 **1-** Usando la función `run` del módulo `asyncio`
->prl = print_re_loco('algo')
+>coro = print_re_loco('algo')
 
->asyncio.run(prl)
+>asyncio.run(coro)
 
 >algo loco
 
