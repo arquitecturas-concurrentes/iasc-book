@@ -13,13 +13,13 @@
 <!-- Lunr JS Search -->
 <!-- <script src="https://unpkg.com/lunr/lunr.js"></script> -->
 <script src="https://unpkg.com/lunr@1.0/lunr.js"></script>
-<script src="/js/search.js"></script>
+<script src="{{site.relative_url}}//js/search.js"></script>
 
 
 <!--This part will enable the circle button to show/hide the right bar-->
 <script type="text/javascript">
     $(document).ready(function () {
-        $('.sidebarCollapse').on('click', function () {
+        $('#sidebarCollapse').on('click', function () {
             $('.sidebar').toggleClass('sidebar-inactive');
             $(this).toggleClass('active');
         });

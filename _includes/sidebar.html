@@ -7,9 +7,12 @@
     </div>
 
     <ul class="list-unstyled components">
-        <p>Apuntes y notas de IASC</p>
+        <p>Temas</p>
         <li>
-            <a href="{{site.relative_url}}/clase_3">CPS</a>
+            <a href="{{site.relative_url}}/introduccion">Intro</a>
+        </li>
+        <li>
+            <a href="{{site.relative_url}}/cps">CPS</a>
         </li>
         <li>
             <a href="{{site.relative_url}}/coroutines">Corrutinas</a>
@@ -51,14 +54,8 @@
         </li>
     </ul>
 
-    <ul class="list-unstyled CTAs">
-        <li>
-            <a href="http://arquitecturas-concurrentes.github.io" class="navbar-button">Volver a la pagina IASC</a>
-        </li>
-    </ul>
-
     <div class="sidebar-header">
-        <form action="/search" method="get">
+        <form action="{{site.relative_url}}/search" method="get">
             <input type="text" class="search-leftbar" id="search_box" name="query">
             <input type="submit" value="Buscar">
         </form>

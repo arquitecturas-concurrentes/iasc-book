@@ -6,7 +6,7 @@ description: "Introduccion a las corrutinas"
 
 ## Anteriormente... en Arquitecturas Concurrentes
 
-Hasta ahora trabajamos sobre un modelo de concurrencia basado en un _event loop_. En este esquema, cada evento se procesa completamente antes de pasar a la ejecución del próximo, y todo esto ocurre en un único contexto de ejecución.
+Hasta ahora trabajamos sobre un modelo de concurrencia basado en un _event loop_. En este esquema, cada evento se procesa completamente antes de pasar a la ejecución del próximo, y todo esto ocurre en un único thread.
 
 Una ventaja que esto implica es que cuando una función se está ejecutando, tenemos la seguridad de que no va a ser interrumpida por el planificador hasta que termine, lo cual evita los problemas de concurrencia tradicionales que habíamos visto al usar _threads_ y _locks_. Y esto lo logramos gracias a que el event loop le provee un _orden_ a la ejecución concurrente; la serializa.
 
@@ -16,7 +16,7 @@ Las corrutinas nos permiten lograr algo similar, sin utilizar (necesariamente) u
 
 ## ¿Qué es una corrutina?
 
-Una corrutina es similar a una subrutina tradicional (piensen en las funciones/procedimientos que vieron en Algoritmos), pero con la diferencia de que, mientras que la salida de una subrutina pone fin a su ejecución, una corrutina puede además **suspenderse** (`yield`, en inglés), cediendo el control a otra hasta que se le indique que debe **retomar** (`resume`) su ejecución.
+Una corrutina es similar a una subrutina tradicional (piensen en las funciones/procedimientos que vieron en Algoritmos), pero con la diferencia de que, mientras que la salida de una subrutina pone fin a su ejecución, una corrutina puede además **suspenderse**, cediendo el control a otra hasta que se le indique que debe **retomar** su ejecución.
 
 Para entender mejor a qué nos referimos con esto, veamos un ejemplo en Python, uno de los lenguajes que cuenta con soporte para corrutinas.
 
@@ -119,8 +119,10 @@ Otra diferencia, presente al menos en la visión "tradicional" de corrutinas, es
 
 Una ventaja más que las corrutinas tienen sobre los hilos es que su funcionamiento no involucra llamadas al sistema bloqueantes para su creación ni para el cambio de contexto, ya que todo se maneja al nivel de la aplicación.
 
+[Interesante comparación de cuando usar corrutinas y cuando usar threads en Kotlin](https://www.baeldung.com/kotlin-threads-coroutines)
+
 ## ¿Cómo se declaran y ejecutan en Python?
-Veamos nuevamente un ejemplo con corrutinas  y otro sin:
+
 ```python
 import asyncio
 
@@ -153,9 +155,9 @@ Nada fuera de lo esperado.
 Nos retorna un objeto "corrutina" que por defecto no se va a planificar. Entonces, ¿cómo hago que se ejecute? Bueno, hay tres formas distintas para hacer eso.
 
 **1-** Usando la función `run` del módulo `asyncio`
->prl = print_re_loco('algo')
+>coro = print_re_loco('algo')
 
->asyncio.run(prl)
+>asyncio.run(coro)
 
 >algo loco
 
@@ -195,11 +197,50 @@ _Nota: `create_task` envía la corrutina al event loop, permitiendo que corra en
 
 ## ¿Qué pasa si ejecuto código bloqueante dentro de una corrutina?
 
-Si observaron con detalle se habrán dado cuenta de que cuando se usa sleep para suspender a la corrutina, se esta usando `asyncio.sleep` en lugar de `time.sleep`. Esto es porque el segundo es bloqueante. Entonces como ya dedujeron, las operaciones bloqueantes bloquean todo el thread de sistema operativo subyacente.
+Si observaron con detalle se habrán dado cuenta de que cuando se usa sleep para suspender a la corrutina, se esta usando `asyncio.sleep` en lugar de `time.sleep`. Esto es porque el segundo es bloqueante. Entonces como ya dedujeron, las operaciones bloqueantes bloquean todo el thread del sistema operativo subyacente.
 
 Pero hay formas de evitarlo :D!, lo que se hace es que correr estas tareas **bloqueantes** y otras que vamos a llamar **CPU-bound-intensive**, sea conveniente ejecutarlas en otro thread. Concretamente en **Python** usando `loop.run_in_executor()` [Running Blocking Code](https://docs.python.org/3/library/asyncio-dev.html#running-blocking-code)
 
 _Nota: también es posible setear un timeout para que cuando se cumpla, se corte su ejecución [ver timeouts](https://docs.python.org/3/library/asyncio-task.html#timeouts) ._
+
+## Bonus!
+
+### Corrutinas y Generadores
+
+Si bien ambos pueden ceder múltiples veces, suspender su ejecución y permitir el reingreso en múltiples puntos de entrada, difieren en que las corrutinas tienen la capacidad para controlar dónde continúa la ejecución inmediatamente después de ceder, mientras que los generadores no pueden, estos transfieren el control de nuevo al generador que lo llamo. Es decir, dado que los generadores se utilizan principalmente para simplificar la escritura de iteradores, la declaración de rendimiento en un generador no especifica una rutina para saltar, sino que devuelve un valor a una rutina principal. [Explicación de yield y comparación con corrutinas](https://docs.python.org/3/reference/expressions.html#yieldexpr)
+
+>Esta bien, pero entonces.. ¿qué es un generador?
+
+![](https://i.pinimg.com/originals/1f/77/16/1f77165fb96f852cbda141164e18a04a.jpg)
+
+Un **generador** es un tipo especial de subrutina, pensando en teoría de conjuntos, podemos decir que el conjunto generador es un subconjunto de corrutina, por eso a veces son llamados como "semicorutinas".
+
+Un **iterador** es un objeto que permite al programador recorrer un contenedor (colección de elementos) por ejemplo una lista. Una manera de implementar iteradores es utilizar un **generador**, que puede producir valores para quien lo llama varias veces (en lugar de devolver sólo uno).
+
+A continuación se puede ver un ejemplo de un generador que devuelve los números de Fibonacci:
+```python
+def fibonacci():
+  a, b = 0, 1
+  while True:
+    yield a
+    a, b = b, a+b
+
+for numero in fibonacci():  # Utilización de generador como iterador
+  print(numero)
+```
+
+### Corrutinas basadas en generadores
+
+Sin embargo, todavía es posible implementar corutinas basadas en generadores, de hecho, hasta Python 2.5 las corrutinas estaban hechas de esta forma, con la ayuda de una rutina de despachador de nivel superior (un trampolín, esencialmente) que pasa el control explícitamente a los generadores secundarios.
+```python
+def coro():
+  hello = yield "Soy una corrutina"
+  yield hello
+
+c = coro()
+print(next(c))
+print(c.send(", basada en generadores"))
+```
 
 ## Links interesantes
 

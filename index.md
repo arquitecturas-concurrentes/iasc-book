@@ -1,5 +1,5 @@
 ---
-layout: homeLayout
+layout: default
 title: "Pagina Principal"
 ---
 
@@ -11,7 +11,7 @@ Un poco la idea de esta seccion de la pagina de Arquitecturas Concurrentes es la
 
 ## KISS
 
-<img src="{{site.relative_url}}/img/principio-kiss.jpg" class='center'>
+<img src="{{site.relative_url}}/images/principio-kiss.jpg" class='center'>
 
 La idea es tener una UI bastante basica, y que solo sea lo minimo indispensable para mostrar lo que mas nos importa, que es mostrar contenido sobre algun tema puntual de la materia.
 
