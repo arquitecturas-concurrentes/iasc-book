@@ -1,5 +1,15 @@
 <div class="footer">
-    <div class="columns small-12 medium-12 large-12">
-        © {{ 'now' | date: "%Y" }} - IASC
+    <div class="container-fluid">
+        <div class="row">
+            <div class="footer-col-rt col-md-6 col-lg-6 col-sm-6">
+                © {{ 'now' | date: "%Y" }} - IASC
+            </div>
+            <div class="footer-col-lf col-md-6 col-lg-6 col-sm-6 right-flex">
+                <a href="https://github.com/arquitecturas-concurrentes/iasc-book">
+                    Fork me at github
+                    <img src="{{site.relative_url}}/img/github_logo.png" class='github-icon center'>
+                </a>
+            </div>
+        </div>
     </div>
 </div>
