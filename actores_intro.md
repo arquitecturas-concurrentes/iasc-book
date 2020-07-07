@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Capitulo 7 - Actores"
+title: "Actores"
 description: "Actores y Elixir"
 ---
 
