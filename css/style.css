@@ -251,6 +251,17 @@ ul ul a {
     max-width: 700px;
 }
 
+.github-icon {
+    height: 15px;
+    display: inline-block;
+    margin-top: -5px;
+}
+
+.right-flex {
+    display: flex; 
+    justify-content: flex-end;
+}
+
 /* ---------------------------------------------------
     MEDIAQUERIES
 ----------------------------------------------------- */
