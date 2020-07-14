@@ -112,3 +112,6 @@ Otro diagrama un poco mas detallado de plano de control (*Control Plane*) puede 
 El proyecto que nos permite un poco utilizar el plano de control se llama [Istio](https://istio.io/) y es por el momento la herramienta mas utilizada y conocida para implementar el plano de control.
 
 
+Bibliografia 
+
+[The Enterprise Path to Service Mesh Architectures by Lee Calcote](https://www.oreilly.com/library/view/the-enterprise-path/9781492041795/ch01.html)
