@@ -109,4 +109,5 @@ Otra manera un poco mas bien ordenada o distribuida, de cómo notificar a otros 
 Videos que nos parecieron interesantes
 
 [How We've Scaled Dropbox](https://www.youtube.com/watch?v=PE4gwstWhmc)
+
 [Distributed Systems in One Lesson by Tim Berglund](https://www.youtube.com/watch?v=Y6Ev8GIlbxc)
