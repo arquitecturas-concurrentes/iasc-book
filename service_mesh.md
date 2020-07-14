@@ -52,6 +52,63 @@ Estos son patrones re simples que nos permiten tener mas confiabilidad en la int
 
 These are great simple devices to add more reliability to interactions between your services. Nevertheless, just like everything else they tend to get much more complicated as the level of distribution increases. The likelihood of something going wrong in a system raises exponentially with distribution, so even simple things like “some kind of monitor alert if the circuit breaker trips” aren’t necessarily straightforward anymore. One failure in one component can create a cascade of effects across many clients, and clients of clients, triggering thousands of circuits to trip at the same time. Once more what used to be just a few lines of code now requires loads of boilerplate to handle situations that only exist in this new world.
 
+De hecho, los ejemplos enumerados anteriormente pueden ser tan difíciles de implementar correctamente que las bibliotecas grandes y sofisticadas como [Finagle](https://twitter.github.io/finagle/) entre otras se han hecho para evitar reescribir la misma lógica o solucion de estos ejemplos una y otra vez en distintos modulos del sistema.
+
+Entonces ahora podemos tener nuestra aplicacion de alguna manera separado de nuestra biblioteca pero aun en el mismo servicio x..
+
+<img src="{{site.relative_url}}/images/service_mesh/1.png" class='center'>
+
+Esta arquitectura de microservicios fue inicialmente utilizada por varias organizaciones que fueron pioneras de este tipo de arqutecturas como Twitter o Soundcloud. A medida que la cantidad de servicios aumento se empezo a ver de a poco las desventajas de esta solucion. La mayor limitante es que a medida que aumentan los servicios, se necesita una mayor cantidad de recursos, en terminos de ingenieros/desarrolladores para construir y de alguna manera "pegar" estas librerias en los servicios nuevos y mantenerlos tambien. Por lo que entre un 10-15% de los recursos se tienen que invertir en "pegar" y mantener estas librerias.
+
+Otra desventaja un poco viene por el lado de la libreria puede llegar a atarse al runtime y lenguajes tambien que se pueden usar en los microservicios. Porque es muy probable que estas librerias esten escritas en una plataforma en particular, por ejemplo Finagle esta escrito en Scala para la JVM, por lo que en el caso que se quiera agregar un nuevo servicio y quiere usarse esta libreria, se debe o bien ajustarse a la plataforma en la que estamos usando la libreria o usar un port o alguna libreria alternativa que nos resuelva el mismo problema.
+
+### Mas alla de los microservicios
+
+De manera similar a lo que vimos en el stack de la red, sería altamente deseable extraer las características requeridas por los servicios distribuidos masivamente en una plataforma subyacente.
+
+Las empresas escriben aplicaciones y servicios sofisticados utilizando protocolos de nivel superior como HTTP sin siquiera pensar en cómo TCP controla los paquetes en su red. Esta situación es lo que necesitamos para los microservicios, donde los ingenieros que trabajan en servicios pueden centrarse en su lógica de negocios y evitar perder tiempo escribiendo su propio código de infraestructura de servicios o administrando bibliotecas y marcos en toda la flota de microservicios.
+
+Entonces nuestro diagrama vendria a quedar de esta manera..
 
 <img src="{{site.relative_url}}/images/service_mesh/2.png" class='center'>
+
+Pero esto no es tan trivial, agregar otro stack de la red involucra tambien que haya una interaccion entre la capa que antes era nuestra libreria y la superior, teniendo que ajustarlo o bien a un formato estandar sin tener que acoplarlo a la aplicacion, que haria que no fuese posible que se use a traves de varios servicios distintos.
+
+Hay una solucion alternativa que es la de implementar esto mismo pero a partir de un componente *proxy*. Por lo que un servicio no se conecta directamente con las dependencias sino que pasara todo su trafico a traves de otro modulo que agrega de manera transparente estas soluciones como el Circuit Breaker, Service Discovery, etc..
+
+Esto empezo a aparecer por primera vez con este articulo de [Airbnb](https://medium.com/airbnb-engineering/smartstack-service-discovery-in-the-cloud-4b8a080de619) en donde se describia a este servicio proxy como algo llamado *sidecar*. Un año despues Netflix hace algo muy similar pero para aplicaciones que no son basadas en la JVM, que es su implementacion de un sidecar llamado [Prana](https://medium.com/netflix-techblog/prana-a-sidecar-for-your-netflix-paas-based-applications-and-services-258a5790a015)
+
+
+<img src="{{site.relative_url}}/images/service_mesh/3.png" class='center'>
+
+Con el aumento de las arquitecturas basadas en microservicios, se siguio avanzando con esta arquitectura basada en proxies, y llegaron a aparecer en poco tiempo implementaciones de proxy que son lo suficientemente flexibles para adaptarse a distintos servicios y preferencias. Uno de los primeros fue [Linkerd](https://buoyant.io/2016/02/18/linkerd-twitter-style-operability-for-microservices/), creado por Twitter, y mas tarde por otra implementacion mas conocida hoy en dia llamado [Envoy](https://eng.lyft.com/announcing-envoy-c-l7-proxy-and-communication-bus-92520b6c8191)
+
+
+## Service Mesh
+
+El modelo de Service Mesh consiste en que, cada uno de sus servicios tendrá un sidecar proxy complementario. Dado que los servicios se comunican entre sí solo a través del proxy de sidecar, terminamos con una implementación similar al diagrama a continuación:
+
+<img src="{{site.relative_url}}/images/service_mesh/service-mesh.png" class='center iasc-image'>
+
+Una definicion un poco mas formal lo podemos ver en lo que escribio [*William Morgan* de Buoyant en 2017](https://buoyant.io/2017/04/25/whats-a-service-mesh-and-why-do-i-need-one/)
+
+<cite cite="William Morgan">
+A service mesh is a dedicated infrastructure layer for handling service-to-service communication. It’s responsible for the reliable delivery of requests through the complex topology of services that comprise a modern, cloud native application. In practice, the service mesh is typically implemented as an array of lightweight network proxies that are deployed alongside application code, without the application needing to be aware.
+</cite>
+
+Probablemente el aspecto más importante de su definición es que se aleja de pensar en los proxies como componentes aislados y reconoce en que la red que forman es algo valioso en sí mismo.
+
+A medida que las organizaciones trasladan sus implementaciones de microservicios a deployments más sofisticados como Kubernetes, las personas y las organizaciones han comenzado a usar las herramientas disponibles por esas plataformas para implementar esta idea de un service mesh correctamente. Se están alejando de un conjunto de servidores proxy independientes que trabajan de forma aislada a un plano de control, o sea algo centralizado.
+
+<img src="{{site.relative_url}}/images/service_mesh/service-mesh-generic-topology_social.png" class='center iasc-image'>
+
+Viendo un poco nuestro diagrama de arriba,vemos que el tráfico real del servicio todavía fluye de proxy a proxy directamente, pero el plano de control conoce cada instancia de proxy. El plano de control permite a los proxies implementar cosas como el control de acceso y la recopilación de métricas, lo que requiere cooperación..
+
+Otro diagrama un poco mas detallado de plano de control (*Control Plane*) puede verse como el siguiente:
+
+
+<img src="{{site.relative_url}}/images/service_mesh/control_plane.png" class='center iasc-image'>
+
+El proyecto que nos permite un poco utilizar el plano de control se llama [Istio](https://istio.io/) y es por el momento la herramienta mas utilizada y conocida para implementar el plano de control.
+
 
