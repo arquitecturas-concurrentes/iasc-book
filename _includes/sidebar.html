@@ -56,10 +56,22 @@
                 <li>
                     <a href="{{site.relative_url}}/cap">Notas sobre CAP</a>
                 </li>
+                <li>
+                    <a href="{{site.relative_url}}/mitos">Mitos en la distribucion</a>
+                </li>
             </ul>
         </li>
         <li>
-            <a href="{{site.relative_url}}/contenedores">Contenedores con Docker</a>
+            <a href="#virtuSubmenu" data-toggle="collapse" aria-expanded="false"
+               class="dropdown-toggle">Contenedores</a>
+            <ul class="collapse list-unstyled" id="virtuSubmenu">
+                <li>
+                    <a href="{{site.relative_url}}/contenedores">Contenedores con Docker</a>
+                </li>
+                <li>
+                    <a href="{{site.relative_url}}/service_mesh">Service Mesh</a>
+                </li>
+            </ul>
         </li>
     </ul>
 

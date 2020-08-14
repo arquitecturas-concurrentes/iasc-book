@@ -86,10 +86,10 @@ Entonces, no siempre empezar con microservicios es la mejor alternativa y no sol
 
 > Moraleja: desconfiá de todo aquel arquitecto que, tras brindarle una somera descripción del problema, te proponga una compleja aplicación distribuida en 12 Capas, 3 lenguajes (Go, Scala, JS, porque están de moda) , un Redis, un Oracle, un Memcached, 4 microservicios, 3 tareas batch, 3 niveles de replicación, un despliegue con Puppet, 10 servidores, un BPM y una lata de duraznos (para asegurar la buena digestión). O cualquier combinación que seguro ya te contaron.
 
-![]({{site.relative_url}}/images/homero-movil.jpg)
+<img src="{{site.relative_url}}/images/homero-movil.jpg" class='center'>
 
 Tengan en cuenta que si deciden optar por empezar con una arquitectura mas compleja, de ver los costos y los tiempos que eso conlleva, necesitaran mas tiempo y mas recursos necesariamente, que se traduce en que haya un mayor presupuesto, y si bien llegar a una arquitectura mas compleja puede parecer una buena idea para el futuro. Esta el problema de que tal vez nunca tengan los usuarios o la carga para aprovechar todas las ventajas de su arquitectura propuesta, y ademas, al introducir mayor cantidad de componentes que seguro tiene una arquitectura mas compleja, esto introduce otros problemas que sean de mantenimiento o de errores, con lo cual pued ser incluso contraproducente si despues no pueden solucionar estos en un tiempo que no les afecte al negocio o la idea que propone su sistema.
 
-![]({{site.relative_url}}/images/auto_homero.png)
+<img src="{{site.relative_url}}/images/auto_homero.png" class='center iasc-images'>
 
 La idea es que su arquitectura no se interponga o complejize el desarrollo de su sistema sea de fallos o nuevos requerimientos, y que ayude a solucionar problemas que son los que estan mas alla de los requerimientos que tiene que resolver un problema, como la carga de usuarios, informacion, distribucion geografica, etc.
