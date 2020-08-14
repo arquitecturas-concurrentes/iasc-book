@@ -20,7 +20,7 @@ No solo se reduce esto a patrones, bibliotecas y codigo, sino tambien metodologi
 
 Con los años, las computadoras se volvieron aún más baratas y más omnipresentes, y la pila de redes descrita anteriormente ha demostrado ser el conjunto de herramientas de facto para conectar sistemas de manera confiable. Con más nodos y conexiones estables, la industria ha jugado con varios tipos de sistemas en red, desde agentes y objetos distribuidos hasta arquitecturas orientadas a servicios compuestas de componentes más grandes pero aún muy distribuidos.
 
-En los años 90, Peter Deutsch y sus colegas ingenieros de Sun Microsystems compilaron "Las 8 falacias de la computación distribuida", en la que enumera algunas suposiciones que las personas tienden a hacer cuando trabajan con sistemas distribuidos. El punto de Peter es que estos podrían haber sido ciertos en arquitecturas de redes más primitivas o en modelos teóricos, pero no son válidos en el mundo moderno. Pueden ver un poco mas a [aca]({{site.relative_url}}/mitos/)
+En los años 90, Peter Deutsch y sus colegas ingenieros de Sun Microsystems compilaron "Las 8 falacias de la computación distribuida", en la que enumera algunas suposiciones que las personas tienden a hacer cuando trabajan con sistemas distribuidos. El punto de Peter es que estos podrían haber sido ciertos en arquitecturas de redes más primitivas o en modelos teóricos, pero no son válidos en el mundo moderno. Pueden ver un poco mas a [aca]( {{site.relative_url}}/mitos/ )
 
 Incluso vimos que existen distintos problemas, tales como los que vimos hasta ahora como CAP, interleaving, netsplits, entre otras cosas. Incluso podemos mencionar otras cosas con la que deberiamos lidiar con una arquitectura distribuida:
 
@@ -34,7 +34,7 @@ Incluso vimos que existen distintos problemas, tales como los que vimos hasta ah
 
 Entonces, aunque la pila TCP / IP y el modelo de red general desarrollado hace muchas décadas sigue siendo una herramienta poderosa para hacer que las computadoras se comuniquen entre sí, las arquitecturas más sofisticadas introdujeron otra capa de requisitos que, una vez más, deben cumplir los ingenieros que trabajan en tales arquitecturas.
 
-Hay ejemplos que podemos mencionar que se usaron para solucionar algunos problemas de resilencia y distribucion, algunos de estos son failover/takeover, circuit breaker (algunos detalles de este pueden verse [aca tambien(https://microservices.io/patterns/reliability/circuit-breaker.html)]), y tambien service discovery. Un ejemplo de servicios puede ser el siguiente:
+Hay ejemplos que podemos mencionar que se usaron para solucionar algunos problemas de resilencia y distribucion, algunos de estos son failover/takeover, circuit breaker (algunos detalles de este pueden verse [aca tambien](https://microservices.io/patterns/reliability/circuit-breaker.html)), y tambien service discovery. Un ejemplo de servicios puede ser el siguiente:
 
 <img src="{{site.relative_url}}/images/service_mesh/1.png" class='center'>
 
