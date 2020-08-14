@@ -7,3 +7,4 @@ gem 'jekyll-paginate'
 gem "json", ">= 2.3.0"
 gem 'yajl-ruby', '~> 1.3.1'
 gem "nokogiri", ">= 1.10.8"
+gem 'kramdown', '>= 2.3.0'
