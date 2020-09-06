@@ -14,6 +14,73 @@ Las corrutinas nos permiten lograr algo similar, sin utilizar (necesariamente) u
 
 >Nota al margen: las corrutinas no son nada nuevo. C++, Smalltalk, Erlang y muchos más (¡hasta PHP!) las tienen desde hace mucho. Pero recientemente han conseguido cierta notoriedad en la industria por su uso en lenguajes como Go, Kotlin y Python.
 
+Para entender como funcionan, primero veamos **iteradores** y **generadores**...
+
+![](https://www.salesoptimize.com/wp-content/uploads/2016/11/76e3344703e128bed674b84014fa01ab.jpg)
+
+## Iteradores y generadores
+
+Un **generador** es un tipo especial de subrutina, pensando en teoría de conjuntos, podemos decir que el conjunto generador es un subconjunto de corrutina.
+
+>Esta bien, pero entonces.. ¿qué es un generador?
+
+También podemos decir que un **generador** es una función que produce una secuencia de resultados, en lugar de un único valor.
+
+Un **iterador** es un objeto que permite al programador recorrer un contenedor (colección de elementos) por ejemplo una lista. Una manera de implementar iteradores es utilizar un **generador**, que como comentamos antes, puede producir valores para quien lo llama varias veces (en lugar de devolver sólo uno).
+
+Cuando invocamos a una función generadora se crea un "objeto generador" que permanece en un estado pausado, no se ejecuta automáticamente.
+
+Veamos lo con un ejemplo:
+
+```python
+def cuenta_regresiva(numero):
+    while numero > 0:
+        yield numero
+        numero -= 1
+
+for numero in cuenta_regresiva(5):
+    print(numero)
+```
+>El resultado de ejecutar el script es:
+5
+4
+3
+2
+1
+
+Acá podemos ver a el generador en su estado pausado, por esta propiedad los solemos usar en un for, y si es aplicable en un for, se deduce que el estado pausado es un objeto  iterable. Llamando a next se ejecutan todas las lineas hasta volver al "segundo" yield
+>x = cuenta_regresiva(5)
+x
+<generator object cuenta_regresiva at 0x7fc2a7576890>
+next(x)
+4
+
+A continuación se puede ver un ejemplo de un generador que devuelve los números de Fibonacci:
+```python
+def fibonacci():
+  a, b = 0, 1
+  while True:
+    yield a
+    a, b = b, a+b
+
+for numero in fibonacci():  # Utilización de generador como iterador
+  print(numero)
+```
+
+### Corrutinas basadas en generadores
+
+Es posible implementar corrutinas basadas en generadores, de hecho, hasta Python 2.5 las corrutinas estaban hechas de esta forma, con la ayuda de una rutina de despachador de nivel superior (un trampolín, esencialmente) que pasa el control explícitamente a los generadores secundarios.
+```python
+def coro():
+  #yield usado de esta forma creamos una corrutina que hace más que generar valores, si no que también consume
+  hello = yield "Soy una corrutina"
+  yield hello
+
+c = coro()
+print(next(c))
+print(c.send(", basada en generadores"))
+```
+
 ## ¿Qué es una corrutina?
 
 Una corrutina es similar a una subrutina tradicional (piensen en las funciones/procedimientos que vieron en Algoritmos), pero con la diferencia de que, mientras que la salida de una subrutina pone fin a su ejecución, una corrutina puede además **suspenderse**, cediendo el control a otra hasta que se le indique que debe **retomar** su ejecución.
@@ -117,6 +184,8 @@ Las corrutinas, en contraposición, permiten tener **multitarea cooperativa** (_
 
 Otra diferencia, presente al menos en la visión "tradicional" de corrutinas, es que **las corrutinas proveen concurrencia pero no paralelismo**. De esta forma, evitan problemas de concurrencia, ya que corren en un **único contexto de ejecución**, y además **controlan cuándo se suspenden** (en vez de que el planificador las interrumpa en puntos arbitrarios).
 
+Las corrutinas ocupan menos memoria que los hilos.
+
 Una ventaja más que las corrutinas tienen sobre los hilos es que su funcionamiento no involucra llamadas al sistema bloqueantes para su creación ni para el cambio de contexto, ya que todo se maneja al nivel de la aplicación.
 
 [Interesante comparación de cuando usar corrutinas y cuando usar threads en Kotlin](https://www.baeldung.com/kotlin-threads-coroutines)
@@ -203,44 +272,27 @@ Pero hay formas de evitarlo :D!, lo que se hace es que correr estas tareas **blo
 
 _Nota: también es posible setear un timeout para que cuando se cumpla, se corte su ejecución [ver timeouts](https://docs.python.org/3/library/asyncio-task.html#timeouts) ._
 
-## Bonus!
-
-### Corrutinas y Generadores
+## Corrutinas vs Generadores
 
 Si bien ambos pueden ceder múltiples veces, suspender su ejecución y permitir el reingreso en múltiples puntos de entrada, difieren en que las corrutinas tienen la capacidad para controlar dónde continúa la ejecución inmediatamente después de ceder, mientras que los generadores no pueden, estos transfieren el control de nuevo al generador que lo llamo. Es decir, dado que los generadores se utilizan principalmente para simplificar la escritura de iteradores, la declaración de rendimiento en un generador no especifica una rutina para saltar, sino que devuelve un valor a una rutina principal. [Explicación de yield y comparación con corrutinas](https://docs.python.org/3/reference/expressions.html#yieldexpr)
 
->Esta bien, pero entonces.. ¿qué es un generador?
+## Caso practico
 
-![](https://i.pinimg.com/originals/1f/77/16/1f77165fb96f852cbda141164e18a04a.jpg)
+En el desarrollo de software muchas veces solemos enfatizar en lograr que los algoritmos sean más eficientes, es decir que completen los cálculos lo más rápido posible. Pero muchos sistemas dedican su tiempo a "no hacer cálculos", sino que mantienen abiertas muchas conexiones que son lentas. Estos programas presentan un desafío muy diferente: atender una gran cantidad de eventos de red de manera eficiente. Un enfoque actual de este problema es la E/S asíncrona o "asincrónica".
 
-Un **generador** es un tipo especial de subrutina, pensando en teoría de conjuntos, podemos decir que el conjunto generador es un subconjunto de corrutina, por eso a veces son llamados como "semicorutinas".
+Tomemos el ejemplo de un crawler (rastreador web) sencillo. El crawler es una aplicación asíncrona que espera muchas respuestas, pero realiza pocos cálculos. Cuantas más páginas pueda extraer a la vez, va a poder terminar antes. Si se crea un hilo por cada request (solicitud), a medida que aumente el número de requests simultáneas, aumenta la posibilidad de quedarse sin memoria antes de que se agoten los sockets. Podemos evitar la necesidad de subprocesos (hilos), mediante el uso de E/S asincrónica.
 
-Un **iterador** es un objeto que permite al programador recorrer un contenedor (colección de elementos) por ejemplo una lista. Una manera de implementar iteradores es utilizar un **generador**, que puede producir valores para quien lo llama varias veces (en lugar de devolver sólo uno).
+Podemos pensar en 3 formas de resolver esto.
 
-A continuación se puede ver un ejemplo de un generador que devuelve los números de Fibonacci:
-```python
-def fibonacci():
-  a, b = 0, 1
-  while True:
-    yield a
-    a, b = b, a+b
+**1-** Un crawler con un event loop asincrónico con callbacks: es muy eficiente, pero extenderlo a problemas más complejos conduciría a un código espagueti inmanejable.
 
-for numero in fibonacci():  # Utilización de generador como iterador
-  print(numero)
-```
+![](https://miro.medium.com/max/721/0*iiecmuTLPBqbxd5V.jpeg)
 
-### Corrutinas basadas en generadores
+**2-** Usando generadores, que con ellos podemos implementar corrutinas, por lo tanto, mostramos que las corrutinas son tanto eficientes como extensibles y proveen un código más legible.
 
-Sin embargo, todavía es posible implementar corutinas basadas en generadores, de hecho, hasta Python 2.5 las corrutinas estaban hechas de esta forma, con la ayuda de una rutina de despachador de nivel superior (un trampolín, esencialmente) que pasa el control explícitamente a los generadores secundarios.
-```python
-def coro():
-  hello = yield "Soy una corrutina"
-  yield hello
+**3-** Usando las corrutinas que provee la librería estándar "asyncio" de Python, y las coordinamos usando una cola asíncrona.
 
-c = coro()
-print(next(c))
-print(c.send(", basada en generadores"))
-```
+
 
 ## Links interesantes
 
