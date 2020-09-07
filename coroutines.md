@@ -30,7 +30,7 @@ Un **iterador** es un objeto que permite al programador recorrer un contenedor (
 
 Cuando invocamos a una función generadora se crea un "objeto generador" que permanece en un estado pausado, no se ejecuta automáticamente.
 
-Veamos lo con un ejemplo:
+Veámoslo con un ejemplo:
 
 ```python
 def cuenta_regresiva(numero):
@@ -327,7 +327,7 @@ Sin embargo, los hilos son costosos y los sistemas operativos imponen una varied
 
 Dan Kegel en su artículo [The C10K problem](http://www.kegel.com/c10k.html), describe las limitaciones de utilizar multiples hilos para resolver problemas deconcurrencia de E/S.
 
-Kegel utilizo el término "C10K" en 1999. Diez mil conexiones no suenan ahora como lo sanaban antes, pero el problema ha cambiado sólo en tamaño, no en especie. En aquel entonces, usar un hilo por conexión para C10K no era práctico. Ahora el límite es en órdenes de magnitud más elevado. De hecho, nuestro crawler de juguete funcionaría bien con hilos. Sin embargo, para aplicaciones a gran escala, con cientos de miles de conexiones, el límite permanece; hay un límite más allá del cual la mayoría de los sistemas aún pueden crear sockets, pero se han quedado sin hilos. ¿Cómo podemos superar esto?
+Kegel utilizo el término "C10K" en 1999. Diez mil conexiones no suenan ahora como lo sonaban antes, pero el problema ha cambiado sólo en tamaño, no en especie. En aquel entonces, usar un hilo por conexión para C10K no era práctico. Ahora el límite es en órdenes de magnitud más elevado. De hecho, nuestro crawler de juguete funcionaría bien con hilos. Sin embargo, para aplicaciones a gran escala, con cientos de miles de conexiones, el límite permanece; hay un límite más allá del cual la mayoría de los sistemas aún pueden crear sockets, pero se han quedado sin hilos. ¿Cómo podemos superar esto?
 
 ## Async
 
@@ -469,7 +469,9 @@ def fetch(self, url):
         body = yield from response.read()
 ```
 
-Ahora, fetch es una función generadora, en lugar de una normal. Creamos un future pendiente, luego lo cedemos para pausar la búsqueda hasta que el socket esté listo. La función interna on_connected resuelve el future.
+Ahora, fetch es una función generadora, en lugar de una normal. Creamos un [future](https://docs.python.org/es/3/library/asyncio-future.html#future-object) pendiente, luego lo cedemos para pausar la búsqueda hasta que el socket esté listo. La función interna on_connected resuelve el future.
+
+>Nota: Un future representa un resultado eventual de una operación asincrónica.
 
 Pero cuando el future se resuelva, ¿qué reanuda el generador? Necesitamos un controlador de rutina. Llamémoslo "tarea":
 
