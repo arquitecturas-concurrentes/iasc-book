@@ -469,6 +469,48 @@ def fetch(self, url):
         body = yield from response.read()
 ```
 
+Ahora, fetch es una función generadora, en lugar de una normal. Creamos un future pendiente, luego lo cedemos para pausar la búsqueda hasta que el socket esté listo. La función interna on_connected resuelve el future.
+
+Pero cuando el future se resuelva, ¿qué reanuda el generador? Necesitamos un controlador de rutina. Llamémoslo "tarea":
+
+```python
+class Task:
+    def __init__(self, coro):
+        self.coro = coro
+        f = Future()
+        f.set_result(None)
+        self.step(f)
+
+    def step(self, future):
+        try:
+            next_future = self.coro.send(future.result)
+        except StopIteration:
+            return
+
+        next_future.add_done_callback(self.step)
+
+fetcher = Fetcher('/333/')
+Task(fetcher.fetch())
+
+loop()
+```
+
+Task inicia el generador "fetch" enviando None. Luego, fetch se ejecuta hasta que produce (yield) un future, que la tarea captura como siguiente future. Cuando el socket está conectado, el event loop ejecuta el callback on_connected, que resuelve el future, que llama a step, que reanuda fetch.
+
+## Con corrutinas
+
+Modificando el codigo de las corrutinas basadas en generadores usando async/await, y utilizando algo como:
+
+```python
+loop = asyncio.get_event_loop()
+
+crawler = crawling.Crawler('http://bla.com',max_redirect=10)
+
+loop.run_until_complete(crawler.crawl())
+```
+
+Quedaria implementada la solución con corrutinas "nativas" de Python.
+
 ## Links interesantes
 
 [Corrutinas en Python](https://docs.python.org/3.8/library/asyncio-task.html)
