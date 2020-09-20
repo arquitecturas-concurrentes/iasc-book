@@ -4,7 +4,7 @@ title: "Promises"
 description: "Modelando computaciones asincrónicas"
 ---
 
-En [capítulos anteriores](https://arquitecturas-concurrentes.github.io/iasc-book/cap/) vimos una posible forma de estructurar nuestros programas, utilizando CPS. Esta técnica, a diferencia de call-and-return y memoria compartida, nos permite implementar, de forma fácil:
+En [capítulos anteriores](https://arquitecturas-concurrentes.github.io/iasc-book/cps/) vimos una posible forma de estructurar nuestros programas, utilizando CPS. Esta técnica, a diferencia de call-and-return y memoria compartida, nos permite implementar, de forma fácil:
 - computaciones con un único resultado
 - computaciones que pueden fallar
 - computaciones no determinísticas
@@ -24,7 +24,7 @@ const pokemonObtenido = () => {
  if(pokemonIniciales.length < 3) {
   return;
  }
-elegirInicial(pokemonIniciales);
+ elegirInicial(pokemonIniciales);
 };
 request('https://pokeapi.co/api/v2/pokemon/1', (response) => {
  pokemonIniciales.push(response.body());
@@ -49,14 +49,14 @@ Veamos qué tienen para ofrecernos.
 Para empezar, volvamos a nuestro clásico ejemplo: la función `successor`, en su variante CPS:
 
 ```javascript
-function succesor(x, callback) {
+function successor(x, callback) {
  callback(x + 1);
 }
 ```
 
 Que podemos usar de la siguiente forma:
 ```javascript
-succesor(4, (resultado) => console.log(resultado));
+successor(4, (resultado) => console.log(resultado));
 ```
 
 Para pasar de nuestro mundo de continuaciones al de _promesas_, vamos a hacer lo siguente:
