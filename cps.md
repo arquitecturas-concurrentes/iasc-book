@@ -39,7 +39,7 @@ function succesor(x, callback) {
 
 ```javascript
 var i0 = 0;
-succesor(i0, function(resultado) {
+succesor(i0, (resultado) => {
  var i1 = resultado;
  //...etc...
 });
@@ -55,10 +55,10 @@ A este callback se lo llama continuación. Porque… ¡es lo que que se ejecuta 
 Peeeero, para que esto sea realmente posible, tenemos que tomar ciertas precauciones, y entender que al trabajar de esta forma, el resultado sólo se puede obtener dentro de la continuación.
 Por tanto, el siguiente es un code smell:
 
-```
+```javascript
 var i0 = 0;
 var i1;
-succesor(i0, function(resultado) {
+succesor(i0, (resultado) => {
   i1 = resultado;
 });
 //..resto...
