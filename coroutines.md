@@ -14,6 +14,73 @@ Las corrutinas nos permiten lograr algo similar, sin utilizar (necesariamente) u
 
 >Nota al margen: las corrutinas no son nada nuevo. C++, Smalltalk, Erlang y muchos más (¡hasta PHP!) las tienen desde hace mucho. Pero recientemente han conseguido cierta notoriedad en la industria por su uso en lenguajes como Go, Kotlin y Python.
 
+Para entender como funcionan, primero veamos **iteradores** y **generadores**...
+
+![](https://www.salesoptimize.com/wp-content/uploads/2016/11/76e3344703e128bed674b84014fa01ab.jpg)
+
+## Iteradores y generadores
+
+Un **generador** es un tipo especial de subrutina, pensando en teoría de conjuntos, podemos decir que el conjunto generador es un subconjunto de corrutina.
+
+>Esta bien, pero entonces.. ¿qué es un generador?
+
+También podemos decir que un **generador** es una función que produce una secuencia de resultados, en lugar de un único valor.
+
+Un **iterador** es un objeto que permite al programador recorrer un contenedor (colección de elementos) por ejemplo una lista. Una manera de implementar iteradores es utilizar un **generador**, que como comentamos antes, puede producir valores para quien lo llama varias veces (en lugar de devolver sólo uno).
+
+Cuando invocamos a una función generadora se crea un "objeto generador" que permanece en un estado pausado, no se ejecuta automáticamente.
+
+Veámoslo con un ejemplo:
+
+```python
+def cuenta_regresiva(numero):
+    while numero > 0:
+        yield numero
+        numero -= 1
+
+for numero in cuenta_regresiva(5):
+    print(numero)
+```
+>El resultado de ejecutar el script es:
+5
+4
+3
+2
+1
+
+Acá podemos ver a el generador en su estado pausado, por esta propiedad los solemos usar en un for, y si es aplicable en un for, se deduce que el estado pausado es un objeto  iterable. Llamando a next se ejecutan todas las lineas hasta volver al "segundo" yield
+>x = cuenta_regresiva(5)
+x
+<generator object cuenta_regresiva at 0x7fc2a7576890>
+next(x)
+4
+
+A continuación se puede ver un ejemplo de un generador que devuelve los números de Fibonacci:
+```python
+def fibonacci():
+  a, b = 0, 1
+  while True:
+    yield a
+    a, b = b, a+b
+
+for numero in fibonacci():  # Utilización de generador como iterador
+  print(numero)
+```
+
+### Corrutinas basadas en generadores
+
+Es posible implementar corrutinas basadas en generadores, de hecho, hasta Python 2.5 las corrutinas estaban hechas de esta forma, con la ayuda de una rutina de despachador de nivel superior (un trampolín, esencialmente) que pasa el control explícitamente a los generadores secundarios.
+```python
+def coro():
+  #yield usado de esta forma creamos una corrutina que hace más que generar valores, si no que también consume
+  hello = yield "Soy una corrutina"
+  yield hello
+
+c = coro()
+print(next(c))
+print(c.send(", basada en generadores"))
+```
+
 ## ¿Qué es una corrutina?
 
 Una corrutina es similar a una subrutina tradicional (piensen en las funciones/procedimientos que vieron en Algoritmos), pero con la diferencia de que, mientras que la salida de una subrutina pone fin a su ejecución, una corrutina puede además **suspenderse**, cediendo el control a otra hasta que se le indique que debe **retomar** su ejecución.
@@ -117,6 +184,8 @@ Las corrutinas, en contraposición, permiten tener **multitarea cooperativa** (_
 
 Otra diferencia, presente al menos en la visión "tradicional" de corrutinas, es que **las corrutinas proveen concurrencia pero no paralelismo**. De esta forma, evitan problemas de concurrencia, ya que corren en un **único contexto de ejecución**, y además **controlan cuándo se suspenden** (en vez de que el planificador las interrumpa en puntos arbitrarios).
 
+Las corrutinas ocupan menos memoria que los hilos (3k por corrutina vs 50k por hilo).
+
 Una ventaja más que las corrutinas tienen sobre los hilos es que su funcionamiento no involucra llamadas al sistema bloqueantes para su creación ni para el cambio de contexto, ya que todo se maneja al nivel de la aplicación.
 
 [Interesante comparación de cuando usar corrutinas y cuando usar threads en Kotlin](https://www.baeldung.com/kotlin-threads-coroutines)
@@ -203,44 +272,246 @@ Pero hay formas de evitarlo :D!, lo que se hace es que correr estas tareas **blo
 
 _Nota: también es posible setear un timeout para que cuando se cumpla, se corte su ejecución [ver timeouts](https://docs.python.org/3/library/asyncio-task.html#timeouts) ._
 
-## Bonus!
-
-### Corrutinas y Generadores
+## Corrutinas vs Generadores
 
 Si bien ambos pueden ceder múltiples veces, suspender su ejecución y permitir el reingreso en múltiples puntos de entrada, difieren en que las corrutinas tienen la capacidad para controlar dónde continúa la ejecución inmediatamente después de ceder, mientras que los generadores no pueden, estos transfieren el control de nuevo al generador que lo llamo. Es decir, dado que los generadores se utilizan principalmente para simplificar la escritura de iteradores, la declaración de rendimiento en un generador no especifica una rutina para saltar, sino que devuelve un valor a una rutina principal. [Explicación de yield y comparación con corrutinas](https://docs.python.org/3/reference/expressions.html#yieldexpr)
 
->Esta bien, pero entonces.. ¿qué es un generador?
+## Caso practico
 
-![](https://i.pinimg.com/originals/1f/77/16/1f77165fb96f852cbda141164e18a04a.jpg)
+En el desarrollo de software muchas veces solemos enfatizar en lograr que los algoritmos sean más eficientes, es decir que completen los cálculos lo más rápido posible. Pero muchos sistemas dedican su tiempo a "no hacer cálculos", sino que mantienen abiertas muchas conexiones que son lentas. Estos programas presentan un desafío muy diferente: atender una gran cantidad de eventos de red de manera eficiente. Un enfoque actual de este problema es la E/S asíncrona o "asincrónica".
 
-Un **generador** es un tipo especial de subrutina, pensando en teoría de conjuntos, podemos decir que el conjunto generador es un subconjunto de corrutina, por eso a veces son llamados como "semicorutinas".
+Tomemos el ejemplo de un crawler (rastreador web) sencillo. El crawler es una aplicación asíncrona que espera muchas respuestas, pero realiza pocos cálculos. Cuantas más páginas pueda extraer a la vez, va a poder terminar antes. Si se crea un hilo por cada request (solicitud), a medida que aumente el número de requests simultáneas, aumenta la posibilidad de quedarse sin memoria antes de que se agoten los sockets. Podemos evitar la necesidad de subprocesos (hilos), mediante el uso de E/S asincrónica.
 
-Un **iterador** es un objeto que permite al programador recorrer un contenedor (colección de elementos) por ejemplo una lista. Una manera de implementar iteradores es utilizar un **generador**, que puede producir valores para quien lo llama varias veces (en lugar de devolver sólo uno).
+Podemos pensar en 3 formas de resolver esto.
 
-A continuación se puede ver un ejemplo de un generador que devuelve los números de Fibonacci:
+**1-** Un crawler con un event loop asincrónico con callbacks: es muy eficiente, pero extenderlo a problemas más complejos conduciría a un código espagueti inmanejable.
+
+![](https://miro.medium.com/max/721/0*iiecmuTLPBqbxd5V.jpeg)
+
+**2-** Usando generadores, que con ellos podemos implementar corrutinas, por lo tanto, mostramos que las corrutinas son tanto eficientes como extensibles y proveen un código más legible.
+
+**3-** Usando las corrutinas que provee la librería estándar "asyncio" de Python, y las coordinamos usando una cola asíncrona.
+
+### Entendiendo el problema
+
+Un crawler busca y descarga todas las páginas de un sitio web, quizás para archivarlas o indexarlas. Comenzando con una URL raíz, busca cada página, la analiza (parsea) en busca de links a páginas no vistas y las agrega a una cola.
+
+Podemos acelerar este proceso descargando muchas páginas al mismo tiempo. A medida que el crawler encuentra nuevos enlaces, inicia operaciones de búsqueda simultáneas para las nuevas páginas en sockets separados. Analiza las respuestas a medida que llegan y agrega nuevos links a la cola. Puede llegar a algún punto en el que el rendimiento decaiga un poco si hay demaciadas solicitudes concurrentes, por lo que limitamos el número de solicitudes simultáneas y dejamos los links restantes en la cola hasta que se completen las solicitudes en curso.
+
+## El enfoque tradicional
+
+¿Cómo hacemos que el crawler sea concurrente? Tradicionalmente, crearíamos un grupo hilos. Cada uno se encargaría de descargar una página a la vez a través de un socket. Por ejemplo, para descargar una página de bla.com:
+
 ```python
-def fibonacci():
-  a, b = 0, 1
-  while True:
-    yield a
-    a, b = b, a+b
+def fetch(url):
+    sock = socket.socket()
+    sock.connect(('bla.com', 80))
+    request = 'GET {} HTTP/1.0\r\nHost: bla.com\r\n\r\n'.format(url)
+    sock.send(request.encode('ascii'))
+    response = b''
+    chunk = sock.recv(4096)
+    while chunk:
+        response += chunk
+        chunk = sock.recv(4096)
 
-for numero in fibonacci():  # Utilización de generador como iterador
-  print(numero)
+    # Pagina descargada satisfactoriamente
+    links = parse_links(response)
+    q.add(links)
 ```
 
-### Corrutinas basadas en generadores
+>Nota: no se esta usando la libreria request de python para que la manipulación de sockets, el connect y el recv sean explicitas y hablar de estas cosas que vimos en algún pasado lejano programando en C y leyendo la guia Beej :P
 
-Sin embargo, todavía es posible implementar corutinas basadas en generadores, de hecho, hasta Python 2.5 las corrutinas estaban hechas de esta forma, con la ayuda de una rutina de despachador de nivel superior (un trampolín, esencialmente) que pasa el control explícitamente a los generadores secundarios.
+Por defecto, las operaciones con sockets son bloqueantes, cuando el hilo llama a un método como connect o recv, se detiene hasta que la operación se completa. En consecuencia, para descargar muchas páginas a la vez, necesitamos muchos hilos. Una aplicación sofisticada amortiza el costo de la creación de hilos al mantener los inactivos en un grupo o pool y luego revisarlos para reutilizarlos para tareas posteriores; se suele hacer lo mismo con los sockets en un grupo de conexiones.
+
+Sin embargo, los hilos son costosos y los sistemas operativos imponen una variedad de límites estrictos en la cantidad que se puede tener. Un hilo de Python ocupa alrededor de 50k de memoria y el inicio de decenas de miles de hilos puede provocar fallas. Si escalamos hasta decenas de miles de operaciones simultáneas en sockets concurrentes, nos quedamos sin hilos antes de quedarnos sin sockets. La sobrecarga por hilos o los límites del sistema en subprocesos son el cuello de botella.
+
+Dan Kegel en su artículo [The C10K problem](http://www.kegel.com/c10k.html), describe las limitaciones de utilizar multiples hilos para resolver problemas deconcurrencia de E/S.
+
+Kegel utilizo el término "C10K" en 1999. Diez mil conexiones no suenan ahora como lo sonaban antes, pero el problema ha cambiado sólo en tamaño, no en especie. En aquel entonces, usar un hilo por conexión para C10K no era práctico. Ahora el límite es en órdenes de magnitud más elevado. De hecho, nuestro crawler de juguete funcionaría bien con hilos. Sin embargo, para aplicaciones a gran escala, con cientos de miles de conexiones, el límite permanece; hay un límite más allá del cual la mayoría de los sistemas aún pueden crear sockets, pero se han quedado sin hilos. ¿Cómo podemos superar esto?
+
+## Async
+
+Los frameworks de E/S asincrónicos realizan operaciones simultáneas en un solo hilo utilizando sockets no bloqueantes. En nuestro crawler asíncrono, configuramos el socket no bloqueante antes de comenzar a conectarnos al servidor:
+
 ```python
-def coro():
-  hello = yield "Soy una corrutina"
-  yield hello
-
-c = coro()
-print(next(c))
-print(c.send(", basada en generadores"))
+sock = socket.socket()
+sock.setblocking(False)
+try:
+    sock.connect(('bla.com', 80))
+except BlockingIOError:
+    pass
 ```
+
+Un socket no bloqueante genera una excepción al realizar el _connect_, incluso cuando funciona normalmente. Esta excepción replica el comportamiento irritante de la función C subyacente, que establece _errno_ en _EINPROGRESS_ para indicarle que ha comenzado.
+
+Ahora nuestro crawler necesita una forma de saber cuándo se establece la conexión, para poder enviar la solicitud HTTP. Simplemente podríamos seguir intentándolo en un loop. Este método no puede esperar eventos de manera eficiente en múltiples sockets. En la antigüedad, la solución de BSD Unix a este problema era select, una función de C que espera a que ocurra un evento en un socket sin bloqueo o en un pequeño vector de ellos. Hoy en día, la demanda de aplicaciones con un gran número de conexiones ha llevado a reemplazos como poll, luego kqueue en BSD y epoll en Linux. Estas API son similares a las de select, pero funcionan bien con un gran número de conexiones.
+
+```python
+from selectors import DefaultSelector, EVENT_WRITE
+
+selector = DefaultSelector()
+
+sock = socket.socket()
+sock.setblocking(False)
+try:
+    sock.connect(('bla.com', 80))
+except BlockingIOError:
+    pass
+
+def connected():
+    selector.unregister(sock.fileno())
+    print('connected!')
+
+selector.register(sock.fileno(), EVENT_WRITE, connected)
+```
+
+Procesamos las notificaciones de E/S a medida que el selector las recibe, en un loop:
+
+```python
+def loop():
+    while True:
+        events = selector.select()
+        for event_key, event_mask in events:
+            callback = event_key.data
+            callback()
+```
+
+Aquí hemos logrado tener "concurrencia", pero no "paralelismo". Es decir, construimos un pequeño sistema que superpone E/S. Es capaz de iniciar nuevas operaciones mientras otras están "en vuelo". No utiliza varios núcleos para ejecutar cálculos en paralelo. Este sistema está diseñado para problemas I/O-bound, no con CPU-bound.
+
+## Con callbacks
+
+Obtener una página requerirá una serie de callbacks. Se activa cuando se conecta un socket y se envía una solicitud GET al servidor. Pero luego debe esperar una respuesta, por lo que registra otro callback. Si, cuando se activa esa callback, todavía no puede leer la respuesta completa, se registra de nuevo, y así sucesivamente.
+
+Recopilamos estas callbacks en un objeto Fetcher. Necesita una URL, un socket y un lugar para acumular los bytes de respuesta:
+
+```python
+class Fetcher:
+    def __init__(self, url):
+        self.response = b''  # Empty array of bytes.
+        self.url = url
+        self.sock = None
+
+    def fetch(self):
+        self.sock = socket.socket()
+        self.sock.setblocking(False)
+        try:
+            self.sock.connect(('bla.com', 80))
+        except BlockingIOError:
+            pass
+
+        #Se registra el proximo callback.
+        selector.register(self.sock.fileno(),EVENT_WRITE,self.connected)
+```
+
+El método de búsqueda comienza conectando un socket. Pero el método regresa antes de que se establezca la conexión. Debe devolver el control al event loop para esperar la conexión. Para entender por qué, imagine que toda nuestra aplicación está estructurada de esta manera:
+
+```python
+# fetching http://bla.com/333/
+fetcher = Fetcher('/333/')
+fetcher.fetch()
+
+while True:
+    events = selector.select()
+    for event_key, event_mask in events:
+        callback = event_key.data
+        callback(event_key, event_mask)
+```
+
+Todas las notificaciones de eventos se procesan en el event loop cuando llama a select. Por lo tanto, la fetch debe controlar el event loop para que el programa sepa cuándo se ha conectado el socket. Solo entonces el bucle ejecuta el callback connected, que se registró al final de la fetch anterior.
+
+Aquí está la implementación de connected:
+
+```python
+# Metodo de la clase Fetcher
+    def connected(self, key, mask):
+        print('connected!')
+        selector.unregister(key.fd)
+        request = 'GET {} HTTP/1.0\r\nHost: xkcd.com\r\n\r\n'.format(self.url)
+        self.sock.send(request.encode('ascii'))
+
+        selector.register(key.fd,EVENT_READ,  self.read_response)
+```
+El siguiente callback read_response, procesa la respuesta del server:
+
+```python
+# Metodo de la clase Fetcher
+    def read_response(self, key, mask):
+        global stopped
+
+        chunk = self.sock.recv(4096)  # 4k chunk size.
+        if chunk:
+            self.response += chunk
+        else:
+            selector.unregister(key.fd)  # Done reading.
+            links = self.parse_links()
+
+            for link in links.difference(seen_urls):
+                urls_todo.add(link)
+                Fetcher(link).fetch()  # <- New Fetcher.
+
+            seen_urls.update(links)
+            urls_todo.remove(self.url)
+            if not urls_todo:
+                stopped = True
+```
+
+Tenga en cuenta una buena característica de la programación asíncrona callbacks, no necesitamos mutex alrededor de los cambios en los datos compartidos. No hay multitarea apropiativa, por lo que no podemos ser interrumpidos en puntos arbitrarios de nuestro código. Agregamos una variable detenida global y la usamos para controlar el ciclo.
+
+Entonces, incluso aparte del largo debate sobre las eficiencias relativas de multiprocesos/miltihilos y asíncronismo, existe otro debate sobre cuál es el más propenso a errores: los subprocesos son susceptibles a las condiciones de carrera si comete un error al sincronizarlos, pero las callbacks son más dificiles de debuguear debido al stack que suelen mostrarnos.
+
+## Con corrutinas basadas en generadores
+
+Es posible escribir código asincrónico que combine la eficiencia de los callbacks con el buen aspecto clásico de la programación multiproceso/hilo.
+
+```python
+def fetch(self, url):
+        response = yield from self.session.get(url)
+        body = yield from response.read()
+```
+
+Ahora, fetch es una función generadora, en lugar de una normal. Creamos un [future](https://docs.python.org/es/3/library/asyncio-future.html#future-object) pendiente, luego lo cedemos para pausar la búsqueda hasta que el socket esté listo. La función interna on_connected resuelve el future.
+
+>Nota: Un future representa un resultado eventual de una operación asincrónica.
+
+Pero cuando el future se resuelva, ¿qué reanuda el generador? Necesitamos un controlador de rutina. Llamémoslo "tarea":
+
+```python
+class Task:
+    def __init__(self, coro):
+        self.coro = coro
+        f = Future()
+        f.set_result(None)
+        self.step(f)
+
+    def step(self, future):
+        try:
+            next_future = self.coro.send(future.result)
+        except StopIteration:
+            return
+
+        next_future.add_done_callback(self.step)
+
+fetcher = Fetcher('/333/')
+Task(fetcher.fetch())
+
+loop()
+```
+
+Task inicia el generador "fetch" enviando None. Luego, fetch se ejecuta hasta que produce (yield) un future, que la tarea captura como siguiente future. Cuando el socket está conectado, el event loop ejecuta el callback on_connected, que resuelve el future, que llama a step, que reanuda fetch.
+
+## Con corrutinas
+
+Modificando el codigo de las corrutinas basadas en generadores usando async/await, y utilizando algo como:
+
+```python
+loop = asyncio.get_event_loop()
+
+crawler = crawling.Crawler('http://bla.com',max_redirect=10)
+
+loop.run_until_complete(crawler.crawl())
+```
+
+Quedaria implementada la solución con corrutinas "nativas" de Python.
 
 ## Links interesantes
 
