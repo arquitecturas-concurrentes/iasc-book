@@ -6,7 +6,6 @@ jobs:
       - image: circleci/ruby:2.7.2
     environment:
       TZ: "/usr/share/zoneinfo/America/Argentina/Buenos_Aires"
-    paralelism: 2
     steps:
       - add_ssh_keys:
           fingerprints:
