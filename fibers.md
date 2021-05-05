@@ -7,17 +7,17 @@ description: "Fibers en Ruby"
 
 # Fibers on Ruby
 
-Las fibras son estructuras que implementan un mecanismo de concurrencia cooperativa y liviana en Ruby. Básicamente, son un medio para crear bloques de código que se pueden pausar y reanudar, al igual que los hilos. La principal diferencia es que nunca se planifican implicitamente y que la programación debe realizarla el programador y no la VM. 
+Las fibras son estructuras que implementan un mecanismo de concurrencia cooperativa y liviana en Ruby. Básicamente, son un medio para crear bloques de código que se pueden pausar y reanudar, al igual que los hilos. La principal diferencia es que nunca se planifican implicitamente y que la planificación debe realizarla el programador y no la VM. 
 
-O sea que en el caso de los `threads`, el scheduler se encarga de la planificacion y de 
+O sea que en el caso de los `threads`, el scheduler se encarga de la planificacion y del manejo del ciclo de vida de esta abstracción. En el caso de los `fibers`, esta en nuestras manos la planificación, con lo cual en el código vamos a tener que también tener codigo en cuanto a manejo de los fibers que estamos usando, es decir vamos a tener que explícitamente manejar la planificación. Podemos armar algunas abstracciones pero no suele ser una tarea trivial. 
 
 A diferencia de otros modelos de concurrencia ligeros sin stack, cada `fiber` viene con un stack. Esto permite que el fiber se pause desde llamadas de función anidadas dentro del bloque del `Fiber`.
 
-Al ser un esquema colaborativo, nos da un mayor control de la ejecucion, y es mas, proporcionan un control total al programador sore su ejecucion como mencionamos antes. Veamos un ejemplo de comparacion en cuanto a los tiempos..
+Al ser un esquema colaborativo, nos da un mayor control de la ejecución, y es mas, proporcionan un control total al programador sore su ejecucion como mencionamos antes. Veamos un ejemplo de comparacion en cuanto a los tiempos..
 
 ![](./images/fibers/fiversvsthreads.png)
 
-Dos threads que se ejecutan, uno se bloquea por 40ms con una llamada de IO, y despues toma unos 10ms mas, el procesamiento de estos datos retornados de la llamada. Despues hay un segundo thread, que necesita 50ms, de solo tiempo de CPU. El escenario es el mismo tanto con threads, como con fibers y su planificacion cooperativa.
+Dos threads que se ejecutan, uno se bloquea por 40ms con una llamada de IO, y después toma unos 10ms mas, el procesamiento de estos datos retornados de la llamada. Después hay un segundo thread, que necesita 50ms, de solo tiempo de CPU. El escenario es el mismo tanto con threads, como con fibers y su planificacion cooperativa.
 
 Por defecto, MRI usa un `fair scheduler` ([mas aqui](https://es.wikipedia.org/wiki/Planificador_Completamente_Justo)), que significa que cada thread recibe un mismo tiempo para ejecutar, con quantums de 10ms, antes que se suspendan y que el proximo thread se ponga bajo control. Si uno de los threads esta dentro de una llamada bloquante dentro de esos 10ms, se lo debe tomar como tiempo malgastado, es tiempo en el que seguramente todos los threads estan descansando, por estar bloqueados o esperando I/O. 
 Por el otro lado, los Fibers, al ser scheduleados explicitamente por el programador, o sea nosotros, nos da una flexibilidad a la hora de determinar cuando debemos parar la ejecucion de nuestro fiber y cuando retomarlo. Esto trae, como desventaja, que tenemos ahora un codigo mas complejo, pero a su vez nos ayudan, en que en un caso casi ideal, no necesitemos casi el uso de locks.
@@ -30,7 +30,7 @@ Por el otro lado, los Fibers, al ser scheduleados explicitamente por el programa
 
 - Los Fibers son ligeros en cuanto a la memoria que consumen y los tiempos del ciclo de vida
 - Tenemos el control de los Fibers, de manera explicita, o sea que tenemos el control absoluto de su ciclo de vida y planificacion.
-- Si bien con los threads tenemos al scheduler que decide cuando un thread se pausa o reanuda, en el caso de los Fibers es variante. O sea, al tener el control nosotros de la planificacion, tenemos que especificar cuando iniciar y parar la ejecucion de un Fiber.
+- Si bien con los threads tenemos al scheduler que decide cuando un thread se pausa o reanuda, en el caso de los Fibers es variable. O sea, al tener el control nosotros de la planificacion, tenemos que especificar cuando iniciar y parar la ejecucion de un Fiber.
 - Los Fibers, son maneras de escribir bloques de codigo, que pueden ser pausados o resumidos, bastante parecidos a los threads, pero con la diferencia de la planificacion de nuestro lado.
 - Los `Threads` se ejecutan en un segundo plano, especialmente cuando hay una interrupcion. En el caso de los Fibers, se convierten en el programa principal, cuando se ejecutan, hasta que uno los para. 
 
@@ -81,11 +81,11 @@ Un diagrama de transicion de los estados de un Fiber se puede ver a continuacion
 
 #### Para que sirven los fibers?
 
-Como cualquier estructura que es concurrente, es algo que no se usaria normalmente en un codigo de algo nivel de o aplicacion, pero es algo mas bien que si puede utilizar una libreria, implementando otras abstracciones sobre y que usen los fibers, para manejar bien los eventos, cuando parar un fiber y reanudarlo, y despues que nuestro codigo de aplicacion use a esta libreria, sin saber los detalles y que no tenga que operar usando fibers directamente. 
+Este tipo de abstracciones que modelan un contexto de ejecución, no se usan normalmente, sino que es algo que en general se utiliza en una libreria, implementando otras abstracciones sobre y que usen los fibers, para manejar bien los eventos, cuando parar un fiber y reanudarlo, y despues que nuestro codigo de aplicacion use a esta libreria, sin saber los detalles y que no tenga que operar usando fibers directamente. 
 
 Un ejemplo de esto, puede verse, si implementamos un `reactor`, que es un [patron de diseno](https://en.wikipedia.org/wiki/Reactor_pattern#:~:text=The%20reactor%20design%20pattern%20is,to%20the%20associated%20request%20handlers.) que nos va a permitir manejar eventos. Hay muchas manera de implementar un reactor. Vimos hace poco que el `event loop` usa [epoll](https://man7.org/linux/man-pages/man2/epoll_wait.2.html) para saber de nuevos eventos disponibles, que le llegan a un puerto. Otra manera, aunque no tan efectiva, pero mas sencilla de lograr, puede ser mediante [select](https://man7.org/linux/man-pages/man2/select.2.html).
 
-Con `select`, que esta presente en Ruby, mediante un wrapper en `IO`, podemos implementar un `reactor` simple. Un ejemplo de la catedra, que usa una implementacion mas completa con `timers` y otras abstracciones se puede ver en este [repositorio](https://github.com/arquitecturas-concurrentes/iasc-event-loop-reactor-ruby).
+Con `select`, que esta presente en Ruby, mediante un wrapper en `IO`, podemos implementar un `reactor` simple. Un ejemplo de la cátedra, que usa una implementación mas completa con `timers` y otras abstracciones se puede ver en este [repositorio](https://github.com/arquitecturas-concurrentes/iasc-event-loop-reactor-ruby).
 
 De una manera mucho mas simple, podemos tener una clase `Reactor`, que tenga dos mapas para eventos de escritura o lectura.
 
@@ -125,7 +125,7 @@ class Reactor
 end
 ```
 
-esta en la linea del select 
+esta en la línea del select 
 
 ```ruby
 readable, writable = IO.select(@readable.keys, @writable.keys, _error_events)
@@ -141,7 +141,7 @@ puts "Listening on 127.0.0.1:#{port}"
 reactor = Reactor.new
 ```
 
-y que use en un loop la aceptacion de la conexion
+y que use en un loop la aceptación de la conexión
 
 ```ruby
 loop do
@@ -156,7 +156,7 @@ despues hay que esperar desde el servidor a que termine el handshake contra el c
 reactor.wait_readable(client) { client.gets })
 ```
 
-Como unimos estos eventos en el reactor? Mediante alguna astraccion, o contexto de ejecucion, que pueda bueno... ejecutarlas. Aqui es donde entran los Fibers..
+Como unimos estos eventos en el reactor? Mediante alguna abstracción, o contexto de ejecución, que pueda bueno... ejecutarlas. Aquí es donde entran los Fibers..
 
 El loop queda entonces, como 
 
@@ -191,12 +191,12 @@ Lo interesante es cuando no se le pasa este flag o el valor es `blocking: false`
 
 Los `fibers no bloqueantes`, cuando llegan en el codigo que ejecutan, a una zona que es potencialmente bloqueante (sleep, esperar otro proceso, esperar datos de I/O, etc), en vez de congelarse y parar toda la ejecucion del thread, hace un `yield` implicito, y permite que otros fibers tomen el control. Esto si se maneja mendiante un scheduler, permite que se pueda manejar bien a que fiber se le puede dar prioridad
 
-Que es el `scheduler`?? En realidad la pregunta correcta seria, como nos damos cuenta ahora con un esquema `no bloquante` cuando tenemos una respuesta con la cual, podemos seguir con la ejecucion de nuestro fiber? Esto surge porque aun tenemos que planificar a los fibers. 
+Que es el `scheduler`?? En realidad la pregunta correcta sería, como nos damos cuenta ahora con un esquema `no bloquante` cuando tenemos una respuesta con la cual nos va a surgir una nueva duda. Cómo podemos seguir con la ejecución de nuestro fiber? Esto surge porque aun tenemos que planificar a los fibers. 
 
 Para poder saber y manejar cuando tenemos una respuesta, tendremos un `scheduler`, y en si es una clase que simula algo similar a un `event loop`. Nos va a permitir:
 
-- Rastrear y saber el estado de los fibers, y en caso que esten realizando alguna operacion `bloqueante`, cual es.
-- Permitir reanudar la ejecucion de los fibers que hicieron una operacion bloqueante, y se les retorno un resultado.
+- Rastrear y saber el estado de los fibers, y en caso que esten realizando alguna operación `bloqueante`, cual es.
+- Permitir reanudar la ejecucion de los fibers que hicieron una operación bloqueante, y se les retorno un resultado.
 
 Ruby por default no provee una clase `scheduler`, pero si una interfaz que debe cumplir, y se espera que sea implementado por el usuario, siguiendo, como se menciono la interfaz descrita en [Fiber::SchedulerInterface](https://ruby-doc.org/core-3.0.0/Fiber/SchedulerInterface.html).
 
@@ -252,7 +252,7 @@ require 'my_scheduler'
 Fiber.set_scheduler(MyScheduler.new)
 ```
 
-despues de eso, podemos seguir usando los fibers, como antes en Ruby 2.x
+después de eso, podemos seguir usando los fibers, como antes en Ruby 2.x
 
 ```ruby
 # now using a non-blocking schema through a SimpleScheduler that does not block the Fibers
@@ -271,7 +271,7 @@ end.resume
 
 ### Que son los Fibers por atras??
 
-En realidad los Fibers, en su implementacion al menos en MRI, son en suma ....
+En realidad los Fibers, en su implementación al menos en MRI, son en suma ....
 
 ![](./images/fibers/secret.jpg)
 
@@ -290,12 +290,16 @@ Un ejemplo de como mejoraron los tiempos en su momento puede verse haciendo un s
  4197152.191945104/s
 ```
 
-Esta es una libreria de [corutinas en C](http://software.schmorp.de/pkg/libcoro.html), que tiene la implementacion de lo que seria el `"context switch"` entre fibers, que es la parte que en general se va a a estar ejecutando muy a menudo, en [assembler](http://cvs.schmorp.de/libcoro/coro.c?revision=1.73&view=markup#l223).
+Esta es una librería de [corutinas en C](http://software.schmorp.de/pkg/libcoro.html), que tiene la implementacion de lo que seria el `"context switch"` entre fibers, que es la parte que en general se va a a estar ejecutando muy a menudo, en [assembler](http://cvs.schmorp.de/libcoro/coro.c?revision=1.73&view=markup#l223).
 
 Hoy en dia, ya no se delega el mecanismo de las corutinas en `libcoro`, y se lo trata nativamente, pero con los mismos conceptos. Incluso concepto de que la parte del cambio de contexto de los `fibers` se hace, dependiendo de la arquitectura, con codigo en assembler. [Ejemplo de x86 ec](https://github.com/ruby/ruby/blob/0ead818d81c975275238878c81f300dd404e0722/coroutine/x86/Context.S#L16), este context switch se llama desde la implementacion nativa de MRI de fibers en C en esta seccion de la funcion [fiber_setcontext](https://github.com/ruby/ruby/blob/3d32c217586a48c709b762865a8abc46f9098455/cont.c#L1376)
 
 
-### Sobre el tamaño del stack de Threads y Fibers  
+## Anexo
+
+### Sobre el tamaño del stack de Threads y Fibers
+
+El tamaño del stack puede incluso limitar la cantidad de Threads y Fibers que podemos instanciar en una instancia de MRI.
 
 Podemos comprobar rápidamente el tamaño de la pila para un `Thread` y para las` Fibers` en ruby ​​comprobando `RubyVM :: DEFAULT_PARAMS` en la consola irb o pry:
 
@@ -337,4 +341,4 @@ Max Stack Level: 20161
 
 Podemos ver que es casi linea la cantidad de veces que podemos llamar al stack con el stack size que tenemos.
 
-> Esto puede variar dependiendo de la informacion y de los datos que guardemos en el stack.
+> Esto puede variar dependiendo de la información y de los datos que guardemos en el stack.
