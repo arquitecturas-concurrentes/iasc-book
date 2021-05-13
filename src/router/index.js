@@ -18,8 +18,6 @@ const pagesRoutes = () => {
   ))
 }
 
-console.log(pagesRoutes())
-
 const routes = [
   {
     path: '/',
@@ -59,8 +57,7 @@ const router = new VueRouter({
   mode: 'history',
   base: publicPath,
   routes,
-  scrollBehavior (to, from, savedPosition) {
-    console.log(from)
+  scrollBehavior (to, _from, savedPosition) {
     if (to.hash) {
         return { selector: to.hash }
     } else if (savedPosition) {
