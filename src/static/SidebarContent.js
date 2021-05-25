@@ -47,6 +47,11 @@ export const sidearContent = [
       ]
   },
   {
+      href: '/estructuras_funcionales',
+      title: 'Estructuras Funcionales',
+      icon: 'fa fa-book'
+  },
+  {
       href: '#act',
       title: 'Actores',
       icon: 'fa fa-chevron-down',

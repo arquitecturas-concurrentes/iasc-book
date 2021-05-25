@@ -1,11 +1,3 @@
----
-layout: default
-title: "Estructuras Funcionales y Mónadas"
-description: ""
----
-
-# Introducción
-
 ## ¿Paradigma Funcional? ¿Qué es eso?
 
 Es irónico que aunque el paradigma funcional es muy anterior al paradigma de objetos, lo que le ha dado la posibilidad de construir sólidas bases, es difícil dar una definición del mismo. Por ejemplo, la definición más obvia reza que
