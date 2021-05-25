@@ -82,5 +82,11 @@
     "page": "service_mesh",
     "title": "Service Mesh",
     "description": "Introduccion conceptual de Service Mesh"
+  },
+  {
+    "path": "estructuras_funcionales",
+    "page": "estructuras_funcionales",
+    "title": "Estructuras Funcionales",
+    "description": "Estructuras Funcionales y Mónadas"
   }
 ]
