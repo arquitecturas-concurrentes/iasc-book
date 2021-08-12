@@ -2069,6 +2069,11 @@ bfj@^6.1.1:
     hoopy "^0.1.4"
     tryer "^1.0.1"
 
+biblatex-csl-converter-ts@^1.0.4:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/biblatex-csl-converter-ts/-/biblatex-csl-converter-ts-1.1.0.tgz#4914da718928a61550fcb6d8c94e94517fd0845b"
+  integrity sha512-/0xZnFj8v8XXKWKgqYttx/R99QaGt445ILvRFjTeUqgLaK5xz/aGf7hd/abXOKIyuKuRVN2ER3qLljjiTkGfug==
+
 big.js@^3.1.3:
   version "3.2.0"
   resolved "https://registry.yarnpkg.com/big.js/-/big.js-3.2.0.tgz#a5fc298b81b9e0dca2e458824784b65c52ba588e"
@@ -2560,6 +2565,11 @@ cipher-base@^1.0.0, cipher-base@^1.0.1, cipher-base@^1.0.3:
   dependencies:
     inherits "^2.0.1"
     safe-buffer "^5.0.1"
+
+citeproc@^2.4.59:
+  version "2.4.59"
+  resolved "https://registry.yarnpkg.com/citeproc/-/citeproc-2.4.59.tgz#36e1fab8cba4c7f2f88d3f009094b06d4bf08879"
+  integrity sha512-BoOk7hu2ORheW2TT//Xj6AFnyP9CuVuQ6THBYTRXO3wEYTMviPbcyXFiZ/tPg5bijvvvVa4gPJRVnipQ0y2aKw==
 
 class-utils@^0.3.5:
   version "0.3.6"
@@ -5603,6 +5613,31 @@ loader-utils@^2.0.0:
     emojis-list "^3.0.0"
     json5 "^2.1.2"
 
+locale-de-de@^0.0.2:
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/locale-de-de/-/locale-de-de-0.0.2.tgz#e85dffdc1e07991f8422db2173742ca0c1422f74"
+  integrity sha512-foCqbDgfcvdLqKX4hxFfPb6m9KXuvzOdMQT1vjCzwIK4BjqLC7d6TeWxHMaIF5B9tHxKrEb0POI49sJGFNjxHA==
+
+locale-en-gb@^0.0.2:
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/locale-en-gb/-/locale-en-gb-0.0.2.tgz#d1879f0349e14c482e9dc34842b16fc7ebee7fc0"
+  integrity sha512-Z/9xQDlDoMhaIEPMQz9VoB8zbKlI6CgO9ScVl3urJeKJI6qViZNGpS7h/ycBGC0AJcrE3I4J72XmiSgVCyK0kA==
+
+locale-en-us@^0.0.2:
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/locale-en-us/-/locale-en-us-0.0.2.tgz#11eb4ad8f2b33430ee24a74c4d206377f827aedb"
+  integrity sha512-I02W/LK36C1IDloiFY4ZvK7kIs4C92vCHVEI01rIrJPzzlqcn1NnUxn5d1oiq0pe6JwuzpWwSCYnV0o1WAQP9g==
+
+locale-es-es@^0.0.2:
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/locale-es-es/-/locale-es-es-0.0.2.tgz#efe6725503ed4ae74831f8d851d9938d4070dfc9"
+  integrity sha512-Hw0DO46yuMJlGbgzjyiu6Q8OEaSQ+DBWNvhCX7apGC8NJwzY7pNoFUDDm3DtxAZ9W2F/33548/+C7BTOfeF7Eg==
+
+locale-fr-fr@^0.0.2:
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/locale-fr-fr/-/locale-fr-fr-0.0.2.tgz#e5544a638d3288844823f732d98667e2746e0a89"
+  integrity sha512-KS9t0SrAmy2+T74zKNQUsj5Bn1EyLl+/2aIxnD/FCvQrVlADnuuwMvLQRx0W7uU4hmEtRhpsfKTA40mHPbvVXg==
+
 locate-path@^3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/locate-path/-/locate-path-3.0.0.tgz#dbec3b3ab759758071b58fe59fc41871af21400e"
@@ -5743,6 +5778,28 @@ markdown-it-anchor@^7.1.0:
   version "7.1.0"
   resolved "https://registry.yarnpkg.com/markdown-it-anchor/-/markdown-it-anchor-7.1.0.tgz#30fb21497bf59e83ff4d1ddc052d821962e2489e"
   integrity sha512-loQggrwsIkkP7TOrESvmYkV2ikbQNNKhHcWyqC7/C2CmfHl1tkUizJJU8C5aGgg7J6oXVQJx17gk7i47tNn/lQ==
+
+markdown-it-bibliography@^0.1.0:
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/markdown-it-bibliography/-/markdown-it-bibliography-0.1.0.tgz#04d5240455091e0d93d3dabeda6b648bf99a7827"
+  integrity sha512-1yyCNk8jJ+MnHB8MT/+8K3FxCdZ6mLSSEH/w0i1VewJojiT1xeMhn2eBRklQMqxRw1RhnZ+gNcu1MqYroVNerw==
+  dependencies:
+    biblatex-csl-converter-ts "^1.0.4"
+    citeproc "^2.4.59"
+    locale-de-de "^0.0.2"
+    locale-en-gb "^0.0.2"
+    locale-en-us "^0.0.2"
+    locale-es-es "^0.0.2"
+    locale-fr-fr "^0.0.2"
+    style-apa "^0.0.2"
+    style-chicago "^0.0.2"
+    style-mla "^0.0.2"
+    style-vancouver "^0.0.2"
+
+markdown-it-footnote@^3.0.3:
+  version "3.0.3"
+  resolved "https://registry.yarnpkg.com/markdown-it-footnote/-/markdown-it-footnote-3.0.3.tgz#e0e4c0d67390a4c5f0c75f73be605c7c190ca4d8"
+  integrity sha512-YZMSuCGVZAjzKMn+xqIco9d1cLGxbELHZ9do/TSYVzraooV8ypsppKNmUJ0fVH5ljkCInQAtFpm8Rb3eXSrt5w==
 
 markdown-it@^12.0.6:
   version "12.0.6"
@@ -8314,6 +8371,26 @@ strip-json-comments@^3.1.0, strip-json-comments@^3.1.1:
   version "3.1.1"
   resolved "https://registry.yarnpkg.com/strip-json-comments/-/strip-json-comments-3.1.1.tgz#31f1281b3832630434831c310c01cccda8cbe006"
   integrity sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==
+
+style-apa@^0.0.2:
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/style-apa/-/style-apa-0.0.2.tgz#0c4879fa878f5e7473f99a220512d700c3de53eb"
+  integrity sha512-DSgE7KPxV0Z3o5j4mAOGWp+Dpl9KhPUS5+704lEsVCI0G/LjbnvoINJUWn2llrYR95PH9Dkw0M9fiTt/BwEAoA==
+
+style-chicago@^0.0.2:
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/style-chicago/-/style-chicago-0.0.2.tgz#7ff3034a27d49b1cc5113bb157438401fd0eac94"
+  integrity sha512-xQyPhA3eLMmpV2BQ9+OwxYy6RgUIrxbXFxH6Demd8QlBQpXvj5rkZNn3YpEMyvoAinghFjZOGGuaBDCYiZxFxQ==
+
+style-mla@^0.0.2:
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/style-mla/-/style-mla-0.0.2.tgz#94788c5d8f3bc20b0b49a77243b35a7fbbe0677b"
+  integrity sha512-uxe00Gcv8W5Rgie8QStLnMlZh4o821UwWclr+SfgMNCRRVF8ncB9wvqU093FcS2QR02V8/YNE0P2ySJ2GFIFSw==
+
+style-vancouver@^0.0.2:
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/style-vancouver/-/style-vancouver-0.0.2.tgz#fede0c9aa81f6bcb00f8ecc4427e8e94a763cc08"
+  integrity sha512-6DYqSJSRPdPYPZB64LAKjhX6IBpbI8G2QJg0qsgGE6vLMvWG/8tTpuzdIsZPDMPBMnF2jt/1WBqbDZR4VaA2KQ==
 
 stylehacks@^4.0.0:
   version "4.0.3"

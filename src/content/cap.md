@@ -1,8 +1,9 @@
 # CAP
 
 Hay alguna manera de que manteniendo la aplicación disponible durante intearleaves no haya pérdida de datos? 
-La respuesta rápida es no. No hay manera que la aplicación funcione correctamente en un interleave. esta idea es conocida como el teorema CAP
-CAP es Consistency, Avaliability, Partition Tolerance
+La respuesta rápida es no. No hay manera que la aplicación funcione correctamente en un interleave. esta idea es conocida como el teorema CAP link[^first].
+
+[^first]: CAP es Consistency, Avaliability, Partition Tolerance
 
 <img src="~@/images/distribucion/image1.png" class='center iasc-image'>
 
@@ -69,6 +70,8 @@ Entonces en este punto la comunicación se resume entre los nodos y debe volver 
 - Debe haber una compensación para los errores cometidos durante la fase de partición.
 
 En general se hace una especie de merge dependiendo de la estrategia entre los estados, algo similar a lo que se ve en un CVS, pero hay muchos sistemas que no pueden hacer este mergeo de datos por un tema que no es posible, entonces es el caso en el que se reduce las operaciones disponibles en un sistema durante una partición, Google Docs es un caso de este tipo. Otras opciones son las de tomar por medio de algún algoritmo el dato más nuevo y tomar esas invariantes más nuevas como las definitivas en el sistema.
+
+
 
 ### Bibliografía adicional de CAP
 
