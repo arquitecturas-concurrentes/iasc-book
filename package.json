@@ -10,8 +10,6 @@
     "deploy": "node node_scripts/master-deploy.js"
   },
   "dependencies": {
-    "dns-packet": "^5.2.2",
-    "ssri": "^7.1.1",
     "@fortawesome/fontawesome-svg-core": "^1.2.35",
     "@fortawesome/free-solid-svg-icons": "^5.15.3",
     "@fortawesome/vue-fontawesome": "^2.0.2",
@@ -32,6 +30,7 @@
     "vue-code-highlight": "^0.7.4",
     "vue-fontawesome": "^0.0.2",
     "vue-highlight.js": "^3.1.0",
+    "highlight.js": "^10.4.1",
     "vue-loader": "^15.9.6",
     "vue-markdown-loader": "^2.4.1",
     "vue-particles": "^1.0.9",
@@ -44,7 +43,7 @@
     "webpack": "^4.0.0",
     "webpack-cli": "^4.7.0",
     "webpack-dev-server": "^3.11.2",
-    "ssri": "7.1.1"
+    "ssri": "^7.1.1"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",
