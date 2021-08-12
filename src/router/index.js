@@ -12,6 +12,8 @@ const pagesRoutes = () => {
       component: () => import(`@/content/${section.page}.md`),
       meta: {
         title: section.title,
+        extra: section.extra,
+        need_detail: section.need_detail,
         description: section.description
       }
     }
