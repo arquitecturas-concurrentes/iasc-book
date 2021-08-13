@@ -14,6 +14,12 @@
           </div>
       </div>
   </div>
+    <div v-if="this.need_detail">
+      <NeedMoreDetail />
+    </div>
+    <div v-if="this.extra">
+      <AdditionalContent />
+    </div>
     <div class="container">
         <div class="inner-content col-sm-8 col-md-10">
             <router-view />
@@ -23,8 +29,15 @@
 </div>
 </template>
 <script>
+import NeedMoreDetail from '@/components/NeedMoreDetail.vue'
+import AdditionalContent from '@/components/AdditionalContent.vue'
+
 export default {
   name: 'Entry',
+  components: {
+    NeedMoreDetail,
+    AdditionalContent
+  },
   mounted() {
     this.scrollToAnchor();
   },
@@ -44,7 +57,9 @@ export default {
   },
   props: {
     title: String,
-    description: String
+    description: String,
+    need_detail: Boolean,
+    extra: Boolean
   }
 }
 </script>

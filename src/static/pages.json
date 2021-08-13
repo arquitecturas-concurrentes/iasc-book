@@ -69,24 +69,28 @@
     "path": "mitos_distribucion",
     "page": "mitos",
     "title": "Distribucion Bonus",
+    "extra": true,
     "description": "Mitos de la distribucion"
   },
   {
     "path": "intro_contenedores",
     "page": "contenedores",
     "title": "Contenedores",
+    "need_detail": true,
     "description": "Contenedores con Docker"
   },
   {
     "path": "service_mesh",
     "page": "service_mesh",
     "title": "Service Mesh",
+    "need_detail": true,
     "description": "Introduccion conceptual de Service Mesh"
   },
   {
     "path": "estructuras_funcionales",
     "page": "estructuras_funcionales",
     "title": "Estructuras Funcionales",
+    "need_detail": true,
     "description": "Estructuras Funcionales y Mónadas"
   }
 ]

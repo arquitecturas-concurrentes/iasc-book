@@ -1,7 +1,7 @@
 <template>
   <div class="scroll-touch">
     <Navbar/>
-    <Entry :title="entry.title" :description="entry.description"/>
+    <Entry :title="entry.title" :description="entry.description" :extra="entry.extra" :need_detail="entry.need_detail" />
     <slot />
   </div>
 </template>
@@ -20,6 +20,8 @@ export default {
     return {
       entry: {
         title: this.$route.meta.title,
+        need_detail: this.$route.meta.need_detail,
+        extra: this.$route.meta.extra,
         description: this.$route.meta.description
       }
     }
