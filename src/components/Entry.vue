@@ -1,32 +1,32 @@
 <template>
   <div class="wrapper">
     <div class="container header">
-    <div class="titulo-heading">
-      <div class="container-background">
-          <div class="titulo">
-              <h3 class="Title">
-                  {{this.title}}
-              </h3>
-              <br>
-              <h4>
-                 {{this.description}}
-              </h4>
+      <div class="titulo-heading">
+        <div class="container-background">
+            <div class="titulo">
+                <h3 class="Title">
+                    {{this.title}}
+                </h3>
+                <br>
+                <h4>
+                  {{this.description}}
+                </h4>
+            </div>
+        </div>
+      </div>
+      <div v-if="this.need_detail">
+        <NeedMoreDetail />
+      </div>
+      <div v-if="this.extra">
+        <AdditionalContent />
+      </div>
+      <div class="container">
+          <div class="inner-content col-sm-8 col-md-10">
+              <router-view />
           </div>
       </div>
-  </div>
-    <div v-if="this.need_detail">
-      <NeedMoreDetail />
-    </div>
-    <div v-if="this.extra">
-      <AdditionalContent />
-    </div>
-    <div class="container">
-        <div class="inner-content col-sm-8 col-md-10">
-            <router-view />
-        </div>
     </div>
   </div>
-</div>
 </template>
 <script>
 import NeedMoreDetail from '@/components/NeedMoreDetail.vue'
