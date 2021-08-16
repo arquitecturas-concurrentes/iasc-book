@@ -1,8 +1,9 @@
-# CAP
+# Mi otra gorra es un teorema
+
+*[CAP]: CAP es Consistency, Avaliability, Partition Tolerance
 
 Hay alguna manera de que manteniendo la aplicación disponible durante intearleaves no haya pérdida de datos? 
-La respuesta rápida es no. No hay manera que la aplicación funcione correctamente en un interleave. esta idea es conocida como el teorema CAP
-CAP es Consistency, Avaliability, Partition Tolerance
+La respuesta rápida es no. No hay manera que la aplicación funcione correctamente en un interleave. esta idea es conocida como el teorema CAP[^3].
 
 <img src="~@/images/distribucion/image1.png" class='center iasc-image'>
 
@@ -14,7 +15,7 @@ Particionamiento: Esta parte del teorema es un poco más capciosa. Tolerancia a 
 
 ## CAP Clasico o Tradicional
 
-La interpretación que veremos ahora es la clásica en la que solo se puede tener dos de los tres conceptos de CAP, es decir se puede tener CA, CP o AP. No hay manera de que se puedan tener los tres. Lo malo es que no es posible tener las tres cosas incluso con un fallo de red. Lo bueno es que es un teorema, después veremos que esto es más abierto en la interpretación gradual.  tener Consistencia y Disponibilidad no es posible a menos que teóricamente no falle nunca la red, y si sucede en un nodo todo debería fallar. Entonces nos quedan las otras dos partes. AP o CP. Cuando hay un netsplit o interleave la disponibilidad o consistencia permanecen, pero no ambas.
+La interpretación que veremos ahora es la clásica en la que solo se puede tener dos de los tres conceptos de CAP[^1], es decir se puede tener CA, CP o AP. No hay manera de que se puedan tener los tres. Lo malo es que no es posible tener las tres cosas incluso con un fallo de red. Lo bueno es que es un teorema, después veremos que esto es más abierto en la interpretación gradual.  tener Consistencia y Disponibilidad no es posible a menos que teóricamente no falle nunca la red, y si sucede en un nodo todo debería fallar. Entonces nos quedan las otras dos partes. AP o CP. Cuando hay un netsplit o interleave la disponibilidad o consistencia permanecen, pero no ambas.
 
 El esquema que toman ambas opciones son las siguientes:
 
@@ -36,7 +37,7 @@ Este es el gráfico que vimos en clase sobre CAP y BBDD, el post en el que se de
 
 ## Cap Gradual
 
-El otro concepto, un poco más gradual hace hincapié en que hoy por hoy no se puede solo tener dos de estos conceptos que permiten simplificar estos conceptos ya separados, y no hay que elegir entre uno u otro de los otros conceptos aparte de particiones, hablamos de consistencia y disponibilidad, sino que hay un rango de flexibilidad para manejar y recuperarse de las particiones.
+El otro concepto, un poco más gradual hace hincapié en que hoy por hoy no se puede solo tener dos de estos conceptos que permiten simplificar estos conceptos ya separados, y no hay que elegir entre uno u otro de los otros conceptos aparte de particiones, hablamos de consistencia y disponibilidad, sino que hay un rango de flexibilidad para manejar y recuperarse de las particiones[^4].
 
 
 ## Mas Sobre CAP
@@ -70,8 +71,15 @@ Entonces en este punto la comunicación se resume entre los nodos y debe volver 
 
 En general se hace una especie de merge dependiendo de la estrategia entre los estados, algo similar a lo que se ve en un CVS, pero hay muchos sistemas que no pueden hacer este mergeo de datos por un tema que no es posible, entonces es el caso en el que se reduce las operaciones disponibles en un sistema durante una partición, Google Docs es un caso de este tipo. Otras opciones son las de tomar por medio de algún algoritmo el dato más nuevo y tomar esas invariantes más nuevas como las definitivas en el sistema.
 
-### Bibliografía adicional de CAP
+### Adicional
 
-- [http://www.infoq.com/articles/cap-twelve-years-later-how-the-rules-have-changed](http://www.infoq.com/articles/cap-twelve-years-later-how-the-rules-have-changed)
+::: warning
+*Advertencia: Esta seccion necesita un mayor desarrollo del tema y de citas.*
+:::
 
-- [Learn you some Erlang for greater good](https://learnyousomeerlang.com/distribunomicon)
+Existen tambien criticas al teorema[^2], en el que se mencionan entre otras cosas, algunas confusiones y ambiguedades de los terminos, y algunos problemas en su formalización. Estas criticas se centran un poco en la dificil aplicacion que puede llegar a tener a veces sobre los sistemas reales.
+
+[^1]: [Gilbert and Lynch. Brewer conjecture and the feasibility of consistent, available, partition-tolerant web services. ACM SIGACT News (2002) vol. 33 (2) pp. 59](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.67.6951&rep=rep1&type=pdf)
+[^2]: Kleppmann, M. (2015). A Critique of the CAP Theorem. [https://doi.org/10.17863/CAM.13083](https://doi.org/10.17863/CAM.13083)
+[^3]: [Distribunomicon - Learn you some Erlang for greater good](https://learnyousomeerlang.com/distribunomicon)
+[^4]: [Eric A Brewer. CAP twelve years later: How the “rules” have changed. IEEE Computer Magazine, 45(2):23–29, February 2012. doi:10.1109/MC.2012.37.](http://www.infoq.com/articles/cap-twelve-years-later-how-the-rules-have-changed)

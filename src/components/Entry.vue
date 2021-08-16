@@ -78,3 +78,10 @@ export default {
     text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
 }
 </style>
+<style>
+.warning {
+    background-color: #ff8;
+    padding: 20px;
+    border-radius: 6px;
+}
+</style>

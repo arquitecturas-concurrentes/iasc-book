@@ -26,7 +26,10 @@ module.exports = {
             permalinkSymbol: '¶',
             permalinkBefore: true,
             slugify: uslugify
-          }]
+          }],
+          [require('markdown-it-footnote'), {}],
+          [require('markdown-it-abbr'), {}],
+          [require('markdown-it-container'), 'warning', {}]
         ]
       })
   }
