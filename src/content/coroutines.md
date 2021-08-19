@@ -6,6 +6,125 @@ Una ventaja que esto implica es que cuando una función se está ejecutando, ten
 
 Las corrutinas nos permiten lograr algo similar, sin utilizar (necesariamente) un event loop.
 
+## Caso practico
+
+En el desarrollo de software muchas veces solemos enfatizar en lograr que los algoritmos sean más eficientes, es decir que completen los cálculos lo más rápido posible. Pero muchos sistemas dedican su tiempo a "no hacer cálculos", sino que mantienen abiertas muchas conexiones que son lentas. Estos programas presentan un desafío muy diferente: atender una gran cantidad de eventos de red de manera eficiente. Un enfoque actual de este problema es la E/S asíncrona o "asincrónica".
+
+Tomemos el ejemplo de un crawler (rastreador web) sencillo. El crawler es una aplicación asíncrona que espera muchas respuestas, pero realiza pocos cálculos. Cuantas más páginas pueda extraer a la vez, va a poder terminar antes.
+
+## El enfoque tradicional
+
+¿Cómo hacemos que el crawler sea concurrente? Tradicionalmente, crearíamos un grupo hilos. Cada uno se encargaría de descargar una página a la vez a través de un socket. Por ejemplo, para descargar una página de bla.com:
+
+```python
+import sys
+import requests
+import threading
+from bs4 import BeautifulSoup
+
+def get_urls_from_root(root_url):
+    soup = BeautifulSoup(reqs.text, 'html.parser')
+    return soup.find_all('a'):
+
+def fetch(url):
+    r = requests.get(url)
+    parse_response(r.content) #Content of the response, in bytes
+
+def parse_response(response):
+    hace_su_magia(response)
+
+if __name__ == '__main__':
+    root_url = sys.argv[1]
+    urls = [link.get('href') for link in get_urls_from_root(root_url)]
+
+    for url in urls:
+        t = threading.Thread(target=fetch, args=(i,))
+        t.start()
+```
+
+Este es un ejemplo simple que hace lo mencionado anteriormente. Analicemos con más detalle lo que esta realmente haciendo la función **fetch**, escribamos la de vuelta sin usar la libreria requests.
+
+```python
+def fetch(url):
+    sock = socket.socket()
+    sock.connect(('bla.com', 80))
+    request = 'GET {} HTTP/1.0\r\nHost: bla.com\r\n\r\n'.format(url)
+    sock.send(request.encode('ascii'))
+    response = b''
+    chunk = sock.recv(4096)
+    while chunk:
+        response += chunk
+        chunk = sock.recv(4096)
+
+    parse_response(response)
+```
+
+>Nota: De esa forma la manipulación de sockets, el connect y el recv estan de forma explicita y nos obliga a hablar e estas cosas que vimos en algún pasado lejano programando en C y leyendo la guia Beej :P
+
+### Entendiendo el problema
+
+Si se crea un hilo por cada request (solicitud), a medida que aumente el número de requests simultáneas, aumenta la posibilidad de quedarse sin memoria antes de que se agoten los sockets. Podemos evitar la necesidad de subprocesos (hilos), mediante el uso de E/S asincrónica.
+
+Por defecto, las operaciones con sockets son bloqueantes, cuando el hilo llama a un método como connect o recv, se detiene hasta que la operación se completa. En consecuencia, para descargar muchas páginas a la vez, necesitamos muchos hilos. Una aplicación sofisticada amortiza el costo de la creación de hilos al mantener los inactivos en un grupo o pool y luego revisarlos para reutilizarlos para tareas posteriores; se suele hacer lo mismo con los sockets en un grupo de conexiones.
+
+Sin embargo, los hilos son costosos y los sistemas operativos imponen una variedad de límites estrictos en la cantidad que se puede tener. Un hilo de Python ocupa alrededor de 50k de memoria y el inicio de decenas de miles de hilos puede provocar fallas. Si escalamos hasta decenas de miles de operaciones simultáneas en sockets concurrentes, nos quedamos sin hilos antes de quedarnos sin sockets. La sobrecarga por hilos o los límites del sistema en subprocesos son el cuello de botella.
+
+Dan Kegel en su artículo [The C10K problem](http://www.kegel.com/c10k.html), describe las limitaciones de utilizar multiples hilos para resolver problemas de concurrencia de E/S.
+
+Kegel utilizo el término "C10K" en 1999. Diez mil conexiones no suenan ahora como lo sonaban antes, pero el problema ha cambiado sólo en tamaño, no en especie. En aquel entonces, usar un hilo por conexión para C10K no era práctico. Ahora el límite es en órdenes de magnitud más elevado. De hecho, nuestro crawler de juguete funcionaría bien con hilos. Sin embargo, para aplicaciones a gran escala, con cientos de miles de conexiones, el límite permanece; hay un límite más allá del cual la mayoría de los sistemas aún pueden crear sockets, pero se han quedado sin hilos. ¿Cómo podemos superar esto?
+
+## Async
+
+Los frameworks de E/S asincrónicos realizan operaciones simultáneas en un solo hilo utilizando sockets no bloqueantes. En nuestro crawler asíncrono, configuramos el socket no bloqueante antes de comenzar a conectarnos al servidor:
+
+```python
+sock = socket.socket()
+sock.setblocking(False)
+try:
+    sock.connect(('bla.com', 80))
+except BlockingIOError:
+    pass
+```
+
+Un socket no bloqueante genera una excepción al realizar el _connect_, incluso cuando funciona normalmente. Esta excepción replica el comportamiento irritante de la función C subyacente, que establece _errno_ en _EINPROGRESS_ para indicarle que ha comenzado.
+
+Ahora nuestro crawler necesita una forma de saber cuándo se establece la conexión, para poder enviar la solicitud HTTP. Simplemente podríamos seguir intentándolo en un loop. Este método no puede esperar eventos de manera eficiente en múltiples sockets. En la antigüedad, la solución de BSD Unix a este problema era select, una función de C que espera a que ocurra un evento en un socket sin bloqueo o en un pequeño vector de ellos. Hoy en día, la demanda de aplicaciones con un gran número de conexiones ha llevado a reemplazos como poll, luego kqueue en BSD y epoll en Linux. Estas API son similares a las de select, pero funcionan bien con un gran número de conexiones.
+
+```python
+from selectors import DefaultSelector, EVENT_WRITE
+
+selector = DefaultSelector()
+
+sock = socket.socket()
+sock.setblocking(False)
+try:
+    sock.connect(('bla.com', 80))
+except BlockingIOError:
+    pass
+
+def connected():
+    selector.unregister(sock.fileno())
+    print('connected!')
+
+selector.register(sock.fileno(), EVENT_WRITE, connected)
+```
+
+Procesamos las notificaciones de E/S a medida que el selector las recibe, en un loop:
+
+```python
+def loop():
+    while True:
+        events = selector.select()
+        for event_key, event_mask in events:
+            callback = event_key.data
+            callback()
+```
+
+Aquí hemos logrado tener "concurrencia", pero no "paralelismo". Es decir, construimos un pequeño sistema que superpone E/S. Es capaz de iniciar nuevas operaciones mientras otras están "en vuelo". No utiliza varios núcleos para ejecutar cálculos en paralelo. Este sistema está diseñado para problemas I/O-bound, no con CPU-bound.
+
+
+La iteración final en nuestro ejemplo seria refactorizar esto para que use corrutinas, pero antes necesitamos ver rápidamente lo que son para entender en que nos van a ayudar.
+
 >Nota al margen: las corrutinas no son nada nuevo. C++, Smalltalk, Erlang y muchos más (¡hasta PHP!) las tienen desde hace mucho. Pero recientemente han conseguido cierta notoriedad en la industria por su uso en lenguajes como Go, Kotlin y Python.
 
 Para entender como funcionan, primero veamos **iteradores** y **generadores**...
@@ -270,188 +389,7 @@ _Nota: también es posible setear un timeout para que cuando se cumpla, se corte
 
 Si bien ambos pueden ceder múltiples veces, suspender su ejecución y permitir el reingreso en múltiples puntos de entrada, difieren en que las corrutinas tienen la capacidad para controlar dónde continúa la ejecución inmediatamente después de ceder, mientras que los generadores no pueden, estos transfieren el control de nuevo al generador que lo llamo. Es decir, dado que los generadores se utilizan principalmente para simplificar la escritura de iteradores, la declaración de rendimiento en un generador no especifica una rutina para saltar, sino que devuelve un valor a una rutina principal. [Explicación de yield y comparación con corrutinas](https://docs.python.org/3/reference/expressions.html#yieldexpr)
 
-## Caso practico
-
-En el desarrollo de software muchas veces solemos enfatizar en lograr que los algoritmos sean más eficientes, es decir que completen los cálculos lo más rápido posible. Pero muchos sistemas dedican su tiempo a "no hacer cálculos", sino que mantienen abiertas muchas conexiones que son lentas. Estos programas presentan un desafío muy diferente: atender una gran cantidad de eventos de red de manera eficiente. Un enfoque actual de este problema es la E/S asíncrona o "asincrónica".
-
-Tomemos el ejemplo de un crawler (rastreador web) sencillo. El crawler es una aplicación asíncrona que espera muchas respuestas, pero realiza pocos cálculos. Cuantas más páginas pueda extraer a la vez, va a poder terminar antes. Si se crea un hilo por cada request (solicitud), a medida que aumente el número de requests simultáneas, aumenta la posibilidad de quedarse sin memoria antes de que se agoten los sockets. Podemos evitar la necesidad de subprocesos (hilos), mediante el uso de E/S asincrónica.
-
-Podemos pensar en 3 formas de resolver esto.
-
-**1-** Un crawler con un event loop asincrónico con callbacks: es muy eficiente, pero extenderlo a problemas más complejos conduciría a un código espagueti inmanejable.
-
-<img src="https://miro.medium.com/max/721/0*iiecmuTLPBqbxd5V.jpeg" class='center'>
-
-**2-** Usando generadores, que con ellos podemos implementar corrutinas, por lo tanto, mostramos que las corrutinas son tanto eficientes como extensibles y proveen un código más legible.
-
-**3-** Usando las corrutinas que provee la librería estándar "asyncio" de Python, y las coordinamos usando una cola asíncrona.
-
-### Entendiendo el problema
-
-Un crawler busca y descarga todas las páginas de un sitio web, quizás para archivarlas o indexarlas. Comenzando con una URL raíz, busca cada página, la analiza (parsea) en busca de links a páginas no vistas y las agrega a una cola.
-
-Podemos acelerar este proceso descargando muchas páginas al mismo tiempo. A medida que el crawler encuentra nuevos enlaces, inicia operaciones de búsqueda simultáneas para las nuevas páginas en sockets separados. Analiza las respuestas a medida que llegan y agrega nuevos links a la cola. Puede llegar a algún punto en el que el rendimiento decaiga un poco si hay demaciadas solicitudes concurrentes, por lo que limitamos el número de solicitudes simultáneas y dejamos los links restantes en la cola hasta que se completen las solicitudes en curso.
-
-## El enfoque tradicional
-
-¿Cómo hacemos que el crawler sea concurrente? Tradicionalmente, crearíamos un grupo hilos. Cada uno se encargaría de descargar una página a la vez a través de un socket. Por ejemplo, para descargar una página de bla.com:
-
-```python
-def fetch(url):
-    sock = socket.socket()
-    sock.connect(('bla.com', 80))
-    request = 'GET {} HTTP/1.0\r\nHost: bla.com\r\n\r\n'.format(url)
-    sock.send(request.encode('ascii'))
-    response = b''
-    chunk = sock.recv(4096)
-    while chunk:
-        response += chunk
-        chunk = sock.recv(4096)
-
-    # Pagina descargada satisfactoriamente
-    links = parse_links(response)
-    q.add(links)
-```
-
->Nota: no se esta usando la libreria request de python para que la manipulación de sockets, el connect y el recv sean explicitas y hablar de estas cosas que vimos en algún pasado lejano programando en C y leyendo la guia Beej :P
-
-Por defecto, las operaciones con sockets son bloqueantes, cuando el hilo llama a un método como connect o recv, se detiene hasta que la operación se completa. En consecuencia, para descargar muchas páginas a la vez, necesitamos muchos hilos. Una aplicación sofisticada amortiza el costo de la creación de hilos al mantener los inactivos en un grupo o pool y luego revisarlos para reutilizarlos para tareas posteriores; se suele hacer lo mismo con los sockets en un grupo de conexiones.
-
-Sin embargo, los hilos son costosos y los sistemas operativos imponen una variedad de límites estrictos en la cantidad que se puede tener. Un hilo de Python ocupa alrededor de 50k de memoria y el inicio de decenas de miles de hilos puede provocar fallas. Si escalamos hasta decenas de miles de operaciones simultáneas en sockets concurrentes, nos quedamos sin hilos antes de quedarnos sin sockets. La sobrecarga por hilos o los límites del sistema en subprocesos son el cuello de botella.
-
-Dan Kegel en su artículo [The C10K problem](http://www.kegel.com/c10k.html), describe las limitaciones de utilizar multiples hilos para resolver problemas deconcurrencia de E/S.
-
-Kegel utilizo el término "C10K" en 1999. Diez mil conexiones no suenan ahora como lo sonaban antes, pero el problema ha cambiado sólo en tamaño, no en especie. En aquel entonces, usar un hilo por conexión para C10K no era práctico. Ahora el límite es en órdenes de magnitud más elevado. De hecho, nuestro crawler de juguete funcionaría bien con hilos. Sin embargo, para aplicaciones a gran escala, con cientos de miles de conexiones, el límite permanece; hay un límite más allá del cual la mayoría de los sistemas aún pueden crear sockets, pero se han quedado sin hilos. ¿Cómo podemos superar esto?
-
-## Async
-
-Los frameworks de E/S asincrónicos realizan operaciones simultáneas en un solo hilo utilizando sockets no bloqueantes. En nuestro crawler asíncrono, configuramos el socket no bloqueante antes de comenzar a conectarnos al servidor:
-
-```python
-sock = socket.socket()
-sock.setblocking(False)
-try:
-    sock.connect(('bla.com', 80))
-except BlockingIOError:
-    pass
-```
-
-Un socket no bloqueante genera una excepción al realizar el _connect_, incluso cuando funciona normalmente. Esta excepción replica el comportamiento irritante de la función C subyacente, que establece _errno_ en _EINPROGRESS_ para indicarle que ha comenzado.
-
-Ahora nuestro crawler necesita una forma de saber cuándo se establece la conexión, para poder enviar la solicitud HTTP. Simplemente podríamos seguir intentándolo en un loop. Este método no puede esperar eventos de manera eficiente en múltiples sockets. En la antigüedad, la solución de BSD Unix a este problema era select, una función de C que espera a que ocurra un evento en un socket sin bloqueo o en un pequeño vector de ellos. Hoy en día, la demanda de aplicaciones con un gran número de conexiones ha llevado a reemplazos como poll, luego kqueue en BSD y epoll en Linux. Estas API son similares a las de select, pero funcionan bien con un gran número de conexiones.
-
-```python
-from selectors import DefaultSelector, EVENT_WRITE
-
-selector = DefaultSelector()
-
-sock = socket.socket()
-sock.setblocking(False)
-try:
-    sock.connect(('bla.com', 80))
-except BlockingIOError:
-    pass
-
-def connected():
-    selector.unregister(sock.fileno())
-    print('connected!')
-
-selector.register(sock.fileno(), EVENT_WRITE, connected)
-```
-
-Procesamos las notificaciones de E/S a medida que el selector las recibe, en un loop:
-
-```python
-def loop():
-    while True:
-        events = selector.select()
-        for event_key, event_mask in events:
-            callback = event_key.data
-            callback()
-```
-
-Aquí hemos logrado tener "concurrencia", pero no "paralelismo". Es decir, construimos un pequeño sistema que superpone E/S. Es capaz de iniciar nuevas operaciones mientras otras están "en vuelo". No utiliza varios núcleos para ejecutar cálculos en paralelo. Este sistema está diseñado para problemas I/O-bound, no con CPU-bound.
-
-## Con callbacks
-
-Obtener una página requerirá una serie de callbacks. Se activa cuando se conecta un socket y se envía una solicitud GET al servidor. Pero luego debe esperar una respuesta, por lo que registra otro callback. Si, cuando se activa esa callback, todavía no puede leer la respuesta completa, se registra de nuevo, y así sucesivamente.
-
-Recopilamos estas callbacks en un objeto Fetcher. Necesita una URL, un socket y un lugar para acumular los bytes de respuesta:
-
-```python
-class Fetcher:
-    def __init__(self, url):
-        self.response = b''  # Empty array of bytes.
-        self.url = url
-        self.sock = None
-
-    def fetch(self):
-        self.sock = socket.socket()
-        self.sock.setblocking(False)
-        try:
-            self.sock.connect(('bla.com', 80))
-        except BlockingIOError:
-            pass
-
-        #Se registra el proximo callback.
-        selector.register(self.sock.fileno(),EVENT_WRITE,self.connected)
-```
-
-El método de búsqueda comienza conectando un socket. Pero el método regresa antes de que se establezca la conexión. Debe devolver el control al event loop para esperar la conexión. Para entender por qué, imagine que toda nuestra aplicación está estructurada de esta manera:
-
-```python
-# fetching http://bla.com/333/
-fetcher = Fetcher('/333/')
-fetcher.fetch()
-
-while True:
-    events = selector.select()
-    for event_key, event_mask in events:
-        callback = event_key.data
-        callback(event_key, event_mask)
-```
-
-Todas las notificaciones de eventos se procesan en el event loop cuando llama a select. Por lo tanto, la fetch debe controlar el event loop para que el programa sepa cuándo se ha conectado el socket. Solo entonces el bucle ejecuta el callback connected, que se registró al final de la fetch anterior.
-
-Aquí está la implementación de connected:
-
-```python
-# Metodo de la clase Fetcher
-    def connected(self, key, mask):
-        print('connected!')
-        selector.unregister(key.fd)
-        request = 'GET {} HTTP/1.0\r\nHost: xkcd.com\r\n\r\n'.format(self.url)
-        self.sock.send(request.encode('ascii'))
-
-        selector.register(key.fd,EVENT_READ,  self.read_response)
-```
-El siguiente callback read_response, procesa la respuesta del server:
-
-```python
-# Metodo de la clase Fetcher
-    def read_response(self, key, mask):
-        global stopped
-
-        chunk = self.sock.recv(4096)  # 4k chunk size.
-        if chunk:
-            self.response += chunk
-        else:
-            selector.unregister(key.fd)  # Done reading.
-            links = self.parse_links()
-
-            for link in links.difference(seen_urls):
-                urls_todo.add(link)
-                Fetcher(link).fetch()  # <- New Fetcher.
-
-            seen_urls.update(links)
-            urls_todo.remove(self.url)
-            if not urls_todo:
-                stopped = True
-```
-
-Tenga en cuenta una buena característica de la programación asíncrona callbacks, no necesitamos mutex alrededor de los cambios en los datos compartidos. No hay multitarea apropiativa, por lo que no podemos ser interrumpidos en puntos arbitrarios de nuestro código. Agregamos una variable detenida global y la usamos para controlar el ciclo.
-
-Entonces, incluso aparte del largo debate sobre las eficiencias relativas de multiprocesos/miltihilos y asíncronismo, existe otro debate sobre cuál es el más propenso a errores: los subprocesos son susceptibles a las condiciones de carrera si comete un error al sincronizarlos, pero las callbacks son más dificiles de debuguear debido al stack que suelen mostrarnos.
+**Bien, entonces ahora somos capaces de retomar el ejemplo y refactorizar lo necesario para implementarlo con corrutinas :D**
 
 ## Con corrutinas basadas en generadores
 
@@ -495,14 +433,33 @@ Task inicia el generador "fetch" enviando None. Luego, fetch se ejecuta hasta qu
 
 ## Con corrutinas
 
-Modificando el codigo de las corrutinas basadas en generadores usando async/await, y utilizando algo como:
+Modificando el codigo de las corrutinas basadas en generadores usando async/await, quedaría algo como:
 
 ```python
-loop = asyncio.get_event_loop()
+import sys
+import asyncio
+from bs4 import BeautifulSoup
 
-crawler = crawling.Crawler('http://bla.com',max_redirect=10)
+def get_urls_from_root(root_url):
+    soup = BeautifulSoup(reqs.text, 'html.parser')
+    return soup.find_all('a'):
 
-loop.run_until_complete(crawler.crawl())
+async def fetch(url):
+    await r = get_non_block(url)
+    await parse_response(r.content) #Content of the response, in bytes
+
+async def parse_response(response):
+    hace_su_magia(response)
+
+async def main():
+    root_url = sys.argv[1]
+    urls = [link.get('href') for link in get_urls_from_root(root_url)]
+
+    for url in urls:
+        task = asyncio.create_task(fetch(url))
+        await task
+
+asyncio.run(main())
 ```
 
 Quedaria implementada la solución con corrutinas "nativas" de Python.
