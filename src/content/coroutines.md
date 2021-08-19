@@ -123,7 +123,7 @@ def loop():
 Aquí hemos logrado tener "concurrencia", pero no "paralelismo". Es decir, construimos un pequeño sistema que superpone E/S. Es capaz de iniciar nuevas operaciones mientras otras están "en vuelo". No utiliza varios núcleos para ejecutar cálculos en paralelo. Este sistema está diseñado para problemas I/O-bound, no con CPU-bound.
 
 
-La iteración final en nuestro ejemplo seria refactorizar esto para que use corrutinas, pero antes necesitamos ver rápidamente lo que son para entender en que nos van a ayudar.
+**La iteración final en nuestro ejemplo seria refactorizar esto para que use corrutinas, pero antes necesitamos ver rápidamente lo que son para entender en que nos van a ayudar.**
 
 >Nota al margen: las corrutinas no son nada nuevo. C++, Smalltalk, Erlang y muchos más (¡hasta PHP!) las tienen desde hace mucho. Pero recientemente han conseguido cierta notoriedad en la industria por su uso en lenguajes como Go, Kotlin y Python.
 
