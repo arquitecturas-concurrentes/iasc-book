@@ -42,7 +42,7 @@ if __name__ == '__main__':
         t.start()
 ```
 
-Este es un ejemplo simple que hace lo mencionado anteriormente. Analicemos con más detalle lo que esta realmente haciendo la función **fetch**, escribamos la de vuelta sin usar la libreria requests.
+Este es un ejemplo simple que hace lo mencionado anteriormente. Analicemos con más detalle lo que esta realmente haciendo la función **fetch**, escribámosla de vuelta sin usar la libreria requests.
 
 ```python
 def fetch(url):
@@ -59,7 +59,7 @@ def fetch(url):
     parse_response(response)
 ```
 
->Nota: De esa forma la manipulación de sockets, el connect y el recv estan de forma explicita y nos obliga a hablar e estas cosas que vimos en algún pasado lejano programando en C y leyendo la guia Beej :P
+>Nota: De esa forma la manipulación de sockets, el connect y el recv estan de forma explicita y nos obliga a hablar de estas cosas que vimos en algún pasado lejano programando en C y leyendo la guia Beej :P
 
 ### Entendiendo el problema
 
