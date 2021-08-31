@@ -43,6 +43,10 @@ export const sidearContent = [
                                       {
               href: '/fibers',
               title: 'Fibers'
+          },
+                                                {
+              href: '/guilds',
+              title: 'Guilds'
           }
       ]
   },

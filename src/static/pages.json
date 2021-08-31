@@ -36,6 +36,12 @@
     "description": "Fibers en Ruby"
   },
   {
+    "path": "guilds",
+    "page": "guild",
+    "title": "Guilds",
+    "description": "Eso es un Guild o un Ractor??"
+  },
+  {
     "path": "actores_intro",
     "page": "actores_intro",
     "title": "Introduccion a Actores",
