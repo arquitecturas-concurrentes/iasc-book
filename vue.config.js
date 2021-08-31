@@ -24,7 +24,7 @@ module.exports = {
             // renderPermalink: (slug, opts, state, permalink) => {},
             permalinkClass: 'header-anchor',
             permalinkSymbol: '¶',
-            permalinkBefore: true,
+            permalinkBefore: false,
             slugify: uslugify
           }],
           [require('markdown-it-footnote'), {}],
