@@ -69,7 +69,7 @@ Por defecto, las operaciones con sockets son bloqueantes, cuando el hilo llama a
 
 Sin embargo, los hilos son costosos y los sistemas operativos imponen una variedad de límites estrictos en la cantidad que se puede tener. Un hilo de Python ocupa alrededor de 50k de memoria y el inicio de decenas de miles de hilos puede provocar fallas. Si escalamos hasta decenas de miles de operaciones simultáneas en sockets concurrentes, nos quedamos sin hilos antes de quedarnos sin sockets. La sobrecarga por hilos o los límites del sistema en subprocesos son el cuello de botella.
 
-Dan Kegel en su artículo [The C10K problem](http://www.kegel.com/c10k.html), describe las limitaciones de utilizar multiples hilos para resolver problemas de concurrencia de E/S.
+Dan Kegel en su artículo [The C10K problem](http://www.kegel.com/c10k.html)[^1], describe las limitaciones de utilizar multiples hilos para resolver problemas de concurrencia de E/S.
 
 Kegel utilizo el término "C10K" en 1999. Diez mil conexiones no suenan ahora como lo sonaban antes, pero el problema ha cambiado sólo en tamaño, no en especie. En aquel entonces, usar un hilo por conexión para C10K no era práctico. Ahora el límite es en órdenes de magnitud más elevado. De hecho, nuestro crawler de juguete funcionaría bien con hilos. Sin embargo, para aplicaciones a gran escala, con cientos de miles de conexiones, el límite permanece; hay un límite más allá del cual la mayoría de los sistemas aún pueden crear sockets, pero se han quedado sin hilos. ¿Cómo podemos superar esto?
 
@@ -297,11 +297,11 @@ Las corrutinas, en contraposición, permiten tener **multitarea cooperativa** (_
 
 Otra diferencia, presente al menos en la visión "tradicional" de corrutinas, es que **las corrutinas proveen concurrencia pero no paralelismo**. De esta forma, evitan problemas de concurrencia, ya que corren en un **único contexto de ejecución**, y además **controlan cuándo se suspenden** (en vez de que el planificador las interrumpa en puntos arbitrarios).
 
-Las corrutinas ocupan menos memoria que los hilos (3k por corrutina vs 50k por hilo).
+> Las corrutinas ocupan menos memoria que los hilos (3k por corrutina vs 50k por hilo).
 
 Una ventaja más que las corrutinas tienen sobre los hilos es que su funcionamiento no involucra llamadas al sistema bloqueantes para su creación ni para el cambio de contexto, ya que todo se maneja al nivel de la aplicación.
 
-[Interesante comparación de cuando usar corrutinas y cuando usar threads en Kotlin](https://www.baeldung.com/kotlin-threads-coroutines)
+Interesante comparación de cuando usar corrutinas y cuando usar threads en Kotlin.[^3]
 
 ## ¿Cómo se declaran y ejecutan en Python?
 
@@ -336,7 +336,7 @@ Nada fuera de lo esperado.
 
 Nos retorna un objeto "corrutina" que por defecto no se va a planificar. Entonces, ¿cómo hago que se ejecute? Bueno, hay tres formas distintas para hacer eso.
 
-**1-** Usando la función `run` del módulo `asyncio`
+**1-** Usando la función `run` del módulo `asyncio`[^2]
 >coro = print_re_loco('algo')
 
 >asyncio.run(coro)
@@ -477,3 +477,7 @@ Quedaria implementada la solución con corrutinas "nativas" de Python.
 [Corrutinas en Kotlin](https://kotlinlang.org/docs/reference/coroutines/basics.html)
 
 [Comparación de técnicas programación asincrónica (threading, callbacks, Promises, corrutinas)](https://kotlinlang.org/docs/tutorials/coroutines/async-programming.html). Claramente enfocado para resaltar las ventajas de las corrutinas en Kotlin, pero de todos modos interesante para repasar las técnicas que vimos hasta ahora.
+
+[^1]: [Kegel, Dan. 1999. The C10K problem](http://www.kegel.com/c10k.html)
+[^2]: [Python Docs. Coroutines and Tasks](https://docs.python.org/3.8/library/asyncio-task.html)
+[^3]: [Baeldung. 2021. Threads vs Coroutines in Kotlin](https://www.baeldung.com/kotlin-threads-coroutines)
