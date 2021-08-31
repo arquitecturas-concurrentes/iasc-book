@@ -19,7 +19,7 @@ let renderize_md = (input) => {
             // renderPermalink: (slug, opts, state, permalink) => {},
             permalinkClass: 'header-anchor',
             permalinkSymbol: '¶',
-            permalinkBefore: true,
+            permalinkBefore: false,
             slugify: uslugify
   })
   return md.render(input)
