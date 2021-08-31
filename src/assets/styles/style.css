@@ -15,6 +15,7 @@ p {
     color: #999;
 }
 
+h1:hover .header-anchor,
 h2:hover .header-anchor,
 h3:hover .header-anchor,
 h4:hover .header-anchor,
