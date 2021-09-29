@@ -45,6 +45,7 @@
     "path": "actores_intro",
     "page": "actores_intro",
     "title": "Introduccion a Actores",
+    "need_detail": true,
     "description": "Actores y Elixir"
   },
   {
