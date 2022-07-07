@@ -27,10 +27,7 @@ El bucle que anteriormente nombramos es el EVENT LOOP y es quien nos permite man
 
 ### ¿Qué es node?
 
-> The event loop is what allows Node.js to perform non-blocking I/O operations — despite the fact that JavaScript is single-threaded — by offloading operations to the system kernel whenever possible
-
-[What is the event loop](https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/#what-is-the-event-loop)
-
+<cite cite="Node.js Documentation">As an asynchronous event-driven JavaScript runtime, Node.js is designed to build scalable network applications</cite>
 
 Ejemplo en node de un contador:
 
@@ -121,6 +118,8 @@ El bucle se ejecuta en un tiempo específico por lo cual se le asigna una cantid
 
 El sistema operativo ve a node como un solo thread. Tanto lo CPU intensive como elementos sincronicos puedem hacer que todas las fases se demoren y bloqueen. Este thread tiene una política de no desalojo de la ejecución si la misma es de código js, por más que se asignen pequeñas porciones de tiempo a cada etapa del event loop si tenemos elemento que bloquean la CPU, no nos permite que el schedule pueda correr y dar paso a la nueva etapa.
 
+<cite cite="What is the event loop">The event loop is what allows Node.js to perform non-blocking I/O operations — despite the fact that JavaScript is single-threaded — by offloading operations to the system kernel whenever possible</cite>
+
 ### Componentes de nuestro sistema Node.js
 
 <img src="~@/images/eventloop/node-system.png" class='center iasc-image'>
@@ -173,6 +172,8 @@ Lo que en nuestro gráfico simplificado nombramos como _función unicornio_ (est
 - [Introduction to libuv: What's a Unicorn Velociraptor? - Colin Ihrig, Joyent](https://www.youtube.com/watch?v=_c51fcXRLGw)
 - [Don't Block the Event Loop (or the Worker Pool)](https://nodejs.org/en/docs/guides/dont-block-the-event-loop/)
 - [Introduction to Node.js](https://nodejs.dev/learn)
+- [What is the event loop](https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/#what-is-the-event-loop)
+
  
 
 
