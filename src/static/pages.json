@@ -18,6 +18,12 @@
     "description": "Introduccion a CPS"
   },
   {
+    "path": "event_loop",
+    "page": "event_loop",
+    "title": "Event Loop",
+    "description": "Breve introducción al event loop"
+  },
+  {
     "path": "promises",
     "page": "promises",
     "title": "Promises",
