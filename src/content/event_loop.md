@@ -170,8 +170,8 @@ Lo que en nuestro gráfico simplificado nombramos como _función unicornio_ (est
 - [Morning Keynote- Everything You Need to Know About Node.js Event Loop - Bert Belder, IBM](https://www.youtube.com/watch?v=PNa9OMajw9w)
 - [Ryan Dahl: Original Node.js presentation - JsConf](https://www.youtube.com/watch?v=ztspvPYybIY&t=1s)
 - [Introduction to libuv: What's a Unicorn Velociraptor? - Colin Ihrig, Joyent](https://www.youtube.com/watch?v=_c51fcXRLGw)
-- [Don't Block the Event Loop (or the Worker Pool)](https://NodeJs.org/en/docs/guides/dont-block-the-event-loop/)
-- [Introduction to Node.js](https://NodeJs.dev/learn)
+- [Don't Block the Event Loop (or the Worker Pool)](https://nodejs.org/en/docs/guides/dont-block-the-event-loop/)
+- [Introduction to Node.js](https://nodejs.dev/learn)
 - [What is the event loop](https://NodeJs.org/en/docs/guides/event-loop-timers-and-nexttick/#what-is-the-event-loop)
 
  
