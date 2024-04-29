@@ -5,13 +5,13 @@ El **event loop** es la forma que usa Node.js para **organizar el procesamiento 
 
 Para poder profundizar en el event loop debemos entender de forma high level qué es la V8 y qué relación tiene con Node.
 
-V8, de forma muy básica, podemos definirlo como uno de los motores de Javascript que interpreta y ejecuta código Js. Todos los browser contienen un motor Js, V8 es el creado por Google.
+V8, de forma muy básica, podemos definirlo como uno de los motores de JavaScript que interpreta y ejecuta código Js. Todos los browser contienen un motor Js: V8 es el creado por Google (Firefox usa el propio llamado SpiderMonkey).
 
-V8 de alguna forma permitía una interpretación mucho más rápida de Javascript de los navegadores, esto gracias a la combinación del uso del intérprete y el compilador.
+V8 de alguna forma permitía una interpretación mucho más rápida de JavaScript de los navegadores, esto gracias a la combinación del uso del intérprete y el compilador.
 
 Ryah Dahll, como explica en la presentación de [JsConf](https://www.youtube.com/watch?v=ztspvPYybIY&t=1s), consigue crear servidores web para las necesidades actuales haciendo que la V8 funcione por fuera del navegador, es decir, en el sistema operativo.
 
-Motor V8 de Javascript:
+Motor V8 de JavaScript:
 - Posee dos componentes principales:
   - Heap: Aloca variables, funciones y estructuras.
   - Call Stack: Permite el anidamiento de llamadas.
@@ -27,11 +27,11 @@ El bucle que anteriormente nombramos es el EVENT LOOP y es quien nos permite man
 
 ### ¿Qué es Node?
 
-<cite cite="Node.js Documentation">As an asynchronous event-driven Javascript runtime, Node.js is designed to build scalable network applications</cite>
+<cite cite="Node.js Documentation">As an asynchronous event-driven JavaScript runtime, Node.js is designed to build scalable network applications</cite>
 
 Ejemplo en Node de un contador:
 
-```Javascript
+```JavaScript
 var a = 0;
 
 for (let i = 0; i < 10000; i++) {
@@ -68,7 +68,7 @@ Podemos pensar que el event loop es un bucle simple en donde los eventos se van 
 
 ¿Qué pasa si a nuestro anterior ejemplo agrego un `console.log` dentro de otro `setImmediate()`?
 
-```Javascript
+```JavaScript
 var a = 0;
 
 for (let i = 0; i < 10000; i++) {
@@ -95,7 +95,7 @@ A la cajita de Js, podemos interpretarlas como el código de Js principal de nue
 
 Cambiando un poco el ejemplo
 
-```Javascript
+```JavaScript
 var a = 0;
 
 for (let i = 0; i < 10000; i++) {
@@ -118,7 +118,7 @@ El bucle se ejecuta en un tiempo específico por lo cual se le asigna una cantid
 
 El sistema operativo ve a Node como un solo thread. Tanto lo CPU intensive como elementos sincronicos puedem hacer que todas las fases se demoren y bloqueen. Este thread tiene una política de no desalojo de la ejecución si la misma es de código Js, por más que se asignen pequeñas porciones de tiempo a cada etapa del event loop si tenemos elemento que bloquean la CPU, no nos permite que el schedule pueda correr y dar paso a la nueva etapa.
 
-<cite cite="What is the event loop">The event loop is what allows Node.js to perform non-blocking I/O operations — despite the fact that Javascript is single-threaded — by offloading operations to the system kernel whenever possible</cite>
+<cite cite="What is the event loop">The event loop is what allows Node.js to perform non-blocking I/O operations — despite the fact that JavaScript is single-threaded — by offloading operations to the system kernel whenever possible</cite>
 
 ### Componentes de nuestro sistema Node.js
 
