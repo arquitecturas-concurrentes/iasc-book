@@ -122,7 +122,7 @@ El sistema operativo ve a Node como un solo thread. Tanto lo CPU intensive como 
 
 ### Componentes de nuestro sistema Node.js
 
-<img src="~@/images/eventloop/Node-system.png" class='center iasc-image'>
+<img src="~@/images/eventloop/node-system.png" class='center iasc-image'>
 
 Podemos observar que tiene una queue de eventos general que el event loop va a ir tratando.
 
@@ -172,7 +172,7 @@ Lo que en nuestro gráfico simplificado nombramos como _función unicornio_ (est
 - [Introduction to libuv: What's a Unicorn Velociraptor? - Colin Ihrig, Joyent](https://www.youtube.com/watch?v=_c51fcXRLGw)
 - [Don't Block the Event Loop (or the Worker Pool)](https://nodejs.org/en/docs/guides/dont-block-the-event-loop/)
 - [Introduction to Node.js](https://nodejs.dev/learn)
-- [What is the event loop](https://NodeJs.org/en/docs/guides/event-loop-timers-and-nexttick/#what-is-the-event-loop)
+- [What is the event loop](https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/#what-is-the-event-loop)
 
  
 
