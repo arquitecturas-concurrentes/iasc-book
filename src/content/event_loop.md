@@ -5,7 +5,7 @@ El **event loop** es la forma que usa Node.js para **organizar el procesamiento 
 
 Para poder profundizar en el event loop debemos entender de forma high level qué es la V8 y qué relación tiene con Node.
 
-V8, de forma muy básica, podemos definirlo como uno de los motores de JavaScript que interpreta y ejecuta código Js. Todos los browser contienen un motor Js: V8 es el creado por Google (Firefox usa el propio llamado SpiderMonkey).
+V8, de forma muy básica, podemos definirlo como uno de los motores de JavaScript que interpreta y ejecuta código Js. Todos los browsers contienen un motor Js: V8 es el creado por Google (Firefox usa el propio llamado SpiderMonkey).
 
 V8 de alguna forma permitía una interpretación mucho más rápida de JavaScript de los navegadores, esto gracias a la combinación del uso del intérprete y el compilador.
 
