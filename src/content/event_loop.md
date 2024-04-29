@@ -53,7 +53,7 @@ Si lo ejecutamos, vamos a notar que imprime 0.
 
 Los eventos, a diferencia de las `corutinas`, se planifican automáticamente, tenemos como ventaja el poder delegar esos detalles, ya que el modelo está más implícito.
 
-**Cada evento es un contexto de ejecución distinto.** Nuestra pregunta puede ser ¿Cuándo se produce un cambio de contexto?
+**Cada evento es un contexto de ejecución distinto.** Nuestra pregunta puede ser ¿cuándo se produce un cambio de contexto?
 
 En el ejemplo del contador, podemos decir que encolamos 10000 veces ese evento y nos da la sensación que estas son llamadas _sincrónicas_, pero realmente esto no pasa. Por atrás tenemos un elemento que nos permite de alguna forma multiplexar, hacer que el IO que es sincrónico no lo sea.
 
