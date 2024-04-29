@@ -116,7 +116,7 @@ El bucle se ejecuta en un tiempo específico por lo cual se le asigna una cantid
 
 **¿Qué pasa si en alguna de esas cajitas de Js tenemos una ejecución CPU Intensive?**
 
-El sistema operativo ve a Node como un solo thread. Tanto lo CPU intensive como elementos sincronicos puedem hacer que todas las fases se demoren y bloqueen. Este thread tiene una política de no desalojo de la ejecución si la misma es de código Js, por más que se asignen pequeñas porciones de tiempo a cada etapa del event loop si tenemos elemento que bloquean la CPU, no nos permite que el schedule pueda correr y dar paso a la nueva etapa.
+El sistema operativo ve a Node como un solo thread. Tanto lo CPU intensive como elementos sincronicos pueden hacer que todas las fases se demoren y bloqueen. Este thread tiene una política de no desalojo de la ejecución si la misma es de código Js, por más que se asignen pequeñas porciones de tiempo a cada etapa del event loop si tenemos elemento que bloquean la CPU, no nos permite que el schedule pueda correr y dar paso a la nueva etapa.
 
 <cite cite="What is the event loop">The event loop is what allows Node.js to perform non-blocking I/O operations — despite the fact that JavaScript is single-threaded — by offloading operations to the system kernel whenever possible</cite>
 
@@ -133,9 +133,9 @@ Esta lib va a tratar todas las operaciones bloqueantes como pueden ser escuchar 
 
 ¿Cómo serian los pasos de nuestro event loop?
 
-- Escaneo un nuestro código principal (index.js)
+- Escaneo de nuestro código principal (index.js)
   - Ejecuta todas las operaciones que se puedan ejecutar inmediatamente.
-  - Si en el index detecta eventos: continuaciones, operaciones asincrónicas u operaciones IO, los atiende después, es decir, los encola.
+  - Si en el index detecta eventos (continuaciones, operaciones asincrónicas u operaciones IO) los atiende después, es decir, los encola.
 - Terminada la lectura del index, comienza a ciclar por una secuencia bien definida. Atiende timeouts, IO, de red, immediate y eventos de cierre de recursos.
   - En esta etapa existen microqueues (Js) donde se fija si existen eventos encolados que están listos para ser procesados, y los ejecuta. (**1)
 - Si no tiene más nada que ejecutar, termina el ciclo y la ejecución, caso contrario, arranca nuevamente el ciclo.
@@ -145,8 +145,8 @@ Esta lib va a tratar todas las operaciones bloqueantes como pueden ser escuchar 
 **IMPORTANTE**: No debemos bloquear el event loop
 
 Si tengo operaciones CPU intensive debemos considerar:
-- Partitioning.
-- Offloading.
+- _Partitioning_.
+- _Offloading_.
 - Uso de funciones de worker threads.
 
 
@@ -155,10 +155,10 @@ Lo que en nuestro gráfico simplificado nombramos como _función unicornio_ (est
 ## Resumen de event loop
 
 - Forma de organizar el procesamiento del código en Node.js.
-- Se basa en procesamiento concurrente de código Js con 1 solo thread, con no-desalojo para código Js.
-- Tiene 3 pasos
-  - Escanea el index, donde ejecuta todo el código que se pueda ejecutar inmediatamente, encolando continuations, io, etc.
-  - Terminado el escaneo, ciclea en la siguiente secuencia, teniendo microqueues donde revisa si existen eventos preparados para ser ejecutados, y los ejecuta.
+- Se basa en procesamiento concurrente de código Js con un solo thread, con no-desalojo para código Js.
+- Tiene tres pasos
+  - Escanea el index, donde ejecuta todo el código que se pueda ejecutar inmediatamente, encolando continuations, IO, etc.
+  - Terminado el escaneo, itera en la siguiente secuencia, teniendo microqueues donde revisa si existen eventos preparados para ser ejecutados, y los ejecuta.
     - Atiende operaciones asincrónicas, timeouts
     - IO y redes
     - immediate
