@@ -1,73 +1,68 @@
-import Vue from "vue";
-import VueRouter from "vue-router";
-import { publicPath } from '@/../vue.config'
+import { createRouter, createWebHistory } from 'vue-router'
+import EntryAdoc from '@/components/EntryAdoc.vue'
+import AdocPage from '@/components/AdocPage.vue'
 import ContentPages from '@/static/pages.json'
 
-Vue.use(VueRouter);
-
 const pagesRoutes = () => {
-  return ContentPages.map(section => (
-    {
-      path: `/${section.path}`,
-      component: () => import(`@/content/${section.page}.md`),
-      meta: {
-        title: section.title,
-        extra: section.extra,
-        need_detail: section.need_detail,
-        description: section.description
-      }
-    }
-  ))
+  return ContentPages.map((section) => ({
+    path: `/tema/${section.path}`,
+    component: EntryAdoc,
+    props: () => ({
+      adocName: section.path,
+      title: section.title,
+      extra: section.extra || false,
+      need_detail: section.need_detail || false,
+      description: section.description,
+    }),
+    meta: {
+      title: section.title,
+      layout: 'AppLayoutEntry',
+    },
+  }))
 }
 
 const routes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('@/content/main.md'),
+    component: AdocPage,
+    props: () => ({
+      adocName: 'main',
+    }),
     meta: {
-      layout: 'AppLayoutHome'
-    }
+      layout: 'AppLayoutHome',
+    },
   },
   ...pagesRoutes(),
   {
-    path: '/stm',
+    path: '/tema/stm',
     component: () => import('@/views/STM.vue'),
-    meta: {
-      title: 'STM',
-      description: 'Memoria Transaccional'
-    },
   },
   {
-    path: '/efecto_lado_haskell',
+    path: '/tema/efecto_lado_haskell',
     component: () => import('@/views/EfectoLadoHaskell.vue'),
-    meta: {
-      title: 'Efectos de Lado en Haskell',
-      description: 'Una intro a memoria transaccional en Haskell'
-    },
   },
   {
-    path:"*",
-    component: () => import('../views/errors/NotFound.vue'),
+    path: '/:pathMatch(.*)',
+    component: () => import('@/views/errors/NotFound.vue'),
     meta: {
-      layout: 'AppLayoutError'
-    }
-  }
-];
+      layout: 'AppLayoutError',
+    },
+  },
+]
 
-const router = new VueRouter({
-  mode: 'history',
-  base: publicPath,
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
-  scrollBehavior (to, _from, savedPosition) {
+  scrollBehavior(to, _from, _savedPosition) {
     if (to.hash) {
-        return { selector: to.hash }
-    } else if (savedPosition) {
-        return savedPosition;
-    } else {
-        return { x: 0, y: 0 }
+      return {
+        el: to.hash,
+        behavior: 'smooth', // or 'auto' if you prefer instant jump
+      }
     }
-  }
-});
+    return { top: 0 }
+  },
+})
 
-export default router;
+export default router

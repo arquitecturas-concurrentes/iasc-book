@@ -1,0 +1,8 @@
+import '../assets/styles/style.css'
+import '../assets/styles/syntax.css'
+import '../assets/styles/blockquote.css'
+import 'vue-sidebar-menu/dist/vue-sidebar-menu.css'
+import 'highlight.js/styles/stackoverflow-light.css'
+import '@fortawesome/fontawesome-free/css/all.css'
+import 'highlight.js/styles/github.css'
+import '@/assets/styles/asciidoc.scss'

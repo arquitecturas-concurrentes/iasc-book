@@ -1,18 +1,11 @@
 <template>
-  <RemoteMarkdown :url="url" />
+  <RemoteEntryAdoc :url="url" :title="title" :description="description" />
 </template>
-<script>
-import RemoteMarkdown from '@/components/RemoteMarkdown'
+<script setup>
+import RemoteEntryAdoc from '@/components/RemoteEntryAdoc.vue'
 
-export default {
-    name: 'EfectoLadoHaskell',
-    components: {
-      RemoteMarkdown
-    },
-     data () {
-    return {
-      url: 'https://raw.githubusercontent.com/arquitecturas-concurrentes/iasc-stm-haskell-2019/master/00_side_effects/README.md'
-      }
-    }
-}
+const title = 'Efectos de Lado en Haskell'
+const description = 'Una intro a memoria transaccional en Haskell'
+const url =
+  'https://raw.githubusercontent.com/arquitecturas-concurrentes/iasc-stm-haskell/refs/heads/master/00_side_effects/README.adoc'
 </script>
