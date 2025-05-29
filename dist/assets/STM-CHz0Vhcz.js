@@ -1,1 +1,0 @@
-import{R as t}from"./RemoteEntryAdoc-DREWPfhj.js";import{c as e,o}from"./index-CMxlLiDm.js";const r="STM",s="Memoria Transaccional",c="https://raw.githubusercontent.com/arquitecturas-concurrentes/iasc-stm-haskell-2019/master/01_semaphores_and_philosophers/README.adoc",l={__name:"STM",setup(a){return(n,i)=>(o(),e(t,{url:c,title:r,description:s}))}};export{l as default};
