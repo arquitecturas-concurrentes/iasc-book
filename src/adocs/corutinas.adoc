@@ -75,7 +75,7 @@ Por defecto, las operaciones con sockets son bloqueantes, cuando el hilo llama a
 
 Sin embargo, los hilos son costosos y los sistemas operativos imponen una variedad de límites estrictos en la cantidad que se puede tener. Un hilo de Python ocupa alrededor de 50k de memoria y el inicio de decenas de miles de hilos puede provocar fallas. Si escalamos hasta decenas de miles de operaciones simultáneas en sockets concurrentes, nos quedamos sin hilos antes de quedarnos sin sockets. La sobrecarga por hilos o los límites del sistema en subprocesos son el cuello de botella.
 
-Dan Kegel en su artículo http://www.kegel.com/c10k.html[The C10K problem]footnote:1[http://www.kegel.com/c10k.html[Kegel, Dan. 1999. The C10K problem\]], describe las limitaciones de utilizar multiples hilos para resolver problemas de concurrencia de E/S.
+Dan Kegel en su artículo http://www.kegel.com/c10k.html <<c10k>>, describe las limitaciones de utilizar multiples hilos para resolver problemas de concurrencia de E/S.
 
 Kegel utilizo el término "C10K" en 1999. Diez mil conexiones no suenan ahora como lo sonaban antes, pero el problema ha cambiado sólo en tamaño, no en especie. En aquel entonces, usar un hilo por conexión para C10K no era práctico. Ahora el límite es en órdenes de magnitud más elevado. De hecho, nuestro crawler de juguete funcionaría bien con hilos. Sin embargo, para aplicaciones a gran escala, con cientos de miles de conexiones, el límite permanece; hay un límite más allá del cual la mayoría de los sistemas aún pueden crear sockets, pero se han quedado sin hilos. ¿Cómo podemos superar esto?
 
@@ -345,7 +345,7 @@ ____
 
 Una ventaja más que las corrutinas tienen sobre los hilos es que su funcionamiento no involucra llamadas al sistema bloqueantes para su creación ni para el cambio de contexto, ya que todo se maneja al nivel de la aplicación.
 
-Interesante comparación de cuando usar corrutinas y cuando usar threads en Kotlin.footnote:3[https://www.baeldung.com/kotlin-threads-coroutines[Baeldung. 2021. Threads vs Coroutines in Kotlin\]]
+Interesante comparación de cuando usar corrutinas y cuando usar threads en Kotlin. <<kot>>
 
 == ¿Cómo se declaran y ejecutan en Python?
 
@@ -398,7 +398,7 @@ ____
 
 Nos retorna un objeto "corrutina" que por defecto no se va a planificar. Entonces, ¿cómo hago que se ejecute? Bueno, hay tres formas distintas para hacer eso.
 
-*1-* Usando la función `run` del módulo `asyncio`footnote:2[https://docs.python.org/3.8/library/asyncio-task.html[Python Docs. Coroutines and Tasks\]]
+*1-* Usando la función `run` del módulo `asyncio` <<pythondoc>>
 
 ____
 coro = print_re_loco('algo')
@@ -549,16 +549,25 @@ asyncio.run(main())
 
 Quedaria implementada la solución con corrutinas "nativas" de Python.
 
+[appendix]
+[.appendix]
 == Links interesantes
 
-https://docs.python.org/3.8/library/asyncio-task.html[Corrutinas en Python]
+* https://docs.python.org/3.8/library/asyncio-task.html[Corrutinas en Python]
 
-https://www.tornadoweb.org/en/stable/[Framework de Python que levanta un server asincronico con corrutinas planificandolas con un event loop]
+* https://www.tornadoweb.org/en/stable/[Framework de Python que levanta un server asincronico con corrutinas planificandolas con un event loop]
 
-http://www.golangpatterns.info/concurrency/coroutines[Corrutinas en Go]
+* http://www.golangpatterns.info/concurrency/coroutines[Corrutinas en Go]
 
-https://tour.golang.org/concurrency/1[Para jugar con Goroutines]
+* https://tour.golang.org/concurrency/1[Para jugar con Goroutines]
 
-https://kotlinlang.org/docs/reference/coroutines/basics.html[Corrutinas en Kotlin]
+* https://kotlinlang.org/docs/reference/coroutines/basics.html[Corrutinas en Kotlin]
 
-https://kotlinlang.org/docs/tutorials/coroutines/async-programming.html[Comparación de técnicas programación asincrónica (threading, callbacks, Promises, corrutinas)]. Claramente enfocado para resaltar las ventajas de las corrutinas en Kotlin, pero de todos modos interesante para repasar las técnicas que vimos hasta ahora.
+* https://kotlinlang.org/docs/tutorials/coroutines/async-programming.html[Comparación de técnicas programación asincrónica (threading, callbacks, Promises, corrutinas)]. Claramente enfocado para resaltar las ventajas de las corrutinas en Kotlin, pero de todos modos interesante para repasar las técnicas que vimos hasta ahora.
+
+[bibliography]
+== Referencias
+
+* [[[c10k]]] http://www.kegel.com/c10k.html. Kegel, Dan. 1999. The C10K problem.
+* [[[pythondoc]]] https://docs.python.org/3.10/library/asyncio-task.html. Python Docs. Coroutines and Tasks
+* [[[kot]]] https://www.baeldung.com/kotlin-threads-coroutines. Baeldung. 2021. Threads vs Coroutines in Kotlin

@@ -1,4 +1,4 @@
-== Introduccion
+== Introducción
 
 Tal como lo vimos en la introduccion a distribucion, aprendimos que el tener sistemas distribuidos en cualquier dimension pueden causar casos de uso que no hubiesemos pensado antes, asi como varios problemas a resolver.
 

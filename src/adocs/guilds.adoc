@@ -1,17 +1,16 @@
 = Guild wars (?)
 
-Como vimos en las clases anteriores, Ruby MRI posee "algunos problemas" en cuanto a como maneja el procesamiento en paralelo en múltiples procesadores. Si bien vimos que la concurrencia es algo que perfectamente puede darse sin necesidad de contextos de ejecución que se ejecuten al mismo tiempofootnote:1[https://arquitecturas-concurrentes.github.io/iasc-book/concurrencia_paralelismo[IASC UTN FRBA. (2020) .Concurrencia y Paralelismo\]], vamos a ver en esta sección, nuevos y existentes mecanismos para tratar de resolver este problema latente en MRI desde sus comienzos.
+Como vimos en las clases anteriores, Ruby MRI posee "algunos problemas" en cuanto a como maneja el procesamiento en paralelo en múltiples procesadores. Si bien vimos que la concurrencia es algo que perfectamente puede darse sin necesidad de contextos de ejecución que se ejecuten al mismo tiempofootnote:1[IASC UTN FRBA. (2020) .Concurrencia y Paralelismo. https://arquitecturas-concurrentes.github.io/iasc-book/concurrencia_paralelismo], vamos a ver en esta sección, nuevos y existentes mecanismos para tratar de resolver este problema latente en MRI desde sus comienzos.
 
 [.center.iasc-image]
-image:/public/img/guilds/pisa_tower.jpeg[]
+image:guilds/pisa_tower.jpeg[]
 
-[discrete]
-=== Un poco de historia...
+== Un poco de historia...
 
-Ruby puede implementar mecanismos concurrentes pero no paralelos debido al GVL a.k.a GIL (Global VM Lock o Giant VM Lock), que es un bloqueo de exclusión mutua, en suma, un mutex. Este bloqueo lo mantiene el subproceso del intérprete y lo usa para evitar compartir código que no es seguro para subprocesos con otros subprocesos. Todos los hilos de intérpretes tienen su propio GIL. Debido a dicho GIL, si un programa Ruby tiene múltiples hilos, no pueden ejecutarse al mismo tiempo, porque GIL solo permitirá que se ejecute un subproceso al mismo tiempo. Antes de Ruby 1.9, solo había un hilo del sistema operativo para todos los hilos de sistema de MRI que podemos crear mediante la librería standard de Rubyfootnote:2[https://ruby-doc.org/core-3.0.2/Thread.html[Ruby Doc. Retrieved 30 August 2021. Thread standard library\]].
+Ruby puede implementar mecanismos concurrentes pero no paralelos debido al GVL a.k.a GIL (Global VM Lock o Giant VM Lock), que es un bloqueo de exclusión mutua, en suma, un mutex. Este bloqueo lo mantiene el subproceso del intérprete y lo usa para evitar compartir código que no es seguro para subprocesos con otros subprocesos. Todos los hilos de intérpretes tienen su propio GIL. Debido a dicho GIL, si un programa Ruby tiene múltiples hilos, no pueden ejecutarse al mismo tiempo, porque GIL solo permitirá que se ejecute un subproceso al mismo tiempo. Antes de Ruby 1.9, solo había un hilo del sistema operativo para todos los hilos de sistema de MRI que podemos crear mediante la librería standard de Rubyfootnote:2[Ruby Doc. Retrieved 30 August 2021. Thread standard library. https://ruby-doc.org/core-3.0.2/Thread.html].
 
 [.center.iasc-image]
-image::/public/img/guilds/xruby-gil-jvm.png[]
+image::guilds/xruby-gil-jvm.png[]
 
 ::: warning
 _Extra_: El mecanismo de como se adquiere y libera el GVL se puede ver https://github.com/ruby/ruby/blob/a8714b83c40c8736b4ddafef08fa5f0091c9b101/thread_pthread.c#L314[aqui] y https://github.com/ruby/ruby/blob/a8714b83c40c8736b4ddafef08fa5f0091c9b101/thread_pthread.c#L236[aqui] se puede ver la lógica del timeslice donde se ejecuta el thread que pudo adquirir el GVL.
@@ -20,32 +19,32 @@ _Extra_: El mecanismo de como se adquiere y libera el GVL se puede ver https://g
 Como vemos en la foto, después de Ruby 1.9, podemos tener varios hilos del sistema operativo y estos se relacionan 1:1 contra nuestros hilos de usuario, pero debido al GVL, como se menciono antes, _solo y solo un hilo_, de todos los hilos del sistema operativo creados pueden ejecutarse al mismo tiempo, descartando la posibilidad de soporte SMP.
 
 [.center.iasc-image]
-image::/public/img/guilds/in_rod_we_trust.png[]
+image::guilds/in_rod_we_trust.png[]
 
 La inerte barra de carbono representa el GVL siendo tomado por un hilo..
 
-Este tipo de mecanismos son algo visto no solo en MRI sino también en CPythonfootnote:3[https://wiki.python.org/moin/GlobalInterpreterLock[Python Moin. Retrieved 30 November 2015. GlobalInterpreterLock\]], y ambas máquinas virtuales sufren de los mismos problemas.
+Este tipo de mecanismos son algo visto no solo en MRI sino también en CPythonfootnote:3[Python Moin. Retrieved 30 November 2015. GlobalInterpreterLock. https://wiki.python.org/moin/GlobalInterpreterLock], y ambas máquinas virtuales sufren de los mismos problemas.
 
 En Java también se puede definir múltiples subprocesos,pero la diferencia es que en la JVM,se puede mapear cada hilo de la JVM a uno del sistema operativo. Esto permite aprovechar la arquitectura multinúcleo. En este caso cuando usamos JRuby, la librería de `threads` de Ruby, es en realidad un wrapper de los hilos de la JVM, por esta razón, vamos a poder tener exactamente el mismo código y vamos a poder tener soporte SMP.
 
-[discrete]
+
 === Status Quo: Workers
 
-Una manera de poder aprovechar la ejecución de múltiples procesadores, es algo que vimos en Pumafootnote:5[https://puma.io/puma/file.architecture.html[Puma Doc. Architecture Overview\]], es que se pueda trabajar como si fuese un `'cluster'`, en donde el proceso principal inicializa la aplicación, y luego se usa el syscall https://man7.org/linux/man-pages/man2/fork.2.html[`fork()`] para crear 1 o más procesos hijos. Estos procesos hijos, en el caso de Puma por ejemplo, escuchan al mismo socket que el proceso padre, y este último deja de escuchar al socket, para solo ser relegado para escuchar a señales de UNIX y posiblemente para matar/iniciar los procesos hijos.
+Una manera de poder aprovechar la ejecución de múltiples procesadores, es algo que vimos en Pumafootnote:5[Puma Doc. Architecture Overview. https://puma.io/puma/file.architecture.html], es que se pueda trabajar como si fuese un `'cluster'`, en donde el proceso principal inicializa la aplicación, y luego se usa el syscall https://man7.org/linux/man-pages/man2/fork.2.html[`fork()`] para crear 1 o más procesos hijos. Estos procesos hijos, en el caso de Puma por ejemplo, escuchan al mismo socket que el proceso padre, y este último deja de escuchar al socket, para solo ser relegado para escuchar a señales de UNIX y posiblemente para matar/iniciar los procesos hijos.
 
 [.center.iasc-image]
-image::/public/img/guilds/puma-general-arch.png[]
+image::guilds/puma-general-arch.png[]
 
 Este mecanismo, si bien es simple, puede dar la sensación de que si bien empieza cada proceso hijo, con poca memoria, gradualmente ira creciendo hasta ser tan grande como el proceso padre. Incluso en grandes entornos de producción, esto puede significar una gran cantidad de memoria, y crear un problema de falta de memoria si tenemos muchos _workers/procesos hijos_.
 
-Sin embargo, los sistemas operativos modernos, tienen manejo de memoria virtual, que proveen de un mecanismo llamado _copy on write_footnote:4[http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=C97A7B66D788B7E4F6D6BF5FDD8EC451?doi=10.1.1.33.3144&rep=rep1&type=pdf[Javier, Francisco & Guttman, Joshua. (1995). Copy on Write.\]], que previene del escenario que describimos antes. La memoria virtual de un proceso, esta separado en bloques de 4k, llamadas paginas. Cuando un proceso padre, crea un proceso hijo; el hijo inicialmente comparte todas las paginas de memoria con el padre. Solo cuando el proceso hijo empieza a modificar una o varias de estas paginas, el kernel se encargara de copiar las paginas de memoria modificadas, y de reasignarlo al nuevo proceso.
+Sin embargo, los sistemas operativos modernos, tienen manejo de memoria virtual, que proveen de un mecanismo llamado _copy on write_footnote:4[Javier, Francisco & Guttman, Joshua. (1995). Copy on Write. http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=C97A7B66D788B7E4F6D6BF5FDD8EC451?doi=10.1.1.33.3144&rep=rep1&type=pdf], que previene del escenario que describimos antes. La memoria virtual de un proceso, esta separado en bloques de 4k, llamadas paginas. Cuando un proceso padre, crea un proceso hijo; el hijo inicialmente comparte todas las paginas de memoria con el padre. Solo cuando el proceso hijo empieza a modificar una o varias de estas paginas, el kernel se encargara de copiar las paginas de memoria modificadas, y de reasignarlo al nuevo proceso.
 
 [.center.iasc-image]
-image::/public/img/guilds/child-processes.svg[]
+image::guilds/child-processes.svg[]
 
-El diagrama visto más arriba, muestra un poco como van cambiando, y copiandose las paginas a medida que pasa el tiempo. El mecanismo de como MRI aloca memoria puede verse muy bien explicado enfootnote:6[https://brandur.org/ruby-memory[Brandur. (2017). The Limits of Copy-on-write: How Ruby Allocates Memory\]].
+El diagrama visto más arriba, muestra un poco como van cambiando, y copiandose las paginas a medida que pasa el tiempo. El mecanismo de como MRI aloca memoria puede verse muy bien explicado enfootnote:6[Brandur. (2017). The Limits of Copy-on-write: How Ruby Allocates Memory. https://brandur.org/ruby-memory].
 
-[discrete]
+
 === La propuesta: Guilds
 
 Si bien tener múltiples procesos hijos permite de alguna manera saltear y poder aprovechar más procesadores, existen varias desventajas por lo que no es a veces una solución óptima.
@@ -56,9 +55,9 @@ Estas razones, hicieron que en parte se busque por una solución parcial o defin
 
 El origen de Ractor se remonta a 2016 cuando Koichi Sasada (diseñador de la máquina virtual Ruby y recolección de basura) presentó su propuesta sobre un nuevo modelo de concurrencia para Ruby. Antes de dicha propuesta, solo podíamos aprovechar múltiples procesadores mediante subprocesos hijos.
 
-En 2016, Koichi habló sobre los problemas de la programación de subprocesos múltiples en su presentación en Ruby Kaigifootnote:7[http://www.atdot.net/~ko1/activities/2016_rubykaigi.pdf[Sasada, Koichi. (2016). A proposal of new concurrency model for Ruby 3 (RubyKaigi2016)\]], así como sobre algunas formas comunes de resolverlos. Junto con eso, también presentó su concepto de `Guilds` por primera vez. Antes de pasar a Ractors, tomemos un momento para comprender los aspectos básicos de Ractors: `Guilds`.
+En 2016, Koichi habló sobre los problemas de la programación de subprocesos múltiples en su presentación en Ruby Kaigifootnote:7[Sasada, Koichi. (2016). A proposal of new concurrency model for Ruby 3 (RubyKaigi2016). http://www.atdot.net/~ko1/activities/2016_rubykaigi.pdf], así como sobre algunas formas comunes de resolverlos. Junto con eso, también presentó su concepto de `Guilds` por primera vez. Antes de pasar a Ractors, tomemos un momento para comprender los aspectos básicos de Ractors: `Guilds`.
 
-[discrete]
+
 ==== Que es un Guild?
 
 ::: warning
@@ -68,25 +67,25 @@ Las imágenes a continuación fueron tomadas de la presentación de Koichi Sasad
 Un Guild, fue propuesto, como una una nueva abstracción de concurrencia para Ruby. Donde cada uno de estos `Guilds`, tendría uno o más hilos, y cada uno de estos, a su vez, albergaría una o más "fibers"/corutinas.
 
 [.center.iasc-image]
-image::/public/img/guilds/guilds_0.png[]
+image::guilds/guilds_0.png[]
 
 Los hijos de dos `Guilds`, podrían ejecutarse en paralelo, pero los hijos que estan enmarcados dentro de un mismo `Guild` no. Esto se garantizaría a través de un nuevo lock llamado GGL, que solo permite ejecutar en primer plano a un hilo a la vez.
 
 [.center.iasc-image]
-image::/public/img/guilds/guilds_1.png[]
+image::guilds/guilds_1.png[]
 
 Además, todos los Guilds tendrían su propio conjunto de objetos mutables, y un `Guild` no podría modificar los objetos de otro `Guild`. Esto se propuso para evitar problemas de inconsistencia de datos debido al acceso concurrente.
 
 [.center.iasc-image]
-image::/public/img/guilds/guilds_2.png[]
+image::guilds/guilds_2.png[]
 
 Sin embargo, los `Guilds` aún podrían usar la interfaz `Guild::Channel` para facilitar la copia o el movimiento de objetos entre ellos. El método `transfer(object)` se propuso para permitir enviar una copia profunda del objeto al `Guild` objetivo, y `transfer_membership(object)` se propuso para permitir mover un objeto de un `Guild` a otro por completo.
 
 [.center.iasc-image]
-image::/public/img/guilds/guilds_3.png[]
+image::guilds/guilds_3.png[]
 
 [.center.iasc-image]
-image::/public/img/guilds/guilds_4.png[]
+image::guilds/guilds_4.png[]
 
 Pero todo esto fue solo para objetos mutables, ya que los objetos inmutables no representan un riesgo de inconsistencia de datos. Esto es así porque una vez que se asigna un valor a los objetos inmutables, este no cambia durante la ejecución del programa, por lo que cualquier `Guild` que intente acceder a los datos de un objeto inmutable siempre recibirá el mismo valor consistente. Los objetos inmutables se podrían compartir en todos los `Guilds` para operaciones de lectura.
 
@@ -100,9 +99,9 @@ Los objetos inmutables en Ruby consisten en:
 * Ractor y otros objetos especiales usados para sincronización
 
 [.center.iasc-image]
-image::/public/img/guilds/guilds_5.png[]
+image::guilds/guilds_5.png[]
 
-[discrete]
+
 ===== Uso propuesto de los Guilds
 
 Koichi habla en su presentación del uso de este nuevo tipo de abstracciónfootnote:7[], y que separa en distintos casos de uso
@@ -132,7 +131,7 @@ puts ch.receive
 En el ejemplo, solo se realiza el calculo de un solo valor, aunque puede llamarse múltiples veces a `g_fib`, para que se creen nuevos `guilds`, y puedan procesar en paralelo.
 
 [.center.iasc-image]
-image::/public/img/guilds/guilds_6.png[]
+image::guilds/guilds_6.png[]
 
 * Caso de Uso 2: Pipeline
 
@@ -173,7 +172,7 @@ obj = result_ch.receive
 Aqui se muestra como la arquitectura se veria conceptualmente:
 
 [.center.iasc-image]
-image::/public/img/guilds/guilds_7.png[]
+image::guilds/guilds_7.png[]
 
 * Caso de Uso 3: Datos sensibles. Ej cuentas bancarias
 
@@ -199,15 +198,15 @@ g_bank = Guild.new(script: %q{
 Si se observa el diagrama conceptual para esta arquitectura, se dará cuenta de que es lo mismo que el concepto que el `caso 1`, pero el único cambio clave es que los datos, recursos, etc., pertenecen únicamente al `guild` maestro.
 
 [.center.iasc-image]
-image::/public/img/guilds/guilds_8.png[]
+image::guilds/guilds_8.png[]
 
-[discrete]
+
 ==== Ractors, la implementación de Guilds
 
 Ractors, fue lanzado como experimental en https://www.ruby-lang.org/en/news/2020/12/25/ruby-3-0-0-released/[Ruby 3.0.0], y es la implementación, por el momento mas estable de la idea conceptual de Guilds.
 
 [.center.iasc-image]
-image::/public/img/guilds/homer-grill.gif[]
+image::guilds/homer-grill.gif[]
 
 La idea por atrás es la misma, un `ractor` tiene uno o más hilos, y cada uno de estos, a su vez, alberga una o más "fibers"/corutinas. y dos `ractors`, pueden ejecutarse potencialmente en paralelo, siempre y cuando el procesamiento que haya que realizar en estos sea bastante intensivo.
 
@@ -215,10 +214,10 @@ La idea de aislamiento de variables o datos mutables es la misma que la plantead
 
 La mayor diferencia viene, en cuanto a la comunicación entre los `ractors`. Estos a diferencia de los `Guilds`, se comunican por medio de simples pasos de mensajes, en vez de `channels`. La idea final es que dicho modelo sea similar al de actores. Pero lo es realmente? Esto lo veremos después. Veamos las 'ventajas'.
 
-[discrete]
+
 ===== Ventajas??
 
-Con respecto a las ventajas, las mismas son obvias en cuanto a lo que apuntan a resolver. Permitir la ejecución, en múltiples procesadores/cores, permite de alguna manera una mejor performance, reduciendo el tiempo promedio de ejecución de tareas que lo son, y que no generan ningún tipo de relación directa. Veamos el ejemplo mostrado en el realease de Ruby 3.0.0, donde se ejecuta el algoritmo `tak`footnote:8[https://www.amazon.com/exec/obidos/ISBN%3D0685479412/ericstreasuretroA/[Vardi, I. The Running Time of TAK. Ch. 9 in Computational Recreations in Mathematica. Redwood City, CA: Addison-Wesley, pp. 179-199, 1991.\]] footnote:9[https://archive.org/details/AcornUser052-Nov86/page/n198/mode/1up[Testing the Tak. Acorn User. pp. 197, 199.\]] secuencialmente y usando `ractors` 4 veces.
+Con respecto a las ventajas, las mismas son obvias en cuanto a lo que apuntan a resolver. Permitir la ejecución, en múltiples procesadores/cores, permite de alguna manera una mejor performance, reduciendo el tiempo promedio de ejecución de tareas que lo son, y que no generan ningún tipo de relación directa. Veamos el ejemplo mostrado en el realease de Ruby 3.0.0, donde se ejecuta el algoritmo `tak`footnote:8[Vardi, I. The Running Time of TAK. Ch. 9 in Computational Recreations in Mathematica. Redwood City, CA: Addison-Wesley, pp. 179-199, 1991. https://www.amazon.com/exec/obidos/ISBN%3D0685479412/ericstreasuretroA/] footnote:9[Testing the Tak. Acorn User. pp. 197, 199. https://archive.org/details/AcornUser052-Nov86/page/n198/mode/1up] secuencialmente y usando `ractors` 4 veces.
 
 [,ruby]
 ----
@@ -253,16 +252,16 @@ El codigo esta disponible también https://github.com/bossiernesto/tarai[aqui]
 
 Esta ventaja es facil de ver, aunque lo mas interesante en realidad, es la creación de una abstracción que permita que pueda convivir de alguna manera código que soporte SMP y parte que no, sin tener que recurrir a eliminar definitivamente el GVL.
 
-[discrete]
+
 ===== Problemas latentes
 
 Si bien se habla que en los Ractors son thread-safe dentro de su contexto, gracias (o no..) al GGL; en realidad no son completamente `thread-safe`, ya que la interfaz que poseen todavía puede generar casos de deadlock o livelock incluso, si es que no se tiene cuidado.
 
-Esta estructura, tiene que ser siempre usada de una manera correcta (tanto como el resto), ya que un uso poco cuidadoso, usando módulos/clases entre varios Ractorsfootnote:10[https://docs.ruby-lang.org/en/3.0.0/doc/ractor_md.html#label-Thread-safety[Ruby Lang. (2021). Ractor documentation. Thread-safety.\]], puede introducir race conditions. También otra cosa a tener en cuenta, es que el envio de mensajes entre ractors(send, yield, take, etc), es el mismo que hay entre objetos, por lo que es siempre bloqueante. Si estos se usan incorrectamente pueden resultar en `dead-locks` o `live-locks` como se menciono antes.
+Esta estructura, tiene que ser siempre usada de una manera correcta (tanto como el resto), ya que un uso poco cuidadoso, usando módulos/clases entre varios Ractorsfootnote:10[Ruby Lang. (2021). Ractor documentation. Thread-safety. https://docs.ruby-lang.org/en/3.0.0/doc/ractor_md.html#label-Thread-safety], puede introducir race conditions. También otra cosa a tener en cuenta, es que el envio de mensajes entre ractors(send, yield, take, etc), es el mismo que hay entre objetos, por lo que es siempre bloqueante. Si estos se usan incorrectamente pueden resultar en `dead-locks` o `live-locks` como se menciono antes.
 
 Por el momento, esta implementacion es experimental, por lo que pueden existir incluso bugs, tanto en el ciclo de vida, como en el manejo interno de estos en memoria (por ej. a nivel del GC de MRI aka gc.c).
 
-[discrete]
+
 ==== Uso actual de Ractors
 
 ::: warning
@@ -276,7 +275,7 @@ Esta sección puede cambiar a lo largo del tiempo, ya que el código actual de R
 * Los subprocesos en un Ractor comparten un bloqueo global en todo el Ractor, similar al GIL (GVL en terminología de MRI), por lo que no pueden ejecutarse en paralelo (sin liberar GVL explícitamente en el nivel C). Los hilos en diferentes ractores se ejecutan en paralelo.
 * La sobrecarga de crear un Ractor es similar a la sobrecarga de la creación de un hilo usuario y el hilo de OS asociado.
 
-[discrete]
+
 ===== Paso de mensajes
 
 * Paso de mensaje de tipo push: `Ractor#send(obj`) y `Ractor.receive()`.
@@ -289,8 +288,8 @@ Esta sección puede cambiar a lo largo del tiempo, ya que el código actual de R
  ** El remitente no conoce un Ractor de destino y el receptor conoce el Ractor r del remitente.
  ** El remitente o el receptor se bloquearán si no hay otro lado.
 
-[discrete]
-===== Ciclo de Vida
+
+==== Ciclo de Vida
 
 Puede verse un resumen del ciclo de vida de un ractor en el siguiente https://github.com/ruby/ruby/blob/83a744dd8c0d6e769258b734b9f6861a22eeb554/ractor.c#L1449[diagrama]:
 

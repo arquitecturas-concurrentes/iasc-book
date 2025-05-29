@@ -73,8 +73,8 @@ En general se hace una especie de merge dependiendo de la estrategia entre los e
 
 === Adicional
 
-::: warning
-_Advertencia: Esta seccion necesita un mayor desarrollo del tema y de citas._
-:::
+[.warning]
+_Esta seccion necesita un mayor desarrollo del tema y de citas._
 
 Existen tambien criticas al teoremafootnote:2[Kleppmann, M. (2015). A Critique of the CAP Theorem. https://doi.org/10.17863/CAM.13083], en el que se mencionan entre otras cosas, algunas confusiones y ambiguedades de los terminos, y algunos problemas en su formalización. Estas criticas se centran un poco en la dificil aplicacion que puede llegar a tener a veces sobre los sistemas reales.
+

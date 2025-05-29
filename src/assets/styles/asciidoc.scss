@@ -1,4 +1,5 @@
 $primary: #e40046;
+$secondary: #6b7a8f;
 
 // Hide the anchor by default
 a.anchor {
@@ -101,4 +102,45 @@ div.bibliography {
       }
     }
   }
+}
+
+// ### Appendix ###
+.appendix .sectionbody {
+  background-color: #f9f9f9;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 35px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.appendix h2 {
+  font-size: 2rem;
+  color: $secondary;
+  margin-bottom: 1rem;
+}
+
+// Warning
+
+div.warning {
+  background-color: #f8f9fa; // subtle background
+  border-left: 4px solid #ffa600; // highlight with primary color
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0.25rem; // slight rounding
+  font-style: italic; // italics for emphasis
+  color: #333;
+
+  // Optional: add a heading label
+  &::before {
+    content: 'Warning';
+    display: block;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+    color: #ffa600;
+  }
+}
+
+div.warning blockquote {
+  border-left: none;
+  padding-left: 0;
 }

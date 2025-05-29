@@ -315,7 +315,9 @@ Esta es una librería de http://software.schmorp.de/pkg/libcoro.html[corutinas e
 
 Hoy en dia, ya no se delega el mecanismo de las corutinas en `libcoro`, y se lo trata nativamente, pero con los mismos conceptos. Incluso concepto de que la parte del cambio de contexto de los `fibers` se hace, dependiendo de la arquitectura, con codigo en assembler. https://github.com/ruby/ruby/blob/0ead818d81c975275238878c81f300dd404e0722/coroutine/x86/Context.S#L16[Ejemplo de x86 ec], este context switch se llama desde la implementacion nativa de MRI de fibers en C en esta seccion de la funcion https://github.com/ruby/ruby/blob/3d32c217586a48c709b762865a8abc46f9098455/cont.c#L1376[fiber_setcontext]
 
-== Anexo
+[appendix]
+[.appendix]
+== Notas adicionales
 
 === Sobre el tamaño del stack de Threads y Fibers
 

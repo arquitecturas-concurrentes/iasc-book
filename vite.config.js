@@ -7,7 +7,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import Asciidoctor from 'asciidoctor'
 
 const base = process.env.NODE_ENV === 'production'
-  ? '/iasc-book-3-test/'
+  ? '/iasc-book/'
   : ''
 
 export default defineConfig({
@@ -42,6 +42,7 @@ export default defineConfig({
             catalog_assets: true,
             doctype: 'article',
             attributes: {
+              'appendix-caption': 'Apendice',
               icons: 'font',
               'hide-uri-scheme': true,
               sectids: true,

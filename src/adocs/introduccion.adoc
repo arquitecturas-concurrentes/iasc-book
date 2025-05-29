@@ -1,5 +1,3 @@
-:sectanchors:
-
 La materia tiene un objetivo doble: por un lado, conocer tecnologías novedosas de aplicación en la industria de desarrollo de software, y por otro lado, transmitir conocimiento durables, ideas que trasciendan la tecnología, sobre la concurrencia, y la arquitectura de software.
 
 == ¿Arquitecturas Concurrentes? ¿Qué es eso?

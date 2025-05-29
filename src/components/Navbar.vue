@@ -42,7 +42,7 @@
 
 .navbar-button,
 .navbar-button:hover {
-  background: #f7882f;
+  background: #e40046;
   color: #fff;
 }
 </style>

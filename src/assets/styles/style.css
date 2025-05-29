@@ -85,8 +85,19 @@ a[data-toggle='collapse'] {
   color: #404040;
 }
 
+.inner-content strong {
+  color: #333333;
+  font-weight: bold;
+  font-size: 1.1em; /* slightly larger */
+}
+
+.inner-content em {
+  color: #6b7a8f; /* calm, neutral shade */
+  font-style: italic; /* default for <em> */
+}
+
 .inner-content a {
-  color: #f7882f;
+  color: #e40046;
 }
 
 .inner-content a:hover {

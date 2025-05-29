@@ -72,6 +72,10 @@ export const sidearContent = [
         href: '/tema/otp',
         title: 'Elixir/Erlang OTP',
       },
+      {
+        href: '/tema/errores_supervision',
+        title: 'Errores y Supervisión'
+      }
     ],
   },
   {

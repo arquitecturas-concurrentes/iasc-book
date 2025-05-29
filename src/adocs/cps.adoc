@@ -8,16 +8,6 @@ Nota: cuando decimos función lo decimos en el sentido estricto de una computaci
 En JavaScript, su código se ve como el siguiente:
 ____
 
-[source,ruby]
-----
-require 'sinatra'
-
-get '/hi' do
-  "Hello World!"
-end
-----
-
-
 
 [source, javascript]
 ----
@@ -292,7 +282,7 @@ _The Pragmatic Programmer_ <<pp>> should be required reading for all developers.
 To learn all about design patterns, refer to the book by the "`Gang of Four`" <<gof>>.
 
 [bibliography]
-== References
+== Referencias
 
 * [[[pp]]] Andy Hunt & Dave Thomas. The Pragmatic Programmer:
 From Journeyman to Master. Addison-Wesley. 1999.

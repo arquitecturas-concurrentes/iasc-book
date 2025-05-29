@@ -5,7 +5,7 @@ import fs from "fs";
   try {
     await execa("git", ["checkout", "--orphan", "master"]);
     console.log("Building started...");
-    await execa("yarn", ["build", "--base=./iasc-book-3-test/"]);
+    await execa("yarn", ["build"]);
     const folderName = fs.existsSync("dist") ? "dist" : "build";
     await execa("cp", ["./dist/index.html", "./dist/404.html"]);
     await execa("git", ["--work-tree", folderName, "add", "--all"]);

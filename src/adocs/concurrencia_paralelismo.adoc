@@ -1,4 +1,4 @@
-=== Introduccion
+=== Introducción
 
 https://arquitecturas-concurrentes.github.io/iasc-book/introduccion/[Ya presentada la noción de arquitectura],
 nos queda introducir el otro gran tópico que nos incumbe: la concurrencia, concepto diferente pero relacionado (y a

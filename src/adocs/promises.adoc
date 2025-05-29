@@ -1,4 +1,4 @@
-== Introduccion
+== Introducción
 
 En https://arquitecturas-concurrentes.github.io/iasc-book/cps/[capítulos anteriores] vimos una posible forma de estructurar nuestros programas, utilizando CPS. Esta técnica, a diferencia de call-and-return y memoria compartida, nos permite implementar, de forma fácil:
 
@@ -186,6 +186,8 @@ Ahora bien, las promesas no vienen a reemplazar el uso de callbacks, o al menos 
 
 De hecho, enfoques como la *programación reactiva* extienden los principios de las promesas (y agregan unos cuantos otros), permitiendo manejar tanto casos de falla como no determinismo. Pero al hacerlo también terminan con una interfaz mucho más compleja que la de las promesas.
 
+[appendix]
+[.appendix]
 == Recursos recomendados
 
 * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Using_promises[Guía sobre uso de Promesas]

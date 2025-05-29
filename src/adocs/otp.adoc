@@ -75,7 +75,3 @@ Esta es la documentación de los hexdocs con algunos puntos bien puntuales sobre
 Esta es la documentación un poco más https://elixir-lang.org/getting-started/mix-otp/dynamic-supervisor.html[descriptiva de los supervisores dinamicos]
 
 Recuerden bien que un supervisor no restaura ni guarda el estado del actor supervisado, una vez que muere, si este es reiniciado, vuelve a ser inicializado con el estado inicial, y si tenía un estado distinto antes de su muerte, este se pierde definitivamente, por lo que a veces es bueno tal vez o bien persistirlo o si es algo importante tenerlo en otro actor como puede ser un Agent.
-
-Otros recursos, tal vez un poco desactualizados:
-
-https://docs.google.com/document/d/1r_E6Hj4F-38dy5tDbxfTBW2XaU8sSRaf9qtC-VuLDIw/edit#heading=h.40vnggga84mq[Manejo de Errores e Introducción a la supervisión]
