@@ -1,0 +1,104 @@
+$primary: #e40046;
+
+// Hide the anchor by default
+a.anchor {
+  display: none;
+  margin-left: 0.25rem;
+  opacity: 0.5;
+  font-size: 0.8em;
+  transition: opacity 0.2s ease-in-out;
+  color: $primary;
+
+  &::before {
+    content: '\00a7';
+  }
+}
+
+// Only show the anchor when the heading is hovered
+h1:hover a.anchor,
+h2:hover a.anchor,
+h3:hover a.anchor,
+h4:hover a.anchor,
+h5:hover a.anchor,
+h6:hover a.anchor {
+  display: inline-block;
+  opacity: 1;
+}
+
+// Style the Asciidoctor abstract block
+div.abstract {
+  background-color: #f8f9fa; // subtle background
+  border-left: 4px solid #ff5722; // highlight with primary color
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0.25rem; // slight rounding
+  font-style: italic; // italics for emphasis
+  color: #333;
+
+  // Optional: add a heading label
+  &::before {
+    content: 'Abstract';
+    display: block;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+    color: #ff5722;
+  }
+}
+
+div.abstract blockquote {
+  border-left: none;
+  padding-left: 0;
+}
+
+// Style inline references like <<ref>>
+// Asciidoctor renders these as <a class="biblioref" href="#ref-id">[ref]</a>
+$primary: #e40046;
+
+div.bibliography {
+  background-color: #f8f9fa;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+
+  .title {
+    font-weight: bold;
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    color: $primary;
+    text-transform: uppercase;
+    letter-spacing: 0.05rem;
+  }
+
+  ul {
+    list-style-type: decimal;
+    padding-left: 2rem;
+    margin: 0;
+
+    li {
+      margin-bottom: 0.75rem;
+      line-height: 1.6;
+      font-size: 0.95rem;
+      background: #fff;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.25rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      transition: background 0.2s;
+
+      &:hover {
+        background: #f1f3f5;
+      }
+
+      &::marker {
+        font-weight: bold;
+        color: $primary;
+        font-size: 1rem;
+      }
+
+      &.highlight-ref {
+        background-color: rgba(255, 255, 0, 0.4) !important;
+        transition: background-color 0.5s ease;
+      }
+    }
+  }
+}

@@ -1,18 +1,11 @@
 <template>
-  <RemoteMarkdown :url="url" />
+  <RemoteEntryAdoc :url="url" :title="title" :description="description" />
 </template>
-<script>
-import RemoteMarkdown from '@/components/RemoteMarkdown'
+<script setup>
+import RemoteEntryAdoc from '@/components/RemoteEntryAdoc.vue'
 
-export default {
-    name: 'STM',
-    components: {
-      RemoteMarkdown
-    },
-     data () {
-    return {
-      url: 'https://raw.githubusercontent.com/arquitecturas-concurrentes/iasc-stm-haskell-2019/master/01_semaphores_and_philosophers/README.md'
-      }
-    }
-}
+const title = 'STM'
+const description = 'Memoria Transaccional'
+const url =
+  'https://raw.githubusercontent.com/arquitecturas-concurrentes/iasc-stm-haskell-2019/master/01_semaphores_and_philosophers/README.adoc'
 </script>

@@ -1,88 +1,91 @@
 <template>
-<div id="app"
-   :class="[{'collapsed' : collapsed}, {'onmobile' : isOnMobile}]">
+  <div id="main" :class="{ collapsed, onmobile: isOnMobile }">
     <div class="wrapper">
-      <div class="container header">
-          <div
-            v-if="isOnMobile && !collapsed"
-            class="sidebar-overlay"
-            @click="collapsed = true"
-          />
+      <div class="content">
+        <div class="container header">
+          <div v-if="isOnMobile && !collapsed" class="sidebar-overlay" @click="collapsed = true" />
           <AppLayout>
             <slot />
           </AppLayout>
-          <sidebar-menu         
+          <sidebar-menu
             :menu="menu"
             :width="sidebarWidth"
-            :collapsed="this.collapsed"
-            @toggle-collapse="onToggleCollapse"
+            :collapsed="collapsed"
+            @update:collapsed="onToggleCollapse"
+            @item-click="collapseMenu"
           >
-            <span slot="toggle-icon" class="fa fa-bars"></span>
+            <template v-slot:toggle-icon>
+              <span class="fa fa-bars"></span>
+            </template>
           </sidebar-menu>
+        </div>
       </div>
     </div>
-    <Footer /> 
-    </div>
+    <FooterComponent />
+  </div>
 </template>
 
-<script>
-import Footer from '@/components/Footer.vue'
-import AppLayout from '@/layouts/AppLayout'
+<script setup>
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import FooterComponent from '@/components/FooterComponent.vue'
+import AppLayout from '@/layouts/AppLayout.vue'
 import { sidearContent } from '@/static/SidebarContent.js'
+import 'vue-sidebar-menu/dist/vue-sidebar-menu.css'
 import { SidebarMenu } from 'vue-sidebar-menu'
 
-export default {
-  name: 'IASCBook',
-  components: {
-    AppLayout,
-    Footer,
-    SidebarMenu
-  },
-  data () {
-    return {
-      sidebarWidth: '300px',
-      menu: sidearContent,
-    collapsed: false,
-    isOnMobile: false
-    }
-  },
-  mounted () {
-    this.onResize()
-    window.addEventListener('resize', this.onResize)
-  },
-  methods: {
-    onToggleCollapse (collapsed) {
-      this.collapsed = collapsed
-    },
-    onResize () {
-      if (window.innerWidth <= 767) {
-        this.isOnMobile = true
-        this.collapsed = true
-      } else {
-        this.isOnMobile = false
-        this.collapsed = false
-      }
-    }
+// Sidebar state
+const sidebarWidth = ref('300px')
+const menu = sidearContent
+const collapsed = ref(false)
+const isOnMobile = ref(false)
+
+// Handle collapse toggle
+const onToggleCollapse = (value) => {
+  collapsed.value = value
+}
+
+const collapseMenu = () => {
+  collapsed.value = true
+}
+
+// Handle resize
+const onResize = () => {
+  if (window.innerWidth <= 767) {
+    isOnMobile.value = true
+    collapsed.value = true
+  } else {
+    isOnMobile.value = false
+    collapsed.value = false
   }
 }
+
+// Lifecycle hooks
+onMounted(() => {
+  onResize()
+  window.addEventListener('resize', onResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', onResize)
+})
 </script>
 <style>
-.app {
+.main {
   padding: 70px;
 }
-#app {
+#main {
   padding-left: 300px;
   transition: 0.3s ease;
 }
-#app.collapsed {
-  padding-left: 50px;
+#main.collapsed {
+  padding-left: 65px;
 }
-#app.onmobile {
+#main.onmobile {
   padding-left: 50px;
 }
 
 .container {
-  max-width: 900px;
+  max-width: 1-px;
 }
 
 .sidebar-overlay {
@@ -97,33 +100,34 @@ export default {
 }
 /* sidebar */
 .bm-menu {
-    background: #6B7A8F;
-    color: #fff;
+  background: #6b7a8f;
+  color: #fff;
 }
 
 .bm-menu .components {
-    padding: 20px 0;
-    border-bottom: 1px solid #6B7A8F;
+  padding: 20px 0;
+  border-bottom: 1px solid #6b7a8f;
 }
 
 .bm-menu ul p {
-    color: #fff;
-    padding: 10px;
+  color: #fff;
+  padding: 10px;
 }
 
 .bm-menu ul li a {
-    padding: 10px;
-    font-size: 1.1em;
-    display: block;
+  padding: 10px;
+  font-size: 1.1em;
+  display: block;
 }
 .bm-menu ul li a:hover {
-    color: #7187a7;
-    background: #fff;
+  color: #7187a7;
+  background: #fff;
 }
 
-.bm-menu ul li.active > a, a[aria-expanded="true"] {
-    color: #fff;
-    background: #7187a7;
+.bm-menu ul li.active > a,
+a[aria-expanded='true'] {
+  color: #fff;
+  background: #7187a7;
 }
 </style>
 <style lang="scss" scoped>

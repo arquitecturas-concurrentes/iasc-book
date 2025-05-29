@@ -1,12 +1,12 @@
 <template>
   <div>
-    <Navbar/>
+    <Navbar />
     <MainImage />
     <div class="container">
-      <div class="inner-content col-sm-8 col-md-10">
+      <div class="inner-content col-sm-10 col-md-12">
         <router-view />
       </div>
-    </div>    
+    </div>
   </div>
 </template>
 
@@ -15,12 +15,11 @@ import MainImage from '@/components/MainImage.vue'
 import Navbar from '@/components/Navbar.vue'
 
 export default {
-  name: "AppLayoutHome",
+  name: 'AppLayoutHome',
   components: {
     MainImage,
-    Navbar
-  }
+    Navbar,
+  },
 }
 </script>
-<style scoped>
-</style>
+<style scoped></style>

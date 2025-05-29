@@ -1,107 +1,95 @@
 [
   {
     "path": "introduccion",
-    "page": "introduccion",
     "title": "Introducción",
     "description": "¿De qué se trata Arquitecturas Concurrentes?"
   },
   {
     "path": "concurrencia_paralelismo",
-    "page": "concurrencia_paralelismo",
     "title": "Concurrencia y Paralelismo",
     "description": "En busca de un vocabulario común"
   },
   {
+    "path": "cap",
+    "title": "CAP",
+    "description": "Notas sobre CAP"
+  },
+  {
     "path": "cps",
-    "page": "cps",
     "title": "CPS",
-    "description": "Introduccion a CPS"
+    "description": "Notas sobre CPS"
   },
   {
     "path": "event_loop",
-    "page": "event_loop",
     "title": "Event Loop",
     "description": "Breve introducción al event loop"
   },
   {
     "path": "promises",
-    "page": "promises",
     "title": "Promises",
     "description": "Solo Promesas"
   },
   {
     "path": "corutinas",
-    "page": "coroutines",
     "title": "Corutinas",
     "description": "Introduccion a las corrutinas"
   },
   {
     "path": "fibers",
-    "page": "fibers",
     "title": "Fibers",
     "description": "Fibers en Ruby"
   },
   {
     "path": "guilds",
-    "page": "guild",
     "title": "Guilds",
     "description": "Eso es un Guild o un Ractor??"
   },
   {
     "path": "actores_intro",
-    "page": "actores_intro",
     "title": "Introduccion a Actores",
     "need_detail": true,
     "description": "Actores y Elixir"
   },
   {
     "path": "otp",
-    "page": "otp",
     "title": "Elixir/Erlang OTP",
     "description": "OTP Elxir"
   },
   {
     "path": "distribucion",
-    "page": "distribucion",
     "title": "Distribucion",
     "description": "Introduccion y nociones de distribucion"
   },
   {
     "path": "interleaving",
-    "page": "interleaving",
     "title": "Intearleaving Y Netsplits",
     "description": "...."
   },
   {
     "path": "cap",
-    "page": "cap",
     "title": "CAP",
     "description": "Notas sobre CAP"
   },
   {
     "path": "mitos_distribucion",
-    "page": "mitos",
     "title": "Distribucion Bonus",
     "extra": true,
     "description": "Mitos de la distribucion"
   },
   {
     "path": "intro_contenedores",
-    "page": "contenedores",
     "title": "Contenedores",
     "need_detail": true,
     "description": "Contenedores con Docker"
   },
   {
     "path": "service_mesh",
-    "page": "service_mesh",
     "title": "Service Mesh",
     "need_detail": true,
     "description": "Introduccion conceptual de Service Mesh"
   },
   {
     "path": "estructuras_funcionales",
-    "page": "estructuras_funcionales",
     "title": "Estructuras Funcionales",
     "need_detail": true,
     "description": "Estructuras Funcionales y Mónadas"

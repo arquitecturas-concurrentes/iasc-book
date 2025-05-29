@@ -1,52 +1,35 @@
-# Material formal de Arquitecturas Concurrentes
+# iasc-book-nuevo
 
-Este repositorio contiene el codigo y material formal de la materia de Arquitecturas Concurentes.
+This template should help get you started developing with Vue 3 in Vite.
 
-La idea de este repositorio es la de proveer un lugar donde se describan los conceptos y otro material adicional de la materia y que el mismo se pueda ir actualizando y mejorando iterativamente.
+## Recommended IDE Setup
 
-## Branches
+[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
 
-Este repo tiene un par de branches importantes para tener en cuenta al momento de editar o cambiar algo.
+## Customize configuration
 
-- gh-pages: No tocar! lo usa el CI para publicar los cambios
-- Source: Este es el branch default donde va a estar el codigo fuente de la pagina
+See [Vite Configuration Reference](https://vite.dev/config/).
 
+## Project Setup
 
-## Workflow
-
-Actualmente usamos vue.js, por lo que se necesita el CI de github para buildear los assets y los componentes de vue.js para que directamente puedan funcionar con github pages.
-
-Por lo que hay que siempre hacer los cambios sobre source, y una vez que se pusheen los cambios a este repo, el CI hara la ejecucion y la publicacion de la pagina, lista para que sea servida por Github Pages en el branch master
-
-## Got typo?
-
-Si alguno detecta algun problema o error puede levantar un nuevo issue y veremos de arreglar el mismo lo antes posible.
-
-## Project setup
-```
-yarn install
+```sh
+npm install
 ```
 
-### Compiles and hot-reloads for development
-```
-yarn serve
-```
+### Compile and Hot-Reload for Development
 
-### Compiles and minifies for production
-```
-yarn build
+```sh
+npm run dev
 ```
 
-### Lints and fixes files
+### Compile and Minify for Production
+
+```sh
+npm run build
 ```
-yarn lint
+
+### Lint with [ESLint](https://eslint.org/)
+
+```sh
+npm run lint
 ```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
-
-
-
-
-
-

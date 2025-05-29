@@ -1,0 +1,21 @@
+const e=`<div class="sect1">
+<h2 id="_interleaving_y_netsplits"><a class="anchor" href="#_interleaving_y_netsplits"></a>Interleaving y netsplits</h2>
+<div class="sectionbody">
+<div class="imageblock center iasc-image">
+<div class="content">
+<img src="./public/img/interleaving/0.png" alt="0">
+</div>
+</div>
+<div class="paragraph">
+<p>Sucede a veces cuando tenemos una interconexión entre nodos, momentos en los que tal vez un nodo no empieza a responder a los heartbeats y perdemos conocimiento de él, después de un tiempo tendremos que asumir que esta muerto.</p>
+</div>
+<div class="imageblock center iasc-image">
+<div class="content">
+<img src="./public/img/interleaving/1.png" alt="1">
+</div>
+</div>
+<div class="paragraph">
+<p>En general se asume, y también en lenguajes que nos ayudan con algunos temas de distribución como Erlang, que si un nodo no se puede conocer si está vivo, está muerto, que es el caso más pesimista que es cuando se piensa que hay más fallos de hardware/software que de red. Otro esquema sería el optimista en el que el nodo está vivo y en realidad lo que pasó es que por un momento la red se cayó o había demasiada latencia y no llegaba al nodo extraviado. Este esquema supone que es más frecuente el fallo de red que de hardware/software. Imaginemos un sitio de compra y venta tipo mercadolibre con dos nodos y sucede este esquema, cuando se realizar una transacción en un nodo, se debe también sincronizar la transacción en el otro nodo ya que puede existir el caso que una de las dos partes tiene su cuenta en otro nodo, si funciona todo bien no hay problemas, pero en el caso de que uno de los nodos no responda, y luego en realidad haya pasado que había un fallo de la red, el nodo queda desincronizado, pero el esquema que tomemos puede tener una desventaja u otra, el pesimista es que no permita que haya transacciones y en consecuencia perdamos plata, no cobramos la comisión, pero el otro caso si es optimista, puede suceder que haya un interleave que deje que dos personas compre un mismo productos en los dos nodos y después no se sepa quien ganó.</p>
+</div>
+</div>
+</div>`;export{e as default};
