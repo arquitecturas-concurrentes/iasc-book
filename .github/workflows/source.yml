@@ -1,0 +1,20 @@
+  name: Deploy to Github Pages
+  on:
+    push:
+      branches:
+        - source
+  jobs:
+    gh-pages-deploy:
+      name: Deploying to Github Pages
+      runs-on: ubuntu-latest
+      steps:
+          - uses: actions/checkout@v4
+          - uses: actions/setup-node@v4
+            with:
+              node-version: '24'
+          - name: Install packages
+            run: yarn install
+          - name: Set Creds
+            run: git config user.name "IASC CI" && git config user.email "bossi.ernestog@gmail.com"
+          - name: Deploy
+            run: yarn deploy
