@@ -1,5 +1,5 @@
 
-== Introduccion
+== Introducción
 
 Empecemos de a poco y por algo muy simple: una función que incrementa en una unidad a su argumento, la función succesor.
  

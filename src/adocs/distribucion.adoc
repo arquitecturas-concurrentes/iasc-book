@@ -1,6 +1,6 @@
 = Distribución
 
-== Introduccion
+== Introducción
 
 Antes de hablar de distribución, es a veces ideal tratar de explicarlo de cómo se llega a ella. En general cuando se plantea la arquitectura de una aplicación, en cuanto a la arquitectura, en donde queda afuera lo que es el diseño e implementación del mismo, en general se plantea o se despliega por primera vez como un monolito, es decir, solo implementar todo nuestro sistema en un solo servidor. Ya sea un prototipo, o una versión temprana (beta) de nuestra aplicación, en general se plantea el monolito como arquitectura inicial, por costos y tiempo en el que se despliega la aplicación, y también porque no tenemos problemas que nos puede causar un sistema distribuido.
 
