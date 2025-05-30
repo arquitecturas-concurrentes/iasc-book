@@ -12,7 +12,7 @@ Los contenedores se crean a partir de imágenes: paquetes que representan el sis
 
 Esto es similar a cómo funcionan las clases y las instancias en la programación orientada a objetos; Se puede usar una sola clase para crear cualquier número de instancias así como se puede usar una sola imagen de contenedor para crear cualquier número de contenedores. Esta analogía también es válida con respecto a la herencia, ya que las imágenes de contenedor pueden actuar como el padre de otras imágenes de contenedor más personalizadas. Los usuarios pueden descargar contenedores preconstruidos de fuentes externas o crear sus propias imágenes personalizadas según sus necesidades.
 
-== Introduccion a Docker
+== Introducción a Docker
 
 [.center.iasc-image]
 image::contenedores/docker.png[]
