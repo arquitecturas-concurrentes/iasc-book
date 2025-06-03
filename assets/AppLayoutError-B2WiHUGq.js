@@ -1,0 +1,1 @@
+import{_ as t,h as n,b as s,o as r,e,f as c}from"./index-BzzY2VMx.js";const a={name:"AppLayoutError",components:{}},_={class:"container"},p={class:"inner-content col-sm-8 col-md-10"};function i(d,l,m,u,f,v){const o=n("router-view");return r(),s("div",null,[e("div",_,[e("div",p,[c(o)])])])}const $=t(a,[["render",i]]);export{$ as default};
