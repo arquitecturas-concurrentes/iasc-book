@@ -481,10 +481,10 @@ if __name__ == '__main__':
 ----
 
 ____
-['🐀', '🐍🐍🐍']
+["🐀", "🐍🐍🐍"]
 ____
 
-_Nota: las corrutinas se ejecutaron concurrentemente pero aunque "ssss" terminó antes que "rat", en la lista se respeta el orden en el que fueron pasados los parámetros.
+_Nota: las corrutinas se ejecutaron concurrentemente pero aunque "ssss" terminó antes que "rat", en la lista se respeta el orden en el que fueron pasados los parámetros._
 
 *5-* Usando `TaskGroup` de `asyncio`, inspirado en el concepto de "structured concurrency", La instrucción `async with` esperará a que todas las tareas del grupo finalicen.
 
@@ -514,7 +514,7 @@ ____
 Result: 🐀, 🐍🐍🐍
 ____
 
-_Nota: Mientras tanto, se pueden añadir nuevas tareas al grupo (por ejemplo, pasando `tg` a una de las corrutinas y llamando a `tg.create_task()` dentro de esa corrutina). Una vez que la última tarea haya finalizado y se haya salido del bloque `async with`, no se podrán añadir nuevas tareas al grupo.
+_Nota: Mientras tanto, se pueden añadir nuevas tareas al grupo (por ejemplo, pasando `tg` a una de las corrutinas y llamando a `tg.create_task()` dentro de esa corrutina). Una vez que la última tarea haya finalizado y se haya salido del bloque `async with`, no se podrán añadir nuevas tareas al grupo._
 
 == Gather VS TaskGroup
 
