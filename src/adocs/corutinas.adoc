@@ -522,15 +522,38 @@ Podemospensarlo de esta forma:
   *Gather* "ejecutá estas cosas concurrentemente y dame sus resultados"
   *TaskGroup* "estas tareas forman juntas una unidad de trabajo; si una falla, ocupate de cancelar correctamente las demás"
 
-  |                                   | `asyncio.gather()`          | `asyncio.TaskGroup`              |
-  | --------------------------------- | --------------------------- | -------------------------------- |
-  | Ejecutar cosas concurrentemente   | ✅                           | ✅                                |
-  | Obtener resultados                | ⭐ Excelente                 | Hay que obtenerlos desde `Task`  |
-  | Manejo de errores                 | Flexible                    | Estructurado                     |
-  | Cancela hermanas cuando una falla | ❌ No por defecto            | ✅                                |
-  | Structured concurrency            | ❌                           | ✅                                |
-  | Ciclo de vida de tareas           | Más flexible                | Más controlado                   |
-  | Uso típico                        | "Necesito estos resultados" | "Estas tareas forman un trabajo" |
+  [cols="1,1,1", options="header"]
+  |===
+  | Característica | `asyncio.gather()` | `asyncio.TaskGroup`
+
+  | Ejecutar cosas concurrentemente
+  | ✅
+  | ✅
+
+  | Obtener resultados
+  | ⭐ Excelente
+  | Hay que obtenerlos desde `Task`
+
+  | Manejo de errores
+  | Flexible
+  | Estructurado
+
+  | Cancela hermanas cuando una falla
+  | ❌ No por defecto
+  | ✅
+
+  | Structured concurrency
+  | ❌
+  | ✅
+
+  | Ciclo de vida de tareas
+  | Más flexible
+  | Más controlado
+
+  | Uso típico
+  | "Necesito estos resultados"
+  | "Estas tareas forman un trabajo"
+  |===
 
 
 == ¿Qué pasa si ejecuto código bloqueante dentro de una corrutina?
