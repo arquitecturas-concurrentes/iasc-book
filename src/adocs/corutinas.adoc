@@ -441,7 +441,7 @@ ____
 
 _Nota: acá usamos `run` para ejecutar la corrutina `main` y `await` para ejecutar las corrutinas `say_after`._
 
-*3-* Con la función `create_task` de `asyncio`, que ejecuta corrutinas concurrentemente _wrappeándolas_ en `Tasks`, usando  por detrás un *event loop* para planificarlas.
+*3-* Con la función `create_task` de `asyncio`, que _wrappea_ las corrutinas en `Tasks`cuya ejecución es planificada en un *event loop*.
 
 [,python]
 ----
@@ -456,6 +456,74 @@ async def main():
 ----
 
 _Nota: `create_task` envía la corrutina al event loop, permitiendo que corra en segundo plano. `gather` hace algo muy parecido, pero podemos decir que es conveniente usarlo cuando nos interesa hacer algo con el resultado de las corrutinas._
+
+*4-* Con la función `gather` de `asyncio`, que ejecuta una lista de corrutinas de forma concurrente planificadas en un *event loop*, retornando sus resultados en una lista.
+
+[,python]
+----
+import time
+import asyncio
+
+async def rat():
+    await asyncio.sleep(3)
+    return "🐀"
+
+async def ssss():
+    await asyncio.sleep(1)
+    return "🐍🐍🐍"
+
+async def main():
+    result = await asyncio.gather(rat(), ssss())
+    print(result)
+
+if __name__ == '__main__':
+    asyncio.run(main())
+----
+
+_Nota: las corrutinas se ejecutaron concurrentemente pero aunque "ssss" terminó antes que "rat", en la lista se respeta el orden en el que fueron pasados los parámetros.
+
+*5-* Usando `TaskGroup` de `asyncio`, inspirado en el concepto de "structured concurrency", La instrucción `async with` esperará a que todas las tareas del grupo finalicen.
+
+[,python]
+----
+import asyncio
+
+async def rat():
+    await asyncio.sleep(3)
+    return "🐀"
+
+async def ssss():
+    await asyncio.sleep(1)
+    return "🐍🐍🐍"
+
+async def main():
+    async with asyncio.TaskGroup() as tg:
+        task1 = tg.create_task(rat())
+        task2 = tg.create_task(ssss())
+    print(f"Result: {task1.result()}, {task2.result()}")
+
+if __name__ == '__main__':
+    asyncio.run(main())
+----
+
+_Nota: Mientras tanto, se pueden añadir nuevas tareas al grupo (por ejemplo, pasando `tg` a una de las corrutinas y llamando a `tg.create_task()` dentro de esa corrutina). Una vez que la última tarea haya finalizado y se haya salido del bloque `async with`, no se podrán añadir nuevas tareas al grupo.
+
+== Gather VS TaskGroup
+
+Podemospensarlo de esta forma:
+  *Gather* "ejecutá estas cosas concurrentemente y dame sus resultados"
+  *TaskGroup* "estas tareas forman juntas una unidad de trabajo; si una falla, ocupate de cancelar correctamente las demás"
+
+  |                                   | `asyncio.gather()`          | `asyncio.TaskGroup`              |
+  | --------------------------------- | --------------------------- | -------------------------------- |
+  | Ejecutar cosas concurrentemente   | ✅                           | ✅                                |
+  | Obtener resultados                | ⭐ Excelente                 | Hay que obtenerlos desde `Task`  |
+  | Manejo de errores                 | Flexible                    | Estructurado                     |
+  | Cancela hermanas cuando una falla | ❌ No por defecto            | ✅                                |
+  | Structured concurrency            | ❌                           | ✅                                |
+  | Ciclo de vida de tareas           | Más flexible                | Más controlado                   |
+  | Uso típico                        | "Necesito estos resultados" | "Estas tareas forman un trabajo" |
+
 
 == ¿Qué pasa si ejecuto código bloqueante dentro de una corrutina?
 
