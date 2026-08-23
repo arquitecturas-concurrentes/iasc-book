@@ -558,7 +558,7 @@ Podemospensarlo de esta forma:
 _Nota: Reglas clave de la "Concurrencia estructurada":
           Duración limitada: Los subprocesos o tareas no pueden sobrevivir al bloque de código o ámbito que los creó.
           Jerarquía padre-hijo: Una tarea padre espera a que todas las subtareas hijas finalicen.
-          Propagación automática: Si una tarea hija falla o se cancela, las tareas hermanas se pueden detener automáticamente.._
+          Propagación automática: Si una tarea hija falla o se cancela, las tareas hermanas se pueden detener automáticamente._
 
 == ¿Qué pasa si ejecuto código bloqueante dentro de una corrutina?
 
