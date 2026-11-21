@@ -110,6 +110,10 @@ export const sidearContent = [
         title: 'Introduccion a Distribucion',
       },
       {
+        href: '/tema/heartbeat_gossip',
+        title: 'Heartbeats y gossip',
+      },
+      {
         href: '/tema/interleaving',
         title: 'Interleaving y Netsplits',
       },

@@ -61,6 +61,11 @@
     "description": "Introduccion y nociones de distribucion"
   },
   {
+    "path": "heartbeat_gossip",
+    "title": "Heartbeats y gossip",
+    "description": "Detección de fallas y diseminación de información en sistemas distribuidos"
+  },
+  {
     "path": "interleaving",
     "title": "Intearleaving Y Netsplits",
     "description": "...."

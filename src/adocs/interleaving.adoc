@@ -48,6 +48,8 @@ El timeout convierte la ausencia de mensajes en una *sospecha*, no en una prueba
 
 Un intervalo corto permite reaccionar rápido, pero aumenta los falsos positivos; uno largo reduce sospechas prematuras, pero demora la recuperación. La señal también importa: un proceso puede seguir enviando heartbeats aunque una dependencia crítica esté fallando. Por ejemplo, un servidor puede emitir latidos desde un temporizador mientras su conexión a la base de datos está bloqueada; el proceso está vivo, pero no puede completar una compra. Para comprobar que una operación puede atenderse hace falta además una verificación de salud que pruebe el camino relevante, con límites de tiempo y sin provocar efectos no deseados.
 
+Los heartbeats permiten observar actividad o sospechar que un nodo no responde; no distribuyen por sí solos esa observación al resto del sistema. Para profundizar en el diseño de heartbeats y en cómo *gossip* propaga sospechas y cambios de membresía entre nodos, véase la página sobre https://arquitecturas-concurrentes.github.io/iasc-book/heartbeat_gossip/[heartbeats y gossip].
+
 === Netsplit: cuando los nodos dejan de comunicarse
 
 Un *netsplit* o *partición de red* ocurre cuando algunos nodos dejan de poder intercambiar mensajes con otros. La comunicación entre grupos se interrumpe, aunque los nodos de cada lado puedan seguir ejecutándose y atendiendo solicitudes. Un timeout puede llevar a un nodo a sospechar que el otro cayó; no revela si el problema es una caída, una sobrecarga o una partición.
