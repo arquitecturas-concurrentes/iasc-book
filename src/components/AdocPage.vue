@@ -1,13 +1,15 @@
 <template>
-  <div v-if="adocHtml" class="adoc-container" v-html="adocHtml"></div>
+  <div v-if="adocHtml" ref="adocContainer" class="adoc-container" v-html="adocHtml"></div>
 </template>
 
 <script setup>
-import { ref, watch, onUpdated } from 'vue'
+import { ref, watch, nextTick, onUpdated, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
+import { clearMathJax, typesetMathJax } from '@/composables/useMathJax'
 
 const route = useRoute()
 const adocHtml = ref('<p>Loading...</p>')
+const adocContainer = ref(null)
 import { useScrollToHash } from '@/composables/useScrollToHash'
 
 const { scrollToHash } = useScrollToHash()
@@ -29,6 +31,27 @@ watch(
     }
   },
   { immediate: true },
+)
+
+onBeforeUnmount(() => {
+  if (adocContainer.value) clearMathJax(adocContainer.value)
+})
+
+watch(
+  adocHtml,
+  async () => {
+    const container = adocContainer.value
+    if (!container) return
+
+    clearMathJax(container)
+    await nextTick()
+
+    try {
+      await typesetMathJax(container)
+    } catch (error) {
+      console.error('Error rendering AsciiDoc math:', error)
+    }
+  },
 )
 
 onUpdated(() => {

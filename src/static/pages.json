@@ -61,6 +61,11 @@
     "description": "Introduccion y nociones de distribucion"
   },
   {
+    "path": "consenso_commit",
+    "title": "Algoritmos de Commit",
+    "description": "2 y 3 Phase Commit"
+  },
+  {
     "path": "interleaving",
     "title": "Intearleaving Y Netsplits",
     "description": "...."

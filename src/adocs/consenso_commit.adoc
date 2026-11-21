@@ -1,0 +1,528 @@
+= Del consenso al commit atómico: votación, 2PC, 3PC y quórums
+:doctype: article
+:lang: es
+:encoding: utf-8
+:icons: font
+:imagesdir: diagramas
+:figure-caption: Figura
+:table-caption: Tabla
+:source-highlighter: rouge
+:stem: latexmath
+:xrefstyle: short
+:revdate: 2026-11-17
+:revnumber: 3.0
+
+== Resumen
+
+En un sistema distribuido, las decisiones suelen involucrar a procesos que no comparten memoria ni tienen una visión completa de lo que ocurre. Cada uno conoce su propio estado y recibe noticias de los demás a través de mensajes que pueden retrasarse, perderse o llegar después de una falla. El problema aparece cuando esas decisiones deben ser compatibles: no basta con que cada proceso funcione correctamente por separado; también hace falta que el conjunto se comporte de manera coherente.
+
+Este texto distingue tres conceptos que a menudo se mezclan. El *consenso distribuido* trata de lograr que distintos procesos acuerden un valor. La *votación* es una forma de reunir respuestas o compromisos locales, pero no determina por sí sola el resultado. La *confirmación atómica* (*atomic commitment*) se ocupa de decidir si una transacción distribuida se confirma por completo o se aborta, sin dejar resultados definitivos contradictorios entre sus participantes.
+
+A partir de esa diferencia, estudiaremos la confirmación en dos fases (*Two-Phase Commit*, 2PC) y en tres fases (*Three-Phase Commit*, 3PC). Veremos cómo intercambian mensajes, qué estados deben conservar y qué sucede cuando una máquina falla en un momento delicado. También explicaremos por qué 2PC necesita que todos los participantes estén preparados, mientras que los protocolos de consenso como Paxos y Raft utilizan quórums entre réplicas. La relación entre estos problemas se examina formalmente en el trabajo de Gray y Lamport sobre Paxos Commit <<GrayLamport2006>>, <<Skeen1981>>, <<Ongaro2014>>.
+
+[NOTE]
+====
+*Aclaracion* En estas páginas, *commit* significa confirmar de forma duradera una transacción. No es exactamente lo mismo que una entrada *committed* en el registro replicado de Raft, aunque la palabra inglesa sea la misma. Tampoco hay que confundir *Two-Phase Commit* con *Two-Phase Locking* (2PL): el primero coordina la decisión final de una transacción; el segundo se refiere al control de concurrencia.
+====
+
+== Antes de hablar de protocolos: ¿qué problema queremos resolver?
+
+
+=== Coordinar decisiones cuando nadie ve el sistema completo
+
+A diferencia de un programa que ejecuta todos sus pasos en una sola máquina, un sistema distribuido está formado por procesos que avanzan de manera independiente. Se comunican por mensajes y no siempre saben qué ocurrió en los demás. Una respuesta que tarda puede significar que el otro proceso está ocupado, que la red está congestionada o que la máquina dejó de funcionar. Desde afuera, estas situaciones pueden verse exactamente iguales.
+
+Esto vuelve más difícil algo que, en un sistema centralizado, parece bastante natural: tomar una decisión común. Un proceso puede haber completado su trabajo y otro todavía estar comprobando si puede hacerlo. Uno puede conocer la decisión final mientras otro solo conoce una promesa preliminar. La cuestión es cómo lograr que todos respeten un resultado compatible y, a la vez, qué hacer cuando la información necesaria no llega.
+
+Para estudiar esa dificultad conviene separar *las respuestas locales*, *la decisión compartida* y *la ejecución de esa decisión*. No son tres nombres para el mismo hecho: que un proceso esté dispuesto a realizar algo no significa que el grupo haya decidido hacerlo, y una decisión tomada tampoco implica que todos la hayan recibido al mismo tiempo.
+
+En las transacciones distribuidas llamaremos *participante* a cada componente responsable de una parte de la operación. Si hace falta precisar el papel técnico, usaremos *gestor de recursos*: es quien administra una base de datos u otro recurso con capacidad de preparar y confirmar cambios transaccionales. El *coordinador* organiza el intercambio de mensajes y la decisión global. En la bibliografía inglesa, ese participante suele denominarse _resource manager_; aquí evitaremos repetir una sigla innecesaria <<Gray1978>>, <<GrayLamport2006>>.
+
+=== Qué suponemos sobre la red y las fallas
+
+Para entender qué garantiza un protocolo, primero hay que decir qué fallas se permiten. Supondremos inicialmente un conjunto conocido de participantes, comunicación por mensajes y fallas por detención seguidas, eventualmente, de recuperación. No incluiremos fallas bizantinas: un participante no falsifica información ni envía deliberadamente mensajes contradictorios. Los mensajes pueden sufrir pérdidas, retrasos, duplicaciones o reordenamiento; el diseño debe contemplar reintentos y operaciones idempotentes.
+
+Otro elemento importante es el *almacenamiento persistente*. Los participantes y el coordinador conservan, antes de determinados pasos irreversibles, registros que les permiten reconstruir lo ocurrido tras un reinicio. Habitualmente se emplea un registro de escritura anticipada, o *write-ahead log* (WAL). Sin esa persistencia, un proceso podría prometer que está listo para confirmar y olvidar luego su promesa, lo que haría imposible una recuperación correcta <<Mohan1992>>.
+
+No todas las redes ofrecen las mismas garantías temporales. En un *sistema sincrónico* existen cotas conocidas sobre procesamiento y comunicación. En uno *asincrónico* no podemos decidir, únicamente por la demora, si una máquina está caída o simplemente responde lentamente. La *sincronía parcial* admite cotas que podrían ser desconocidas o comenzar a cumplirse después de un período de inestabilidad <<Dwork1988>>. Esta diferencia explica buena parte de las condiciones que necesita el protocolo de tres fases.
+
+=== Seguridad y progreso: no son la misma garantía
+
+En sistemas distribuidos solemos pedir dos clases de propiedades. La *seguridad* (_safety_) afirma que nunca se alcanza una situación prohibida; por ejemplo, que una parte de la transacción termine confirmada mientras otra termina definitivamente abortada. El *progreso* (_liveness_) pregunta si el sistema logra terminar, suponiendo determinadas condiciones de funcionamiento.
+
+Un protocolo puede ser seguro y aun así quedarse esperando. Si el coordinador desaparece y los participantes no saben si la decisión global ya fue tomada, bloquearse puede ser la única conducta segura. La situación contraria sería avanzar sin pruebas suficientes: se obtendría una respuesta rápida, pero quizá dos participantes terminarían con decisiones incompatibles.
+
+Conviene recordar aquí el resultado de Fischer, Lynch y Paterson. En el modelo completamente asincrónico, un algoritmo determinista de consenso no puede garantizar terminación en *todas* las ejecuciones si siquiera un proceso puede detenerse <<FLP1985>>. Esto no quiere decir que Paxos o Raft nunca decidan; significa que las garantías de progreso necesitan condiciones adicionales, como sincronía parcial y eventual estabilidad de la comunicación <<Dwork1988>>, <<ChandraToueg1996>>.
+
+== Consenso, votación y confirmación atómica: dónde se parecen y dónde no
+
+[.center.iasc-image]
+image::commit/00_mapa_conceptual.svg[Mapa conceptual de consenso, votación y commit atómico,align=center,width=100%]
+
+=== Consenso: ponerse de acuerdo sobre un valor
+
+La pregunta básica del *consenso distribuido* es fácil de formular: varios procesos disponen de propuestas y necesitan decidir un único valor que todos puedan reconocer como resultado. Ese valor puede representar un líder, una operación del registro replicado, una configuración del clúster o una decisión de aplicación. La clave está en que *cada problema define qué valores son válidos*. El consenso no incorpora de manera automática la regla «si un participante se opone, hay que abortar».
+
+Para expresarlo de manera formal, consideremos procesos stem:[p_1, p_2, \ldots, p_n], con propuestas stem:[v_1, v_2, \ldots, v_n] pertenecientes a un dominio stem:[V]. Buscamos un valor decidido stem:[d]. El *acuerdo* exige que dos procesos correctos que decidan no elijan valores distintos; la *integridad* exige que cada uno decida a lo sumo una vez; la *validez* especifica cuáles son los valores admisibles; y la *terminación* pide que los procesos correctos eventualmente decidan, bajo las condiciones del modelo. En el consenso clásico, una condición de validez habitual es que el valor decidido haya sido propuesto por algún proceso.
+
+Paxos y Raft proporcionan mecanismos para construir acuerdo sobre información replicada. Cuando recurren a mayorías, no están preguntando si la mayoría de los recursos involucrados en una transacción está de acuerdo en realizarla. Están utilizando conjuntos de réplicas que se solapan: dos mayorías de un mismo grupo siempre tienen al menos un integrante en común, lo que permite preservar la continuidad de las decisiones <<Lamport1998>>, <<Ongaro2014>>.
+
+=== ¿Votar es lo mismo que decidir?
+
+No. En una votación, cada participante expresa una posición; solo después se aplica alguna regla para obtener el resultado. Recibir votos y decidir son dos pasos diferentes. La regla para pasar de uno al otro puede exigir una mayoría simple, una mayoría calificada, unanimidad u otra condición, según el problema.
+
+En una transacción distribuida, el coordinador puede preguntar a cada participante: «¿terminaste tu trabajo local y podés garantizar que confirmarás si recibís la orden?». Una respuesta `YES` es una promesa duradera: el participante se encuentra *preparado*, pero todavía *no confirmó* la transacción. Una respuesta `NO` significa que no puede asumir esa obligación. Luego debe existir una decisión global `COMMIT` o `ABORT`, que cada participante conocerá y ejecutará.
+
+Por eso, cuando hablamos de la «fase de votación» de 2PC, nos referimos a *una etapa del protocolo de confirmación*, no a una elección independiente por mayoría. El mismo vocabulario «voto», «aceptación», «preparación» aparece en algoritmos diferentes, pero su significado técnico depende del contexto.
+
+=== Commit atómico: la semántica del todo o nada
+
+La *confirmación atómica* (_atomic commitment_) plantea una pregunta más concreta: dado un conjunto de participantes que realizaron trabajo local como parte de la misma transacción, ¿se deben hacer definitivos los cambios de todos o se deben deshacer todos? La respuesta tiene que ser común y estable. La atomicidad no exige que todos apliquen el cambio en el mismo nanosegundo; exige que ninguno termine definitivamente en un resultado incompatible con los demás.
+
+La diferencia con el consenso general está en la *validez de la decisión*. Para confirmar correctamente una transacción, *cada participante necesario* tuvo que alcanzar un estado en el que pueda comprometerse a confirmar. Si una sola de esas partes se niega, no es válido confirmar el resto y llamar a eso la misma transacción atómica. A la inversa, si todos están preparados, `COMMIT` se vuelve una opción válida, pero la red todavía puede fallar antes de que el coordinador haya decidido. Los votos positivos no son, por sí mismos, una decisión global durable <<GrayLamport2006>>.
+
+Esta exigencia puede expresarse de manera compacta:
+
+[stem]
+++++
+\mathrm{COMMIT}(T)\;\Longrightarrow\;\bigwedge_{i=1}^{n} \mathrm{Prepared}(p_i,T)
+++++
+
+Además, si un participante declara correctamente un rechazo definitivo durante la preparación, la salida global debe ser `ABORT`. En un protocolo práctico se pueden producir abortos por demoras o fallas antes de una decisión de confirmación irreversible; *no* debemos inferir la equivalencia inversa «todos están preparados, luego ya ocurrió COMMIT».
+
+Para razonar formalmente sobre este problema usamos *estabilidad* (nadie abandona un estado final), *consistencia de las decisiones* (no hay finales incompatibles), *validez de la confirmación* (nadie confirma sin que todos hayan podido preparar su parte) y alguna condición explícita de *progreso o no trivialidad*. Gray y Lamport presentan una especificación precisa y muestran cómo relacionarla con consenso <<GrayLamport2006>>.
+
+=== Tres situaciones parecidas, tres preguntas distintas
+
+[cols="2,4,4",options="header"]
+|===
+|Mecanismo |Pregunta que responde |Regla que importa
+|Consenso sobre un registro replicado |¿Qué operación o valor queda decidido por el conjunto de réplicas? |Acuerdo y validez del valor, con quórums apropiados
+|Voto de preparación |¿Puede *este participante concreto* confirmar luego su parte? |Estado local persistente de cada participante
+|Commit atómico |¿Confirmamos o abortamos *toda la transacción*? |`COMMIT` requiere que *todos los participantes necesarios* estén preparados
+|===
+
+Una diferencia práctica adicional es que *un voto afirmativo puede obligar al participante a esperar*. Si el gestor de recursos responde `YES`, debe mantener un estado recuperable que le permita obedecer el resultado global posterior. No le alcanza con cambiar de opinión porque haya vencido un tiempo de espera. Este detalle explica gran parte del comportamiento bloqueante de 2PC.
+
+=== Entonces, ¿2PC acepta dos tercios de los votos?
+
+*No.* En su forma clásica, el protocolo de confirmación en dos fases exige unanimidad entre los participantes lógicos de la transacción. Si tres gestores de recursos intervienen en una operación, dos respuestas `YES` y una respuesta `NO` conducen a `ABORT`. El participante que rechaza tiene poder de veto porque no estamos eligiendo una propuesta entre varias: queremos una operación que debe resultar atómica en los *tres* recursos.
+
+La idea de que «dos de tres alcanzan» tiene sentido en otro escenario: cuando las tres máquinas son *réplicas de un mismo estado*. En Raft, por ejemplo, una mayoría de tres réplicas son dos; eso puede bastar para confirmar una entrada del registro según las reglas del algoritmo, aunque la tercera esté temporalmente desconectada. En un sistema de cinco réplicas, en cambio, la mayoría es tres, no «dos tercios» de forma literal. La condición general de mayoría es más de la mitad, y las reglas particulares de confirmación de entradas en Raft tienen detalles adicionales vinculados a los períodos del líder <<Ongaro2014>>.
+
+[.center.iasc-image]
+image::commit/09_unanimidad_vs_quorum.svg[Contraste entre voto unánime de recursos y mayoría entre réplicas,align=center,width=100%]
+
+La figura contrasta dos conjuntos que *no representan lo mismo*: tres participantes que poseen distintas partes de una transacción, y tres réplicas que mantienen el mismo registro lógico. No sería correcto reemplazar una de las bases de datos de la transacción por otra simplemente porque la mayoría votó que sí.
+
+=== ¿Y de dónde sale el umbral de dos tercios?
+
+La cifra aparece con frecuencia en algoritmos tolerantes a *fallas bizantinas*, es decir, cuando algunas réplicas pueden comportarse arbitrariamente y hasta enviar mensajes contradictorios. En el modelo clásico de *Practical Byzantine Fault Tolerance* (PBFT), para tolerar hasta stem:[f] fallas se trabaja con stem:[3f+1] réplicas y ciertos pasos requieren stem:[2f+1] respuestas coincidentes. Se habla informalmente de «dos tercios», aunque el umbral exacto viene dado por esa fórmula: con cuatro réplicas y una falla tolerada, por ejemplo, hacen falta tres respuestas <<Castro1999>>.
+
+Este umbral no tiene relación con las tres fases de 3PC. El «tres fases» del protocolo de commit de Skeen no es el mismo mecanismo que las etapas de replicación bizantina de PBFT, aunque puedan aparecer nombres semejantes como _prepare_ o _commit_. Las hipótesis, los roles y las propiedades demostradas son diferentes <<Skeen1981>>, <<Castro1999>>.
+
+=== ¿Se pueden combinar mayorías y transacciones atómicas?
+
+Sí. De hecho, esa combinación ayuda a entender mejor para qué sirven las mayorías. Imaginemos tres particiones lógicas de una base distribuida: cuentas, inventario y pedidos. Cada partición se mantiene, a su vez, en tres réplicas que utilizan consenso. La transacción necesita un resultado compatible en *las tres particiones*, pero cada una de ellas puede usar una *mayoría de sus propias réplicas* para almacenar de modo seguro su voto o su decisión. La mayoría existe *dentro de cada servicio replicado*, mientras que la confirmación global todavía depende del estado de todos los servicios participantes.
+
+*Paxos Commit* formaliza una construcción muy relevante: obtiene un resultado de consenso para el estado preparado o abortado de *cada* participante y deriva `COMMIT` solamente cuando todos esos resultados son `Prepared`. Así puede evitar la dependencia de un único coordinador: con stem:[2f+1] aceptadores y un quórum de stem:[f+1], el protocolo puede progresar con hasta stem:[f] aceptadores fallidos, bajo las condiciones necesarias de comunicación y disponibilidad. Pero *ninguna mayoría de aceptadores permite pasar por alto el rechazo de una partición necesaria* <<GrayLamport2006>>.
+
+Podemos diseñar también operaciones con *quórums de lectura y escritura* o flujos con *compensaciones* (sagas), pero ahí cambian las garantías o la definición de la operación. Una saga no es un reemplazo transparente de una transacción global ACID: sus pasos pueden ser visibles y sus compensaciones no equivalen siempre a un rollback atómico <<GarciaMolinaSalem1987>>. El punto general es que *se puede cambiar el modelo del sistema* para aprovechar mayorías; lo que no se puede hacer es cambiar la regla de 2PC por «confirmar con el 67 %» y conservar automáticamente la atomicidad original.
+
+== Two-Phase Commit (2PC)
+
+=== Qué hace exactamente el protocolo de dos fases
+
+El protocolo *Two-Phase Commit* (2PC) nació para coordinar la terminación de transacciones que abarcan más de un sistema transaccional. La idea se entiende fácilmente; lo difícil aparece cuando alguna máquina deja de responder: primero se pregunta a todos los participantes si están preparados para confirmar; después se informa a todos una única decisión global. La formulación clásica puede estudiarse en Gray <<Gray1978>> y la formalización de Gray y Lamport <<GrayLamport2006>>.
+
+El *coordinador* sabe qué participantes integran la transacción, envía las solicitudes, registra los votos y establece una decisión definitiva. Cada *participante*, o gestor de recursos, ejecutó su propia parte del trabajo y debe conservar suficiente información para obedecer la decisión, incluso si la máquina se reinicia. En nuestros diagramas el coordinador aparece como un proceso independiente; en un sistema real podría compartir máquina con uno de los participantes.
+
+=== Primera fase: preparar y votar
+
+Supongamos una transacción `T` entre tres bases de datos. El coordinador envía a cada una el mensaje `PREPARE(T)`. Cada participante revisa sus restricciones, verifica que pueda cumplir las operaciones locales, conserva los bloqueos o reservas necesarios y prepara la información que necesitaría para confirmar más adelante. Si todo está en condiciones, escribe duraderamente `PREPARED(T)` y *recién entonces* responde `YES(T)`.
+
+La respuesta afirmativa es mucho más que una expresión de deseo. Desde ese instante el participante ha asumido una obligación: no puede decidir por su cuenta que va a abortar simplemente porque el coordinador tarda. Debe ser capaz de recuperar su preparación después de una falla. Si, en cambio, detecta un error que le impide comprometerse por ejemplo, una restricción violada o un conflicto imposible de resolver, responde `NO(T)` y la operación global no podrá confirmarse <<Mohan1992>>.
+
+El coordinador reúne esos votos. En la ruta exitosa recibe `YES` de todos. Si recibe un solo `NO`, puede decidir `ABORT`; si no consigue las respuestas necesarias, también puede abortar *antes de haber persistido una decisión de confirmación*, según la política y el protocolo de recuperación. Una demora no equivale matemáticamente a un voto negativo: el timeout permite tomar una decisión conservadora, no demostrar que la máquina estaba caída.
+
+=== Segunda fase: decidir y comunicar
+
+Si todos los participantes respondieron afirmativamente y el coordinador opta por confirmar, debe registrar `COMMIT(T)` en almacenamiento estable *antes de anunciarlo*. A continuación envía `GLOBAL-COMMIT(T)` a cada uno. Cuando un participante recibe esa decisión, hace definitiva su parte de la transacción, registra el resultado y libera los recursos correspondientes.
+
+Si hay un rechazo, o si se elige abortar antes del punto irreversible, el coordinador registra `ABORT(T)` y transmite `GLOBAL-ABORT(T)`. Los participantes deshacen o descartan sus modificaciones locales de manera recuperable. En muchas implementaciones contestan con un mensaje de confirmación de recepción (`ACK`), que permite limpiar registros. Ese reconocimiento posterior *no constituye una tercera fase de votación*.
+
+El orden importa. Anunciar `COMMIT` antes de persistirlo sería peligroso: si el coordinador cae, podría olvidar una decisión que otros sistemas ya obedecieron. El registro duradero, los identificadores de transacción y las retransmisiones idempotentes son condiciones indispensables de una implementación correcta <<Mohan1992>>.
+
+=== Diagrama de secuencia: ejecución exitosa
+
+[.center.iasc-image]
+image::commit/01_2pc_commit.svg[Diagrama de secuencia 2PC con votos YES y commit global,align=center,width=100%]
+
+La figura muestra explícitamente por qué `YES` y `COMMIT` no son sinónimos. Entre el último `YES` y la transmisión de `GLOBAL-COMMIT` existe una acción crítica: la persistencia de la decisión en el coordinador. Si este falla después de ese registro y antes de notificar a todos, la recuperación debe *retransmitir COMMIT*, no optar por un aborto nuevo.
+
+=== Diagrama de secuencia: ejecución con abort
+
+[.center.iasc-image]
+image::commit/02_2pc_abort.svg[Diagrama de secuencia 2PC con voto NO y decisión abort,align=center,width=100%]
+
+Un solo `NO` obliga a la decisión global `ABORT`. A diferencia de un protocolo electoral con mayoría simple, 2PC no necesita contar «cuántos» participantes votaron sí para vencer al voto negativo. Es suficiente un rechazo válido de un participante que participa de la transacción.
+
+=== Máquina de estados y persistencia
+
+[.center.iasc-image]
+image::commit/04_2pc_estados.svg[Autómata simplificado del participante 2PC,align=center,width=100%]
+
+El diagrama muestra la evolución de un participante. Mientras está trabajando (`WORKING`), todavía puede abortar su tarea local sin contradecir una promesa global. Después de persistir `PREPARED`, queda *en duda* (_in doubt_): aceptó confirmar si el coordinador lo ordena, pero no conoce la decisión definitiva. Desde allí solo puede continuar hacia `COMMITTED` o `ABORTED` cuando obtiene información autorizada. Ambos estados finales son estables: una transacción confirmada no vuelve a estar abortada por decisión del mismo protocolo.
+
+Por su parte, el coordinador pasa de iniciar la preparación a esperar los votos y, finalmente, registrar una de las dos decisiones posibles. No son simples etiquetas de una interfaz: cada transición crítica tiene efectos de persistencia y recuperación que constituyen parte de la corrección del protocolo.
+
+==== Orden de operaciones críticas
+
+[source,text]
+----
+Participante que responde YES:
+  1. asegurar cambios y metadatos recuperables
+  2. forzar al WAL el registro PREPARED(T)
+  3. enviar YES(T)
+
+Coordinador que decide COMMIT:
+  1. verificar YES de todos los participantes obligatorios
+  2. forzar al WAL el registro GLOBAL-COMMIT(T)
+  3. enviar GLOBAL-COMMIT(T) a todos
+----
+
+Si se invierte el orden de persistencia y comunicación, una caída puede hacer que otro proceso actúe basándose en una decisión que el emisor ya no es capaz de reconstruir al reiniciarse. En implementaciones reales existen optimizaciones y variantes del log; deben preservar las mismas obligaciones de recuperación.
+
+=== Por qué el protocolo puede quedar bloqueado
+
+[.center.iasc-image]
+image::commit/03_2pc_bloqueo.svg[2PC: falla del coordinador en la ventana crítica de preparación,align=center,width=100%]
+
+Imaginemos que dos participantes reciben `PREPARE`, registran `PREPARED` y responden `YES`. El coordinador deja de responder justo después. Los dos participantes saben que están preparados; incluso pueden comunicarse entre sí y comprobar que ambos votaron afirmativamente. Sin embargo, ninguno sabe necesariamente si el coordinador alcanzó a registrar una decisión final antes de detenerse.
+
+¿Por qué no resuelven el problema haciendo otra votación? Porque esa nueva votación no prueba qué decisión pudo haber quedado registrada en otro lugar o comunicada parcialmente. Si se confirma sin conocer el historial autorizado, se corre el riesgo de contradecir una decisión durable previa. Si se aborta sin saberlo, podría haber un participante que ya recibió `COMMIT`. El hecho de que todos los votos originales fueran positivos no corrige esa falta de información <<GrayLamport2006>>.
+
+Ahí aparece el *bloqueo* característico de 2PC. Para conservar seguridad, los participantes que se encuentran preparados pueden necesitar esperar a que el coordinador recupere su registro o a que otro procedimiento obtenga evidencia suficiente de la decisión. Mientras esperan, quizá mantengan bloqueos, espacio de registro o reservas que afectan otras operaciones. El problema no es simplemente que se perdió un mensaje: falta una fuente de información con autoridad sobre un resultado irreversible.
+
+==== ¿Sirve consultar a otros participantes?
+
+Sí, pero la utilidad depende de *qué saben esos participantes*. Si uno conserva una decisión global `COMMIT` o `ABORT` auténtica y durable, el resto puede aprenderla y actuar en consecuencia. Si todos están solamente en `PREPARED` y nadie conoce una decisión, repetir la consulta no transforma esos votos en una autorización para inventar una salida. En algunas ejecuciones, un participante todavía no preparado puede aportar evidencia suficiente para abortar; en otras, no. Lo determinante es reconstruir el historial posible conforme a las reglas del protocolo, no contar las respuestas como si se tratara de una nueva elección por mayoría.
+
+=== Matriz de fallas y recuperación
+
+[cols="3,3,5",options="header"]
+|===
+|Falla |Estado observable |Comportamiento seguro
+|Participante cae antes de `YES` |No confirmó preparación |El coordinador puede elegir `ABORT` si no existe una decisión de confirmación duradera.
+|Participante cae después de `YES` |`PREPARED` registrado en su WAL |Al reiniciarse debe consultar o recuperar la decisión global, y cumplirla.
+|Coordinador cae antes de `PREPARE` |Sin participantes preparados por esta ejecución |Es posible abortar la transacción sin violar una decisión de commit inexistente.
+|Coordinador cae tras todos los `YES`, antes de comunicar decisión |participantes pueden quedar *in-doubt* |Esperar información suficiente o recuperar al coordinador; no abortar unilateralmente.
+|Coordinador cae después de persistir `COMMIT` |Decisión irreversible en WAL |Al reiniciarse retransmite `COMMIT` a quienes no lo aprendieron.
+|Mensaje `GLOBAL-COMMIT` se pierde |Algunos participantes confirman y otros siguen preparados |Retransmisión/consulta de estado; nunca sustituir por `ABORT`.
+|ACK final se pierde |Decisión ya conocida por el participante |Reenviar ACK; limpieza eventual, sin cambiar resultado.
+|===
+
+=== Costos: latencia, mensajes y recursos
+
+Con stem:[n] participantes y un coordinador separado, en la forma didáctica aquí descrita:
+
+[cols="3,2,5",options="header"]
+|===
+|Intercambio |Mensajes |Observación
+|`PREPARE` a todos |stem:[n] |Difusión de solicitud
+|`YES`/`NO` al coordinador |stem:[n] |Recolección de votos
+|`GLOBAL-COMMIT/ABORT` |stem:[n] |Difusión de decisión
+|ACK final (opcional) |stem:[n] |Limpieza y confirmación
+|*Total* |*stem:[3n] o stem:[4n]* |Conteo para esta variante sin mensaje de inicio ni retransmisiones
+|===
+
+En ausencia de fallas, se requieren aproximadamente tres retardos de mensaje de ida entre el inicio de `PREPARE` y el conocimiento de la decisión por los participantes, si los envíos se paralelizan y no se consideran las demoras de WAL. El ciclo de ACK agrega otro retardo para la finalización administrativa. El costo fundamental es el de *escrituras síncronas persistentes* y *retención de recursos* durante la preparación, además del tráfico de red. Gray y Lamport estudian variantes optimizadas con otros conteos y ubicaciones del coordinador <<GrayLamport2006>>; los números anteriores son específicos del intercambio representado.
+
+==== Ventajas y desventajas: evaluación crítica
+
+La ventaja central de 2PC es su *semántica clara*. Coordina sistemas que ya disponen de transacciones locales, puede apoyarse en registros de recuperación bien estudiados y requiere un flujo relativamente simple en ausencia de fallas. Su decisión es estable y, si todos cumplen el protocolo, no permite que unos participantes confirmen definitivamente mientras otros abortan. Por esa razón, la confirmación en dos fases ocupa un lugar importante en la historia de las bases de datos distribuidas <<Gray1978>>, <<Bernstein1987>>.
+
+El precio aparece en dos lugares. Primero, un gestor de recursos que respondió afirmativamente puede quedar esperando una decisión final durante un tiempo indefinido si se pierde el acceso al coordinador o a la evidencia necesaria. Segundo, mientras espera suele mantener información persistente y recursos reservados; esto aumenta la latencia y la contención. También hay un costo de mensajes y escrituras síncronas durante el camino crítico. El protocolo prioriza la *seguridad* sobre la *capacidad de terminar siempre*, y ese compromiso es exactamente lo que intenta modificar 3PC.
+
+== Three-Phase Commit (3PC)
+
+=== Por qué se propuso una tercera fase
+
+Si el bloqueo de 2PC se produce porque el participante preparado no sabe si puede confirmar o abortar, surge una idea razonable: *¿qué pasa si agregamos una etapa en la que el coordinador anuncie, antes del resultado definitivo, que todos los participantes dieron su conformidad?* El protocolo de tres fases explora justamente esa posibilidad. Dale Skeen desarrolló las condiciones para diseñar protocolos de commit no bloqueantes dentro de modelos específicos <<Skeen1981>>.
+
+En 2PC, el estado `PREPARED` concentra dos posibilidades finales que el participante no puede distinguir por sí solo. En una construcción clásica de 3PC aparecen dos estados de espera diferenciados. El primero, habitualmente llamado `WAIT` o `READY`, indica que el participante está dispuesto a confirmar, pero todavía no recibió la comunicación global intermedia. El segundo, `PRE-COMMIT`, registra que el coordinador ya reunió todas las respuestas afirmativas y comunicó una intención de confirmar. Ese paso extra deja más información disponible para intentar terminar la operación cuando ocurren ciertas fallas.
+
+=== La advertencia necesaria: no funciona igual bajo cualquier red
+
+Conviene ser cuidadosos con la expresión *«no bloqueante»*. Los resultados clásicos dependen de hipótesis sobre los tiempos de comunicación, sobre qué fallas pueden producirse y sobre la posibilidad de determinar qué participantes siguen disponibles. Si admitimos retrasos arbitrarios y particiones indefinidas, un timeout no alcanza para distinguir una caída de una desconexión. La elección de un coordinador nuevo, además, no puede dejar dos coordinadores con autoridad para emitir decisiones incompatibles.
+
+Por eso, para explicar la garantía de progreso de esta familia de algoritmos, supondremos un entorno con sincronía suficientemente fuerte, fallas por detención y recuperación, registros persistentes correctos, conectividad acorde con el procedimiento de terminación y una forma segura de reemplazar al coordinador. *No estamos afirmando que 3PC preserve seguridad y progreso frente a cualquier partición.* Un diseño que extienda esas garantías tiene que añadir mecanismos y demostrar sus propiedades <<Skeen1981>>, <<GrayLamport2006>>.
+
+=== Primera fase: preguntar si es posible confirmar
+
+La ejecución comienza con `CAN-COMMIT?(T)`. El coordinador consulta a todos los participantes si pueden comprometerse a confirmar la transacción. Cada gestor comprueba sus condiciones locales y responde `YES` o `NO`. Si aparece un rechazo, o si las condiciones de esta primera etapa no se completan con seguridad, el protocolo puede terminar en `ABORT` antes de entrar en el estado intermedio. Si todos aceptan, la ejecución continúa. Hasta ese momento no hay una confirmación global irreversible.
+
+=== Segunda fase: el estado intermedio PRE-COMMIT
+
+Tras haber recibido todos los votos afirmativos, el coordinador registra que puede avanzar y envía `PRE-COMMIT(T)` a cada participante. Quien recibe el mensaje conserva de forma persistente el nuevo estado y devuelve `ACK-PRE-COMMIT(T)`. En la variante didáctica que presenta nuestro diagrama, el coordinador espera los reconocimientos antes de pasar al paso final.
+
+Esta fase no significa que los cambios ya sean definitivos. Su función es distribuir información adicional sobre el avance de la transacción y habilitar una recuperación con condiciones más precisas. Para que ese dato resulte suficiente hace falta, además, un procedimiento correcto de terminación y un modelo de fallas que permita interpretar lo observado <<Skeen1981>>.
+
+=== Tercera fase: confirmar definitivamente
+
+Cuando se han satisfecho las condiciones del protocolo, el coordinador persiste la decisión `COMMIT(T)` y envía `DO-COMMIT(T)` a todos. Los participantes registran y ejecutan la confirmación, liberan recursos y, si corresponde, emiten los reconocimientos finales. Como antes, enviar una orden no significa que todos la hayan recibido: hacen falta retransmisiones y recuperación idempotente.
+
+3PC no elimina la necesidad de cooperación. Lo que hace es incorporar *más estados y más mensajes* para poder terminar en ciertos escenarios de falla, siempre que se cumplan sus hipótesis.
+
+=== Diagrama de secuencia: ejecución exitosa
+
+[.center.iasc-image]
+image::commit/05_3pc_commit.svg[Secuencia 3PC con CAN-COMMIT, PRE-COMMIT y DO-COMMIT,align=center,width=100%]
+
+Frente a 2PC, 3PC incorpora un intercambio completo adicional antes de la difusión final, con sus respectivos registros y confirmaciones. La intención no es acelerar el caso normal sino mejorar las posibilidades de terminación ante fallas admitidas por el modelo.
+
+=== Autómata del participante
+
+[.center.iasc-image]
+image::commit/06_3pc_estados.svg[Autómata simplificado del participante 3PC,align=center,width=100%]
+
+En el autómata, `INIT` representa el estado previo a la preparación. Luego de un voto afirmativo se llega a `WAIT` o `READY`, etapa en la que todavía no se conoce el avance global. `PRE-COMMIT` conserva evidencia persistente de esa comunicación intermedia. Los estados finales `COMMITTED` y `ABORTED` son estables.
+
+Las flechas con asterisco del diagrama son transiciones que necesitan un procedimiento seguro de terminación; no autorizan a que cualquier participante decida por su cuenta según un timeout. Esta representación resume una variante didáctica y no reemplaza la especificación completa de sus condiciones de recuperación.
+
+=== ¿Qué sucede si desaparece el coordinador?
+
+Si el coordinador original deja de responder, los participantes disponibles pueden iniciar un procedimiento de reemplazo, siempre que el modelo permita hacerlo con seguridad. El nuevo coordinador necesita consultar los estados recuperables por ejemplo, `WAIT`, `PRE-COMMIT`, `COMMITTED` o `ABORTED` y decidir qué resultados siguen siendo compatibles con la información obtenida.
+
+La idea es la siguiente: si se demuestra que existe información que obliga a continuar hacia la confirmación, la terminación puede avanzar en esa dirección. Si puede probarse que nadie superó el estado previo, aún puede resultar válido abortar. Pero la palabra *«demostrar»* es crucial: conocer únicamente el estado de una mayoría arbitraria no prueba lo que pudo suceder en la otra parte de la red. La corrección depende de la relación entre mensajes en tránsito, participantes caídos, estados persistidos y autoridad del coordinador de reemplazo.
+
+[.center.iasc-image]
+image::commit/07_3pc_recuperacion.svg[Esquema de recuperación 3PC después de falla del coordinador,align=center,width=100%]
+
+La fase intermedia tiene valor porque deja una pista que 2PC no conserva de la misma manera. No obstante, esa pista solo se convierte en una garantía de recuperación cuando se aplica un protocolo formalmente válido bajo las condiciones admitidas por el modelo <<Skeen1981>>.
+
+=== Análisis de seguridad: por qué importa el estado intermedio
+
+En 2PC, cuando todos votaron `YES` y el coordinador desaparece, un participante preparado puede ser incapaz de distinguir una ejecución en la que el coordinador eligió `COMMIT` de otra en la que aún no lo hizo. La decisión puede haberse persistido y perdido en tránsito hacia los participantes.
+
+El razonamiento de 3PC intenta evitar que la incertidumbre persista en un solo estado. Si la decisión de avanzar está distribuida a través de `PRE-COMMIT`, un protocolo de terminación que observa ese estado puede continuar hacia commit; si prueba que ningún participante alcanzó esa etapa, puede abortar. Para que esa inferencia sea correcta debe existir una relación controlada entre los estados observables de todos los procesos, los mensajes en tránsito y la autoridad del coordinador.
+
+*Esquema de invariante:* ninguna ejecución admitida debe permitir simultáneamente que un participante tenga una evidencia irreversible que obligue a `COMMIT` y que otro participante pueda elegir definitivamente `ABORT`. El estado intermedio contribuye a mantener este invariante solamente si los mecanismos de recuperación pueden distinguir las ejecuciones relevantes y evitar coordinadores rivales. La prueba de corrección es, por tanto, *condicional* al modelo.
+
+=== Particiones: contraejemplo conceptual
+
+[.center.iasc-image]
+image::commit/08_3pc_particion.svg[Partición de red y decisiones incompatibles en 3PC clásico,align=center,width=100%]
+
+Considérese una transacción con stem:[P_1] y stem:[P_2]. Ambos votaron `YES`. El coordinador llega a transmitir `PRE-COMMIT` a stem:[P_1], pero el mensaje destinado a stem:[P_2] se demora indefinidamente o la red se particiona. stem:[P_1] ve un estado `PRE-COMMIT`, mientras stem:[P_2] sigue en `WAIT`. Si cada componente se considera por error autorizada para tomar una decisión definitiva a partir de timeouts y observaciones parciales, una puede confirmar y la otra abortar.
+
+[IMPORTANT]
+====
+*La lección no es que toda implementación de 3PC necesariamente produzca ese resultado.* Es que la garantía clásica de no bloqueo *no puede extenderse sin más* a ejecuciones con particiones y coordinadores rivales. Para preservar seguridad debe impedirse al menos una de las decisiones locales, lo cual puede requerir bloqueo, quórums, una hipótesis adicional o un mecanismo formal de consenso. El simple hecho de agregar `PRE-COMMIT` no resuelve la indeterminación sobre quién puede decidir <<Skeen1981>>, <<GrayLamport2006>>.
+====
+
+En sistemas reales, una partición no se distingue fiablemente de un retraso excesivo mediante un timeout aislado. Por esa razón, una propuesta de «3PC no bloqueante ante cualquier caída o partición» debe leerse con sospecha hasta conocer sus hipótesis y su demostración de seguridad.
+
+=== Costos y complejidad
+
+Si los mensajes se envían en paralelo a stem:[n] participantes:
+
+[cols="3,2,5",options="header"]
+|===
+|Intercambio |Mensajes |Observación
+|`CAN-COMMIT?` |stem:[n] |Consulta inicial
+|Respuestas `YES/NO` |stem:[n] |Votación
+|`PRE-COMMIT` |stem:[n] |Difusión del estado intermedio
+|`ACK-PRE-COMMIT` |stem:[n] |Confirmación del estado intermedio
+|`DO-COMMIT` |stem:[n] |Decisión final
+|ACK final (opcional) |stem:[n] |Limpieza y observabilidad
+|*Total* |*stem:[5n] o stem:[6n]* |Conteo de esta variante sin retransmisiones ni elección de reemplazo
+|===
+
+La latencia mínima de divulgación de `DO-COMMIT`, sin WAL, es aproximadamente cinco retardos de mensaje de ida desde `CAN-COMMIT?`, en contraste con tres de la variante de 2PC presentada. El objetivo del intercambio adicional es cambiar las posibilidades de terminación bajo fallas, no reducir costo temporal. Las escrituras durables intermedias, además, pueden aumentar el trabajo de I/O y prolongar la retención de recursos.
+
+==== Ventajas y desventajas: evaluación crítica
+
+La contribución de 3PC consiste en mostrar cómo un estado adicional puede modificar la estructura de incertidumbre de un protocolo. En entornos suficientemente sincrónicos y sin particiones que invaliden sus hipótesis, determinadas fallas del coordinador pueden resolverse sin esperar su recuperación. Esto lo convierte en una herramienta muy valiosa para enseñar qué información hace falta para pasar de un estado incierto a una decisión segura.
+
+La contracara es la complejidad. El protocolo incorpora mensajes, persistencias y estados adicionales, aumenta la latencia del camino normal y obliga a diseñar cuidadosamente el reemplazo del coordinador. Sobre todo, la promesa de no bloqueo *no se sostiene sin sus supuestos*. En una red susceptible de particiones, una implementación ingenua puede tomar decisiones incompatibles o verse obligada a esperar para conservar seguridad. Por eso no conviene presentarlo como una mejora absoluta sobre 2PC.
+
+== Comparación crítica de 2PC y 3PC
+
+[cols="2,4,4",options="header"]
+|===
+|Criterio |Two-Phase Commit |Three-Phase Commit clásico
+|Propósito |Atomicidad de una transacción distribuida |Atomicidad con mejores condiciones de terminación bajo ciertas fallas
+|Fases |`PREPARE/VOTE` y `DECIDE` |`CAN-COMMIT`, `PRE-COMMIT` y `DO-COMMIT`
+|Estados decisivos |`PREPARED`, `COMMITTED`, `ABORTED` |`WAIT`, `PRE-COMMIT`, `COMMITTED`, `ABORTED`
+|Votos necesarios para commit |Todos los participantes deben estar preparados |Todos los participantes deben expresar que pueden confirmar
+|Coordinador original caído |Puede bloquear a participantes preparados |Puede progresar mediante terminación, con hipótesis adicionales
+|Timeout después de un YES |No autoriza abortar localmente |No autoriza por sí solo ninguna decisión local incondicional
+|Particiones |Puede preservar seguridad a costa de bloqueo |No ofrece automáticamente seguridad y progreso simultáneos
+|Mensajes didácticos hasta difusión de la decisión |stem:[3n] |stem:[5n]
+|Modelo temporal |La seguridad no requiere tiempos máximos; el progreso sí depende de disponibilidad |La garantía clásica de no bloqueo requiere tiempos y fallas restringidas
+|Complejidad operativa |Menor, pero bloqueante |Mayor; recuperación y elección de autoridad delicadas
+|===
+
+=== Por qué «más fases» no implica «más consenso»
+
+La denominación de un protocolo por su número de fases describe su patrón de intercambios, no el problema formal que resuelve ni su tolerancia a fallas. 2PC y 3PC se ocupan de la decisión de una *transacción distribuida*. Paxos y Raft mantienen invariantes de *acuerdo sobre valores o registros replicados*. El hecho de que todos contengan mensajes, coordinadores y votos no los vuelve intercambiables.
+
+Asimismo, la noción de *no bloqueo* necesita una formulación matemática: ¿pueden terminar los procesos correctos aunque el coordinador original falle? ¿Cuántos deben seguir conectados? ¿Se permiten particiones? ¿Los mensajes pueden retrasarse arbitrariamente? ¿La elección de un nuevo líder es segura cuando existen candidatos simultáneos? Sin responder estas preguntas, una afirmación absoluta sobre disponibilidad carece de contenido técnico preciso.
+
+=== Mayorías y Paxos Commit: un uso correcto del quórum
+
+Con esta distinción ya podemos responder la pregunta sobre las mayorías. *Sí existen protocolos que se apoyan en mayorías, pero la mayoría se cuenta sobre el conjunto adecuado*. En Paxos Commit, se utiliza consenso para fijar de manera tolerante a fallas la disposición de *cada participante lógico*. Los aceptadores de Paxos pueden tomar decisiones con un quórum, y no hace falta que todos los aceptadores sigan funcionando; aun así, la transacción completa solamente se confirma si todos los participantes lógicos quedaron preparados <<GrayLamport2006>>.
+
+Una opción de ingeniería relacionada es replicar el registro de decisiones del coordinador con Raft o Paxos. Con un líder nuevo y una mayoría disponible, el sistema puede recuperar o continuar una decisión sin depender del regreso de una única máquina, siempre que la interacción con los participantes conserve las propiedades de confirmación atómica. Replicar al coordinador no significa votar nuevamente sobre una transacción ya decidida. La persistencia de la historia y el carácter definitivo de las decisiones siguen siendo esenciales <<Ongaro2014>>.
+
+=== Cuando la mayoría corresponde a una partición replicada
+
+Imaginemos una operación que involucra dos servicios, cada uno replicado en tres máquinas. El servicio A puede utilizar una mayoría de sus réplicas para registrar de modo duradero «mi parte está preparada», y el servicio B puede hacer lo mismo dentro de *su propio* grupo. Después, el protocolo de commit global deberá comprobar que *A y B* estén preparados. Es razonable hablar de «dos de tres réplicas» al registrar cada estado, pero *no* de «uno de dos servicios» para confirmar toda la operación.
+
+Esta separación entre *réplica física* y *participante lógico* también permite comprender los protocolos de quórums para bases de datos replicadas. Un quórum de escrituras puede dar durabilidad o intersección de conjuntos conforme a un modelo específico; por sí solo no proporciona la atomicidad de una transacción repartida entre recursos independientes. Son capas que se combinan, no términos intercambiables.
+
+=== ¿Qué alternativas quedan si no necesitamos atomicidad estricta?
+
+Algunas aplicaciones aceptan otra semántica: una operación empresarial se divide en pasos independientes y, cuando uno falla, se ejecutan operaciones de compensación. Este enfoque, comúnmente denominado *saga*, puede ser útil cuando mantener bloqueos globales sería impracticable. Sin embargo, se renuncia a parte de la atomicidad tradicional: los estados intermedios pueden volverse visibles y una compensación no es necesariamente la inversa perfecta de la operación original. No hay que presentar esta alternativa como «2PC con mayoría», porque resuelve un problema distinto <<GarciaMolinaSalem1987>>.
+
+Podemos, entonces, tolerar algunas fallas mediante replicación, reemplazar un coordinador mediante consenso o aceptar otras garantías en el diseño de la aplicación. Lo que no podemos hacer es descartar a uno de los recursos necesarios y declarar confirmada la misma transacción atómica simplemente por haber obtenido más del 50 % o dos tercios de votos afirmativos.
+
+== Caso de estudio: inscripción a un curso universitario
+
+Los diagramas anteriores permiten seguir los mensajes del protocolo, pero todavía falta ver qué significan esas decisiones dentro de una aplicación. Consideremos una universidad que ofrece cursos con cupos limitados. Cuando una persona se inscribe, el sistema debe actualizar tres servicios que almacenan información diferente: uno controla los cupos, otro registra las inscripciones y un tercero administra la agenda académica. Cada servicio tiene su propia base de datos y puede ejecutar transacciones locales, pero ninguno controla por sí solo el estado de los otros dos.
+
+Supongamos que queremos inscribir a Lucía en el curso `K5551`, en el turno de los jueves. Para que la operación sea válida, debe quedar un lugar disponible, no debe existir una inscripción duplicada y la agenda de Lucía no puede contener otra actividad en ese horario. Si cualquiera de esas condiciones falla, la universidad quiere que la inscripción completa se aborte. No sería correcto ocupar un lugar sin registrar a la estudiante ni registrar la inscripción sin asignarle un cupo.
+
+[.center.iasc-image]
+image::commit/10_caso_estudio_inscripcion.svg[Arquitectura de la inscripción a un curso y decisiones posibles en la transacción distribuida,align=center,width=100%]
+
+=== Los participantes y el contrato de la operación
+
+El *servicio de cupos* reserva provisionalmente una plaza en `K5551`. El *servicio de inscripciones* prepara la creación del registro académico y verifica que no exista otro igual. Por último, el *servicio de agenda* comprueba que el horario esté libre y prepara su incorporación. Son tres *participantes lógicos distintos*, porque cada uno administra una parte necesaria del resultado, no tres copias de la misma información.
+
+Para que este ejemplo pueda resolverse con 2PC o con la variante de 3PC estudiada, asumimos algo importante: los tres servicios cuentan con un mecanismo transaccional de preparación, registros persistentes y la capacidad de conservar una reserva hasta recibir la decisión global. Una API HTTP común que simplemente responde «operación realizada» no ofrece necesariamente esas garantías. Además, los cambios preparados deben permanecer bajo control transaccional: enviar un correo de bienvenida antes del commit, por ejemplo, produciría un efecto que no se puede deshacer mediante un aborto de base de datos.
+
+Podemos expresar el requisito de la aplicación así: *o se confirma la reserva del cupo, el registro de inscripción y la actualización de agenda, o ninguno de esos tres cambios queda confirmado*. Es una regla de atomicidad global. No garantiza por sí sola aislamiento entre lecturas simultáneas de diferentes servicios; para eso harían falta reglas adicionales de concurrencia y visibilidad.
+
+=== Una inscripción exitosa con 2PC
+
+El coordinador asigna a la operación el identificador `T-1042` y envía `PREPARE(T-1042)` a los tres participantes. Cada uno verifica su parte, conserva en su registro persistente la información necesaria para recuperarse y responde `YES` después de registrar el estado preparado. Hasta este punto todavía no hay una inscripción definitiva, aunque los tres servicios hayan aceptado continuar.
+
+Cuando el coordinador reúne los tres votos afirmativos, escribe `COMMIT(T-1042)` en su propio registro duradero. Solo entonces comunica `GLOBAL-COMMIT(T-1042)`. Cada servicio hace definitivos sus cambios y, finalmente, libera las reservas y bloqueos que había mantenido durante la preparación.
+
+[cols="1,3,3",options="header"]
+|===
+|Momento |Qué ocurre |Estado que importa
+|1 |El coordinador solicita preparar `T-1042`. |La decisión global sigue abierta.
+|2 |Cupos prepara una plaza y responde `YES`. |La plaza está reservada, no confirmada.
+|3 |Inscripciones prepara el registro y responde `YES`. |La nueva inscripción todavía es provisional.
+|4 |Agenda verifica el horario, se prepara y responde `YES`. |Los tres participantes están preparados.
+|5 |El coordinador registra `COMMIT` y lo comunica. |La decisión global ya es durable.
+|6 |Los tres servicios aplican el resultado y confirman recepción. |La inscripción completa queda confirmada.
+|===
+
+La tabla es deliberadamente secuencial para facilitar la lectura. En la práctica, las respuestas de los participantes pueden llegar en cualquier orden y los mensajes suelen enviarse en paralelo. Tampoco debemos confundir el momento de la decisión global con el instante en que todos los observadores externos ven el nuevo estado: la atomicidad del commit no crea automáticamente una lectura simultánea y consistente entre tres bases independientes.
+
+=== Dos votos afirmativos y un rechazo
+
+Ahora imaginemos que Lucía ya tiene otra actividad los jueves. Cupos e Inscripciones responden `YES`, pero Agenda detecta el conflicto y responde `NO`. El coordinador registra `ABORT(T-1042)` y comunica el aborto a los demás. El servicio de cupos libera la plaza provisional; el de inscripciones descarta el registro pendiente; Agenda no agrega la actividad.
+
+En este caso, *dos respuestas afirmativas de tres no alcanzan*. No importa que representen una mayoría ni que superen un supuesto umbral del 50 %: si el servicio de agenda no puede cumplir su parte, la inscripción no satisface el contrato de la operación. Confirmarla de todos modos implicaría redefinir el negocio por ejemplo, aceptar inscripciones sin agenda, no modificar simplemente la regla de votación de 2PC.
+
+=== El coordinador deja de responder
+
+Volvamos al caso en que los tres participantes enviaron `YES`. Esta vez, el coordinador falla cuando los tres ya conservan `PREPARED`, pero antes de que todos conozcan una decisión global. Cupos mantiene la reserva, Inscripciones conserva el registro pendiente y Agenda preserva su preparación. Ninguno puede deducir, solo por el tiempo transcurrido, si la decisión fue persistida o si un mensaje se perdió.
+
+Si el coordinador alcanzó a registrar `COMMIT`, al recuperarse debe volver a comunicar esa decisión. Si todavía no existía una decisión irreversible, su recuperación seguirá las reglas de terminación del protocolo. Los participantes no pueden asumir por su cuenta que la inscripción terminó correctamente ni abortarla unilateralmente desde `PREPARED`: podrían contradecir una decisión que otro servicio ya conoce. Esta es una consecuencia concreta del bloqueo de 2PC: mientras falta información, una plaza puede permanecer reservada y afectar a otras inscripciones <<GrayLamport2006>>, <<Bernstein1987>>.
+
+=== El mismo caso bajo 3PC
+
+Con 3PC, el comienzo sería parecido: el coordinador pregunta `CAN-COMMIT?` y recibe las tres respuestas afirmativas. Antes de decidir `COMMIT`, envía `PRE-COMMIT` y espera que cada servicio registre ese estado y lo reconozca. Solo después llega `DO-COMMIT`. Si el coordinador falla, los participantes y un posible reemplazo cuentan con una señal intermedia adicional que puede ayudar a determinar cómo terminar.
+
+Por ejemplo, si el procedimiento de recuperación autorizado comprueba que la transacción llegó a `PRE-COMMIT` y se cumplen las hipótesis de sincronía, conectividad y fallas que exige la variante utilizada, puede ser posible continuar sin esperar a que regrese el coordinador original. Lo que no sería correcto es permitir que Cupos confirmara mientras Agenda aborta por no haber recibido el mismo mensaje. Ante una partición arbitraria, 3PC no resuelve por sí solo esa dificultad <<Skeen1981>>.
+
+=== ¿Qué cambia si cada servicio está replicado?
+
+Supongamos ahora que Cupos, Inscripciones y Agenda guardan cada uno su estado en un grupo de tres réplicas coordinadas por Raft. Para que una partición lógica registre de forma duradera su preparación, puede alcanzar la mayoría correspondiente de *sus propias réplicas*, de acuerdo con las reglas del algoritmo de replicación. Si una réplica de Cupos se desconecta, las otras dos podrían seguir permitiendo que el *servicio de cupos*, considerado como un único participante lógico, se prepare.
+
+Pero siguen existiendo *tres decisiones locales necesarias* para la inscripción. Dos réplicas de Cupos no reemplazan al servicio de Agenda, ni una mayoría de los tres servicios justifica ignorar un `NO`. Este es precisamente el tipo de separación que permite entender Paxos Commit: se puede utilizar consenso para hacer más resistente la información de preparación y decisión, sin cambiar la condición de atomicidad de la operación completa <<GrayLamport2006>>, <<Ongaro2014>>.
+
+El caso deja además una pregunta útil para una práctica de laboratorio: *¿qué ocurre si la preparación de Agenda tarda indefinidamente, pero Cupos ya reservó la última plaza disponible?* Para contestarla no alcanza con estudiar el resultado `COMMIT/ABORT`; también hay que medir cuánto tiempo se retienen recursos, qué bloqueos produce la espera y cómo se recupera el sistema después de una caída.
+
+=== Pregunta comun: ¿tres YES implican commit?
+
+Una transacción tiene tres participantes. Todos enviaron `YES`. El coordinador no responde y ninguno conoce la decisión global. *¿Pueden los tres votar entre sí y confirmar por unanimidad?*
+
+No como sustitución directa de 2PC. Los `YES` indican preparación, pero no prueban que el coordinador no haya tomado o difundido una decisión final incompatible. Incluso un procedimiento que parece razonable debe demostrar que está autorizado a decidir y que no existe un estado persistente oculto que contradiga el resultado.
+
+=== Pregunta comun: ¿un timeout equivale a NO?
+
+Un participante tarda demasiado en responder `PREPARE`. El coordinador aún no ha persistido `COMMIT`. *¿Puede abortar?*
+
+Sí, en 2PC puede optar por `ABORT` antes del punto irreversible de commit y difundirlo, incluso sin saber si el participante está caído o solamente lento. El timeout es una política de progreso; no prueba que el participante haya emitido `NO`. El coordinador debe garantizar que la eventual respuesta tardía no cambie la decisión duradera.
+
+=== Pregunta comun: ¿3PC garantiza progreso con una partición?
+
+Una red se divide en dos componentes. Una contiene un participante en `PRE-COMMIT` y otra contiene un participante en `WAIT`. *¿Es correcto que cada lado decida por timeout?*
+
+No en general. Las observaciones son parciales; si cada componente aplica una regla de terminación incompatible puede romperse I1. La respuesta segura puede requerir esperar, formar un quórum apropiado o usar un protocolo de acuerdo robusto para coordinar la autoridad de decisión.
+
+[bibliography]
+== Bibliografía
+
+Las referencias se consignan con datos editoriales y enlaces a DOI o a fuentes académicas originales. Se incluyen principalmente artículos originales y obras de referencia sobre recuperación distribuida.
+
+* [[[Gray1978]]] *GRAY, Jim.* «Notes on Data Base Operating Systems». En: *Operating Systems: An Advanced Course*. Lecture Notes in Computer Science, vol. 60. Springer, 1978. DOI: https://doi.org/10.1007/3-540-08755-9_9[10.1007/3-540-08755-9_9].
+* [[[Skeen1981]]] *SKEEN, Dale.* «Nonblocking Commit Protocols». En: *Proceedings of the 1981 ACM SIGMOD International Conference on Management of Data*, pp. 133–142. ACM, 1981. DOI: https://doi.org/10.1145/582318.582339[10.1145/582318.582339].
+* [[[Bernstein1987]]] *BERNSTEIN, Philip A.; HADZILACOS, Vassos; GOODMAN, Nathan.* *Concurrency Control and Recovery in Database Systems*. Addison-Wesley, 1987. ISBN 0-201-10715-5. Edición electrónica: https://www.microsoft.com/en-us/research/people/philbe/book/[Microsoft Research].
+* [[[FLP1985]]] *FISCHER, Michael J.; LYNCH, Nancy A.; PATERSON, Michael S.* «Impossibility of Distributed Consensus with One Faulty Process». *Journal of the ACM*, 32(2), pp. 374–382, 1985. DOI: https://doi.org/10.1145/3149.214121[10.1145/3149.214121]. Texto académico: https://groups.csail.mit.edu/tds/papers/Lynch/jacm85.pdf[MIT CSAIL].
+* [[[Dwork1988]]] *DWORK, Cynthia; LYNCH, Nancy; STOCKMEYER, Larry.* «Consensus in the Presence of Partial Synchrony». *Journal of the ACM*, 35(2), pp. 288–323, 1988. DOI: https://doi.org/10.1145/42282.42283[10.1145/42282.42283].
+* [[[Mohan1992]]] *MOHAN, C.; HADERLE, Don; LINDSAY, Bruce; PIRAHESH, Hamid; SCHWARZ, Peter.* «ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging». *ACM Transactions on Database Systems*, 17(1), pp. 94–162, 1992. Fuente institucional: https://research.ibm.com/publications/aries-a-transaction-recovery-method-supporting-fine-granularity-locking-and-partial-rollbacks-using-write-ahead-logging[IBM Research].
+* [[[ChandraToueg1996]]] *CHANDRA, Tushar D.; TOUEG, Sam.* «Unreliable Failure Detectors for Reliable Distributed Systems». *Journal of the ACM*, 43(2), pp. 225–267, 1996. DOI: https://doi.org/10.1145/226643.226647[10.1145/226643.226647].
+* [[[Lamport1998]]] *LAMPORT, Leslie.* «The Part-Time Parliament». *ACM Transactions on Computer Systems*, 16(2), pp. 133–169, 1998. DOI: https://doi.org/10.1145/279227.279229[10.1145/279227.279229].
+* [[[GrayLamport2006]]] *GRAY, Jim; LAMPORT, Leslie.* «Consensus on Transaction Commit». *ACM Transactions on Database Systems*, 31(1), pp. 133–160, 2006. DOI: https://doi.org/10.1145/1132863.1132867[10.1145/1132863.1132867]. Versión institucional: https://www.microsoft.com/en-us/research/publication/consensus-on-transaction-commit/[Microsoft Research].
+* [[[Ongaro2014]]] *ONGARO, Diego; OUSTERHOUT, John.* «In Search of an Understandable Consensus Algorithm». En: *2014 USENIX Annual Technical Conference*, pp. 305–319, 2014. Disponible en: https://www.usenix.org/conference/atc14/technical-sessions/presentation/ongaro[USENIX].
+* [[[Castro1999]]] *CASTRO, Miguel; LISKOV, Barbara.* «Practical Byzantine Fault Tolerance». En: *Proceedings of the 3rd Symposium on Operating Systems Design and Implementation (OSDI)*, pp. 173–186. USENIX Association, 1999. Texto original: https://www.usenix.org/legacy/events/osdi99/full_papers/castro/castro_html/castro.html[USENIX].
+* [[[GarciaMolinaSalem1987]]] *GARCIA-MOLINA, Hector; SALEM, Kenneth.* «Sagas». En: *Proceedings of the 1987 ACM SIGMOD International Conference on Management of Data*, pp. 249–259. ACM, 1987. DOI: https://doi.org/10.1145/38713.38742[10.1145/38713.38742].
+
+[appendix]
+== Apéndice. Pseudocódigo básico de coordinación
+
+.Pseudocódigo conceptual de 2PC (coordinador)
+[source,text]
+----
+coordinator_2pc(T, participants):
+    send PREPARE(T) to all participants
+    await responses or preparation timeout
+
+    if all responses are YES:
+        decision = COMMIT
+    else:
+        decision = ABORT
+
+    durable_log(decision, T)  # antes de comunicarla
+    send GLOBAL_DECISION(T, decision) to all participants
+    retry until acknowledgements or recovery policy completes
+----
+
+.Pseudocódigo conceptual de 3PC (camino sin fallas)
+[source,text]
+----
+coordinator_3pc_happy_path(T, participants):
+    send CAN_COMMIT(T) to all participants
+    await all responses
+    if any response != YES:
+        durable_log(ABORT, T)
+        send ABORT(T) to all
+        return
+
+    durable_log(PRE_COMMIT, T)
+    send PRE_COMMIT(T) to all participants
+    await all PRE_COMMIT_ACK
+
+    durable_log(COMMIT, T)
+    send DO_COMMIT(T) to all participants
+----
+
+*Nota:* el pseudocódigo de 3PC describe *solamente la ejecución sin fallas*. No es una implementación completa ni segura ante todos los timeouts: hacen falta las máquinas de estado persistentes, reglas de recuperación y elección de coordinador, y las hipótesis de sincronía/conectividad expuestas en el capítulo 4. El pseudocódigo de 2PC también omite a propósito los detalles de reintento, logging por participante y recuperación.
