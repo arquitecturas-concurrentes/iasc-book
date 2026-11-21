@@ -1,11 +1,115 @@
-== Interleaving y netsplits
+== Interleaving y netsplits: conceptos generales y Erlang/OTP
+
+En un sistema concurrente, varias operaciones pueden avanzar al mismo tiempo y sus pasos se alternan. En un sistema distribuido, además, cada nodo decide con la información que ha recibido hasta ese momento. Un *interleaving* (intercalado) es uno de los órdenes posibles en que se ejecutan esos pasos. No requiere que haya una partición de red: puede aparecer siempre que operaciones concurrentes compartan o modifiquen estado.
+
+Por ejemplo, dos operaciones intentan incrementar un contador que inicialmente vale `0`. Si ambas leen el valor antes de que ninguna escriba, las dos calculan `1`; al final el contador queda en `1` aunque se solicitaron dos incrementos:
+
+[source,text]
+----
+Operación A                 Estado                 Operación B
+    |                         0                         |
+    |------ lee 0 ----------->|<--------- lee 0 --------|
+    |                         |                         |
+    |------ escribe 1 ------->|                         |
+    |                         |<-------- escribe 1 ------|
+                              1
+----
+
+El problema no es que las operaciones se hayan ejecutado exactamente a la vez, sino que el orden intercalado permitió una actualización perdida. En otros ejemplos, un interleaving puede ser seguro; lo importante es verificar si los órdenes posibles preservan las reglas e invariantes de la aplicación.
+
+=== ¿Cómo controlar los interleavings?
+
+La estrategia depende de la propiedad que se quiere conservar:
+
+* *Ordenar o serializar las operaciones.* Un único escritor, un lock o una transacción serializable puede impedir que dos actualizaciones incompatibles se confirmen como si fueran independientes. En un sistema distribuido, ese mecanismo debe coordinarse entre nodos; un lock local en cada máquina no alcanza.
+* *Coordinar mediante consenso o quórums.* Para un estado replicado, un protocolo puede acordar un orden común de las operaciones. Esto suele requerir que una mayoría o una autoridad pueda comunicarse; una partición puede impedir que el lado sin quórum siga escribiendo.
+* *Diseñar operaciones que puedan combinarse.* Si las operaciones son conmutativas o el estado admite una estructura de datos replicada apropiada, algunas actualizaciones pueden reconciliarse sin elegir arbitrariamente un ganador. Esto no funciona automáticamente para cualquier regla de negocio: vender la última unidad de un producto no es una operación que se pueda duplicar y luego fusionar sin consecuencias.
+* *Validar y compensar.* Si se permiten cambios concurrentes, la aplicación puede detectar conflictos al reconciliarlos y definir acciones explícitas, como rechazar una operación, devolver un pago o solicitar intervención.
+
+Cuando se pierde una respuesta, el cliente puede reintentar la solicitud, pero el reintento por sí solo no evita que el efecto se aplique dos veces. Para eso, la operación debe ser idempotente o el sistema debe deduplicar solicitudes, por ejemplo, mediante un identificador de operación. Estas técnicas tampoco ordenan operaciones distintas ni resuelven conflictos entre ellas.
+
+=== Heartbeat: una señal periódica de actividad
+
+Un *heartbeat* (o *latido*) es una señal que un proceso, nodo o servicio envía periódicamente para indicar que sigue activo y puede comunicarse. El receptor observa si esa señal llega dentro de un intervalo esperado. En algunos protocolos, un nodo envía un mensaje y espera una respuesta; en otros, cada lado publica latidos por separado. También puede bastar el tráfico normal: si siguen llegando mensajes, no hace falta enviar una señal redundante.
+
+[source,text]
+----
+Nodo A                                      Nodo B
+  |                                            |
+  |-------------- heartbeat ----------------->|
+  |<---------------- respuesta ---------------|
+  |    reinicia el temporizador                |
+  |                                            |
+  |       (no llega una señal a tiempo)         |
+  |    vence el timeout: B queda sospechoso     |
+----
+
+El timeout convierte la ausencia de mensajes en una *sospecha*, no en una prueba de que el otro proceso terminó. Una pausa del sistema operativo, saturación, recolección de basura, congestión o partición de red pueden demorar la señal aunque el proceso siga funcionando. En una red asíncrona no hay un límite de espera que permita distinguir perfectamente una falla de una demora arbitrariamente larga. Los detectores de fallas distribuidos formalizan estas limitaciones y los compromisos entre detectar fallas y evitar sospechas erróneas <<ChandraToueg1996>>.
+
+Un intervalo corto permite reaccionar rápido, pero aumenta los falsos positivos; uno largo reduce sospechas prematuras, pero demora la recuperación. La señal también importa: un proceso puede seguir enviando heartbeats aunque una dependencia crítica esté fallando. Por ejemplo, un servidor puede emitir latidos desde un temporizador mientras su conexión a la base de datos está bloqueada; el proceso está vivo, pero no puede completar una compra. Para comprobar que una operación puede atenderse hace falta además una verificación de salud que pruebe el camino relevante, con límites de tiempo y sin provocar efectos no deseados.
+
+=== Netsplit: cuando los nodos dejan de comunicarse
+
+Un *netsplit* o *partición de red* ocurre cuando algunos nodos dejan de poder intercambiar mensajes con otros. La comunicación entre grupos se interrumpe, aunque los nodos de cada lado puedan seguir ejecutándose y atendiendo solicitudes. Un timeout puede llevar a un nodo a sospechar que el otro cayó; no revela si el problema es una caída, una sobrecarga o una partición.
 
 [.center.iasc-image]
-image::interleaving/0.png[]
-
-Sucede a veces cuando tenemos una interconexión entre nodos, momentos en los que tal vez un nodo no empieza a responder a los heartbeats y perdemos conocimiento de él, después de un tiempo tendremos que asumir que esta muerto.
+image::interleaving/0.png[Topología inicial de nodos y usuarios antes de la partición de red]
 
 [.center.iasc-image]
-image::interleaving/1.png[]
+image::interleaving/1.png[Ilustración de una conexión interrumpida entre nodos]
 
-En general se asume, y también en lenguajes que nos ayudan con algunos temas de distribución como Erlang, que si un nodo no se puede conocer si está vivo, está muerto, que es el caso más pesimista que es cuando se piensa que hay más fallos de hardware/software que de red. Otro esquema sería el optimista en el que el nodo está vivo y en realidad lo que pasó es que por un momento la red se cayó o había demasiada latencia y no llegaba al nodo extraviado. Este esquema supone que es más frecuente el fallo de red que de hardware/software. Imaginemos un sitio de compra y venta tipo mercadolibre con dos nodos y sucede este esquema, cuando se realizar una transacción en un nodo, se debe también sincronizar la transacción en el otro nodo ya que puede existir el caso que una de las dos partes tiene su cuenta en otro nodo, si funciona todo bien no hay problemas, pero en el caso de que uno de los nodos no responda, y luego en realidad haya pasado que había un fallo de la red, el nodo queda desincronizado, pero el esquema que tomemos puede tener una desventaja u otra, el pesimista es que no permita que haya transacciones y en consecuencia perdamos plata, no cobramos la comisión, pero el otro caso si es optimista, puede suceder que haya un interleave que deje que dos personas compre un mismo productos en los dos nodos y después no se sepa quien ganó.
+Consideremos una tienda que tiene una sola unidad de un producto y atiende desde dos nodos. Durante la partición, ambos reciben una compra y consultan su copia local, que todavía indica que hay una unidad disponible. Si los dos autorizan la venta sin coordinarse, se comprometen dos compras para el mismo producto. Al restablecerse la comunicación, no basta con copiar los datos de un nodo sobre el otro: hay que resolver dos compromisos que parecían válidos para sus respectivos clientes.
+
+El *interleaving* describe el orden de los pasos concurrentes; el *netsplit* explica por qué los nodos pueden no conocer a tiempo los pasos realizados por los demás. Son fenómenos relacionados, pero no sinónimos: puede haber interleavings sin partición, y una partición no produce necesariamente escrituras en conflicto si la aplicación no permite que ambos lados modifiquen el mismo estado.
+
+=== Elegir qué hacer durante una partición
+
+Ante una partición, un servicio que necesita mantener una única decisión consistente puede rechazar o aplazar ciertas operaciones hasta recuperar comunicación o alcanzar un quórum. Esto reduce la disponibilidad de las operaciones afectadas, pero evita confirmar resultados incompatibles. No necesariamente obliga a apagar todo el sistema: la respuesta depende de qué datos y operaciones puedan resolverse de forma segura.
+
+Otra opción es seguir aceptando escrituras en ambos lados y reconciliarlas después. Esto mantiene más operaciones disponibles, pero exige una política de resolución adecuada al dominio. «Gana la última escritura» puede ser determinista, aunque no necesariamente correcta: por ejemplo, puede ocultar una compra que ya se confirmó a un cliente. Un orden de llegada o una marca de tiempo, por sí solos, no restituyen una unidad de inventario que se vendió dos veces.
+
+Algunas aplicaciones reducen el conflicto con un único escritor por recurso, reservas asignadas previamente a cada nodo u operaciones que puedan combinarse de forma segura. La técnica apropiada depende de las garantías que necesita el negocio; no existe una regla universal que permita escribir en todos los lados y mantener siempre un único estado consistente.
+
+=== Recuperarse y reconciliar el estado
+
+Cuando vuelve la comunicación, los nodos pueden intercambiar cambios, pero la reconciliación debe seguir reglas explícitas. Ayuda identificar cada operación, evitar procesarla dos veces y distinguir una solicitud recibida de una operación efectivamente confirmada. Si hubo decisiones incompatibles, la aplicación puede necesitar compensar una operación, contactar a las personas afectadas o derivar el caso para resolución; sincronizar las bases de datos no decide por sí mismo cuál resultado es correcto.
+
+Por eso conviene diseñar tanto el comportamiento durante la partición como la recuperación posterior. Los tiempos de espera permiten reaccionar ante la falta de mensajes, pero no eliminan la incertidumbre sobre lo que ocurrió en el otro lado.
+
+== Erlang/OTP ante los netsplits
+
+Los conceptos anteriores se aplican a cualquier sistema distribuido. Erlang/OTP ofrece mecanismos concretos para supervisar conexiones entre nodos y notificar a las aplicaciones, pero esos mecanismos no resuelven automáticamente los conflictos de negocio.
+
+=== Internals del heartbeat de distribución
+
+La distribución de Erlang/OTP supervisa las conexiones entre nodos mediante *net ticks*. Hay un proceso `net_ticker` asociado a cada conexión de distribución. Cuando no se ha enviado otro dato durante el intervalo correspondiente, ese proceso envía un paquete pequeño (*tick*) por la conexión. Si ya hubo tráfico, no hace falta agregar un tick: cualquier paquete recibido cuenta como señal de actividad para esa conexión.
+
+El intervalo y el tiempo aproximado para declarar inalcanzable al otro nodo se configuran con `net_ticktime` y `net_tickintensity`. El intervalo entre ticks es:
+
+[source,text]
+----
+TickInterval = net_ticktime / net_tickintensity
+----
+
+Con los valores predeterminados documentados (`net_ticktime = 60` segundos y `net_tickintensity = 4`), el intervalo es de 15 segundos. Si durante cuatro intervalos consecutivos no se recibe ni un tick ni datos de la conexión, el nodo remoto se considera caído y la conexión se cierra. Como la comprobación ocurre en esos intervalos, la detección no es instantánea: con esos valores, el tiempo observado puede variar aproximadamente entre 45 y 75 segundos. Erlang/OTP suele detectar antes una terminación normal cuando el propio transporte, como TCP, informa que la conexión se cerró.
+
+Los nodos que se comunican deben usar los mismos valores de `net_ticktime` y `net_tickintensity`. Reducir el tiempo puede acelerar la detección, pero también aumenta la sensibilidad a pausas, sobrecarga y demoras transitorias; no convierte el detector en una prueba de que el proceso remoto murió. Estos ticks supervisan la *conexión de distribución*, no si una aplicación remota está procesando correctamente una solicitud ni si un servicio específico sigue sano.
+
+La documentación oficial describe estos parámetros en las secciones de https://www.erlang.org/doc/apps/kernel/kernel_app.html#net_ticktime[configuración de `net_ticktime` y `net_tickintensity`] y de https://www.erlang.org/doc/apps/kernel/net_kernel.html[`net_kernel`].
+
+=== Qué ve la aplicación cuando un nodo deja de responder
+
+La aplicación puede suscribirse a cambios en la conectividad y recibir notificaciones como `nodedown` y `nodeup`. Para observar un nodo particular puede usar `erlang:monitor_node/2`; para recibir eventos de varios nodos, `net_kernel:monitor_nodes/1`. Un evento `nodedown` indica que la conexión de distribución con ese nodo se perdió o que se lo considera inalcanzable. *No demuestra que el proceso remoto haya terminado*: el nodo puede continuar ejecutándose detrás de una partición. Si la conexión se restablece, puede recibirse `nodeup`.
+
+Estos eventos informan a la aplicación; no deciden qué hacer con las operaciones que estaban en curso. El sistema puede dejar de aceptar ciertas escrituras, redirigirlas a un líder o quórum disponible, o aceptar cambios locales y reconciliarlos luego. Conviene diseñar para reinicios y reconexiones: no asumir que un evento llega una sola vez ni que, después de `nodeup`, los datos locales ya estén sincronizados.
+
+=== El papel de `global` y los límites de la plataforma
+
+El módulo `global` de Erlang/OTP mantiene servicios como nombres y locks globales, y ayuda a mantener una red completamente conectada. Desde OTP 25, por defecto intenta prevenir particiones superpuestas: si un nodo informa que perdió conexión con otros, `global` puede desconectar nodos para formar componentes separados y evitar que el sistema quede en una topología solapada. Esta protección debe estar habilitada en *todos* los nodos y depende también de la configuración de conexiones, como `connect_all`.
+
+Esto ayuda a proteger las garantías de los servicios de `global`, pero no reconcilia automáticamente los datos propios de la aplicación ni resuelve, por ejemplo, qué compra debe prevalecer si dos servicios ya aceptaron la misma unidad de inventario. La aplicación sigue siendo responsable de definir su política de disponibilidad, consistencia y recuperación. La documentación oficial detalla el comportamiento de https://www.erlang.org/doc/apps/kernel/global.html#prevent_overlapping_partitions[`global` ante particiones] y las APIs de https://www.erlang.org/doc/apps/erts/erlang.html#monitor_node/2[`erlang:monitor_node/2`] y https://www.erlang.org/doc/apps/kernel/net_kernel.html#monitor_nodes/1[`net_kernel:monitor_nodes/1`].
+
+[bibliography]
+== Referencias
+
+* [[[ChandraToueg1996]]] CHANDRA, Tushar D. y TOUEG, Sam. «Unreliable Failure Detectors for Reliable Distributed Systems». *Journal of the ACM*, 43(2), pp. 225–267, 1996. https://doi.org/10.1145/226643.226647[DOI].
