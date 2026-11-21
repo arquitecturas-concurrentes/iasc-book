@@ -61,6 +61,11 @@
     "description": "Introduccion y nociones de distribucion"
   },
   {
+    "path": "heartbeat_gossip",
+    "title": "Heartbeats y gossip",
+    "description": "Detección de fallas y diseminación de información en sistemas distribuidos"
+  },
+  {
     "path": "interleaving",
     "title": "Intearleaving Y Netsplits",
     "description": "...."
@@ -72,9 +77,8 @@
   },
   {
     "path": "mitos_distribucion",
-    "title": "Distribucion Bonus",
-    "extra": true,
-    "description": "Mitos de la distribucion"
+    "title": "Mitos de la distribucion",
+    "description": "Mitos de la distribucion. Un enfoque teorico."
   },
   {
     "path": "intro_contenedores",
