@@ -3,17 +3,15 @@
 </template>
 <script setup>
 import axios from 'axios'
-import Asciidoctor from 'asciidoctor'
+import { convert, Extensions } from 'asciidoctor'
 import { ref, onMounted } from 'vue'
 
 const adocHtml = ref('<p>Loading...</p>')
 
-let renderize_adoc = (src) => {
-  const asciidoctor = Asciidoctor()
-
+let renderize_adoc = async (src) => {
   // Register custom extension to add biblioref class
   // Register a postprocessor to add 'biblioref' class to xrefs (like <<pp>>)
-  asciidoctor.Extensions.register(function () {
+  Extensions.register(function () {
     this.postprocessor(function () {
       this.process(function (doc, output) {
         // Add class to anchor links matching bibliography references
@@ -24,7 +22,7 @@ let renderize_adoc = (src) => {
     })
   })
 
-  const html = asciidoctor.convert(src, {
+  const html = await convert(src, {
     safe: 'safe',
     catalog_assets: true,
     doctype: 'article',
@@ -43,8 +41,8 @@ const props = defineProps({
 })
 
 onMounted(() => {
-  axios.get(props.url).then((result) => {
-    adocHtml.value = renderize_adoc(result.data)
+  axios.get(props.url).then(async (result) => {
+    adocHtml.value = await renderize_adoc(result.data)
   })
 })
 </script>

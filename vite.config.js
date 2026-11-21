@@ -4,7 +4,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import Asciidoctor from 'asciidoctor'
+import { convert, Extensions } from 'asciidoctor'
 
 const base = process.env.NODE_ENV === 'production'
   ? '/iasc-book/'
@@ -17,13 +17,11 @@ export default defineConfig({
     {
       name: 'asciidoc-loader',
       enforce: 'pre',
-      transform(src, id) {
+      async transform(src, id) {
         if (id.endsWith('.adoc')) {
-          const asciidoctor = Asciidoctor()
-
           // Register custom extension to add biblioref class
           // Register a postprocessor to add 'biblioref' class to xrefs (like <<pp>>)
-          asciidoctor.Extensions.register(function () {
+          Extensions.register(function () {
             this.postprocessor(function () {
               this.process(function (doc, output) {
                 // Add class to anchor links matching bibliography references
@@ -37,7 +35,7 @@ export default defineConfig({
             })
           })
 
-          const html = asciidoctor.convert(src, {
+          const html = await convert(src, {
             safe: 'safe',
             catalog_assets: true,
             doctype: 'article',
