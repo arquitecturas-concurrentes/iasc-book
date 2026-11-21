@@ -46,13 +46,13 @@ Otro elemento importante es el *almacenamiento persistente*. Los participantes y
 
 No todas las redes ofrecen las mismas garantías temporales. En un *sistema sincrónico* existen cotas conocidas sobre procesamiento y comunicación. En uno *asincrónico* no podemos decidir, únicamente por la demora, si una máquina está caída o simplemente responde lentamente. La *sincronía parcial* admite cotas que podrían ser desconocidas o comenzar a cumplirse después de un período de inestabilidad <<Dwork1988>>. Esta diferencia explica buena parte de las condiciones que necesita el protocolo de tres fases.
 
-=== Seguridad y progreso: no son la misma garantía
+=== Seguridad y vivacidad: no son la misma garantía
 
-En sistemas distribuidos solemos pedir dos clases de propiedades. La *seguridad* (_safety_) afirma que nunca se alcanza una situación prohibida; por ejemplo, que una parte de la transacción termine confirmada mientras otra termina definitivamente abortada. El *progreso* (_liveness_) pregunta si el sistema logra terminar, suponiendo determinadas condiciones de funcionamiento.
+En sistemas distribuidos solemos pedir dos clases de propiedades. La *seguridad* (_safety_) afirma que nunca se alcanza una situación prohibida; por ejemplo, que una parte de la transacción termine confirmada mientras otra termina definitivamente abortada. La *vivacidad* (_liveness_) pregunta si el sistema logra terminar, suponiendo determinadas condiciones de funcionamiento.
 
 Un protocolo puede ser seguro y aun así quedarse esperando. Si el coordinador desaparece y los participantes no saben si la decisión global ya fue tomada, bloquearse puede ser la única conducta segura. La situación contraria sería avanzar sin pruebas suficientes: se obtendría una respuesta rápida, pero quizá dos participantes terminarían con decisiones incompatibles.
 
-Conviene recordar aquí el resultado de Fischer, Lynch y Paterson. En el modelo completamente asincrónico, un algoritmo determinista de consenso no puede garantizar terminación en *todas* las ejecuciones si siquiera un proceso puede detenerse <<FLP1985>>. Esto no quiere decir que Paxos o Raft nunca decidan; significa que las garantías de progreso necesitan condiciones adicionales, como sincronía parcial y eventual estabilidad de la comunicación <<Dwork1988>>, <<ChandraToueg1996>>.
+Conviene recordar aquí el resultado de Fischer, Lynch y Paterson. En el modelo completamente asincrónico, un algoritmo determinista de consenso no puede garantizar terminación en *todas* las ejecuciones si siquiera un proceso puede detenerse <<FLP1985>>. Esto no quiere decir que Paxos o Raft nunca decidan; significa que las garantías de vivacidad necesitan condiciones adicionales, como sincronía parcial y eventual estabilidad de la comunicación <<Dwork1988>>, <<ChandraToueg1996>>.
 
 == Consenso, votación y confirmación atómica: dónde se parecen y dónde no
 
@@ -90,7 +90,7 @@ Esta exigencia puede expresarse de manera compacta:
 
 Además, si un participante declara correctamente un rechazo definitivo durante la preparación, la salida global debe ser `ABORT`. En un protocolo práctico se pueden producir abortos por demoras o fallas antes de una decisión de confirmación irreversible; *no* debemos inferir la equivalencia inversa «todos están preparados, luego ya ocurrió COMMIT».
 
-Para razonar formalmente sobre este problema usamos *estabilidad* (nadie abandona un estado final), *consistencia de las decisiones* (no hay finales incompatibles), *validez de la confirmación* (nadie confirma sin que todos hayan podido preparar su parte) y alguna condición explícita de *progreso o no trivialidad*. Gray y Lamport presentan una especificación precisa y muestran cómo relacionarla con consenso <<GrayLamport2006>>.
+Para razonar formalmente sobre este problema usamos *estabilidad* (nadie abandona un estado final), *consistencia de las decisiones* (no hay finales incompatibles), *validez de la confirmación* (nadie confirma sin que todos hayan podido preparar su parte) y alguna condición explícita de *vivacidad o no trivialidad*. Gray y Lamport presentan una especificación precisa y muestran cómo relacionarla con consenso <<GrayLamport2006>>.
 
 === Tres situaciones parecidas, tres preguntas distintas
 
@@ -256,7 +256,7 @@ En 2PC, el estado `PREPARED` concentra dos posibilidades finales que el particip
 
 Conviene ser cuidadosos con la expresión *«no bloqueante»*. Los resultados clásicos dependen de hipótesis sobre los tiempos de comunicación, sobre qué fallas pueden producirse y sobre la posibilidad de determinar qué participantes siguen disponibles. Si admitimos retrasos arbitrarios y particiones indefinidas, un timeout no alcanza para distinguir una caída de una desconexión. La elección de un coordinador nuevo, además, no puede dejar dos coordinadores con autoridad para emitir decisiones incompatibles.
 
-Por eso, para explicar la garantía de progreso de esta familia de algoritmos, supondremos un entorno con sincronía suficientemente fuerte, fallas por detención y recuperación, registros persistentes correctos, conectividad acorde con el procedimiento de terminación y una forma segura de reemplazar al coordinador. *No estamos afirmando que 3PC preserve seguridad y progreso frente a cualquier partición.* Un diseño que extienda esas garantías tiene que añadir mecanismos y demostrar sus propiedades <<Skeen1981>>, <<GrayLamport2006>>.
+Por eso, para explicar la garantía de vivacidad de esta familia de algoritmos, supondremos un entorno con sincronía suficientemente fuerte, fallas por detención y recuperación, registros persistentes correctos, conectividad acorde con el procedimiento de terminación y una forma segura de reemplazar al coordinador. *No estamos afirmando que 3PC preserve seguridad y vivacidad frente a cualquier partición.* Un diseño que extienda esas garantías tiene que añadir mecanismos y demostrar sus propiedades <<Skeen1981>>, <<GrayLamport2006>>.
 
 === Primera fase: preguntar si es posible confirmar
 
@@ -358,9 +358,9 @@ La contracara es la complejidad. El protocolo incorpora mensajes, persistencias 
 |Votos necesarios para commit |Todos los participantes deben estar preparados |Todos los participantes deben expresar que pueden confirmar
 |Coordinador original caído |Puede bloquear a participantes preparados |Puede progresar mediante terminación, con hipótesis adicionales
 |Timeout después de un YES |No autoriza abortar localmente |No autoriza por sí solo ninguna decisión local incondicional
-|Particiones |Puede preservar seguridad a costa de bloqueo |No ofrece automáticamente seguridad y progreso simultáneos
+|Particiones |Puede preservar seguridad a costa de bloqueo |No ofrece automáticamente seguridad y vivacidad simultáneas
 |Mensajes didácticos hasta difusión de la decisión |stem:[3n] |stem:[5n]
-|Modelo temporal |La seguridad no requiere tiempos máximos; el progreso sí depende de disponibilidad |La garantía clásica de no bloqueo requiere tiempos y fallas restringidas
+|Modelo temporal |La seguridad no requiere tiempos máximos; la vivacidad sí depende de disponibilidad |La garantía clásica de no bloqueo requiere tiempos y fallas restringidas
 |Complejidad operativa |Menor, pero bloqueante |Mayor; recuperación y elección de autoridad delicadas
 |===
 
@@ -460,9 +460,9 @@ No como sustitución directa de 2PC. Los `YES` indican preparación, pero no pru
 
 Un participante tarda demasiado en responder `PREPARE`. El coordinador aún no ha persistido `COMMIT`. *¿Puede abortar?*
 
-Sí, en 2PC puede optar por `ABORT` antes del punto irreversible de commit y difundirlo, incluso sin saber si el participante está caído o solamente lento. El timeout es una política de progreso; no prueba que el participante haya emitido `NO`. El coordinador debe garantizar que la eventual respuesta tardía no cambie la decisión duradera.
+Sí, en 2PC puede optar por `ABORT` antes del punto irreversible de commit y difundirlo, incluso sin saber si el participante está caído o solamente lento. El timeout es una política de vivacidad; no prueba que el participante haya emitido `NO`. El coordinador debe garantizar que la eventual respuesta tardía no cambie la decisión duradera.
 
-=== Pregunta comun: ¿3PC garantiza progreso con una partición?
+=== Pregunta comun: ¿3PC garantiza vivacidad con una partición?
 
 Una red se divide en dos componentes. Una contiene un participante en `PRE-COMMIT` y otra contiene un participante en `WAIT`. *¿Es correcto que cada lado decida por timeout?*
 
