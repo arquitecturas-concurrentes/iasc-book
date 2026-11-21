@@ -1,20 +1,90 @@
 == Mitos de la distribución
 
-Durante muchos tiempo, existieron 8 leyes o enunciados principales que son falacias y que son difíciles de manejar y la gente de erlang tomó algunas decisiones cuando se diseñó el lenguaje en sí.
+Las *ocho falacias de la computación distribuida* son supuestos que suelen parecer válidos mientras la red y los componentes funcionan con normalidad: que la red es confiable, que la latencia es cero, que el ancho de banda es infinito, que la red es segura, que la topología no cambia, que existe un solo administrador, que el costo de transporte es cero y que la red es homogénea. Suelen atribuirse a Peter Deutsch, de Sun Microsystems <<RotemGalOzFallacies>>. No son un teorema ni una lista exhaustiva: son una herramienta para descubrir supuestos ocultos en el diseño.
 
-* *La red es confiable*: Esta es la primera falacia que hay en la computación distribuida, pueden existir fallos de red bastante más frecuente de lo que uno cree, más acá que en otros lados incluso por muchas razones (cortes de luz, falla de hardware, cable roto, etc). Entonces ya de por si no es verdadero que uno puede interconectar dos nodos en una red y siempre esperar que uno desde un nodo se puede conectar y hablar normalmente con otro nodo. Erlang en si no tiene un mecanismo especial para eso, lo mejor que nos provee es que haya una comunicación asincrónica en la que se manden mensajes asincrónicamente y después de un timeout se reintente o falle, entonces si un nodo se cae, lo manejaremos como si fuese un fallo local.
+Su idea central es que una interacción remota no equivale a una llamada local. Entre el emisor y el receptor hay una red, protocolos, colas, límites administrativos y posibles fallas. El trabajo de Waldo y sus coautores es una referencia clásica para entender por qué la distribución cambia las propiedades de los programas y no es simplemente una implementación más lenta de la comunicación local <<Waldo1997>>.
 
-* *No hay latencia*: Esta es otra falacia ya que de por sí a menos que estén todos los nodos en una sola máquina, siempre existe la conocida latencia de red, e incluso si los nodos estuviesen localmente existe una pequeña latencia. Erlang de la manera en la que es, teniendo nodos como procesos aislados e independientes, mensajes asincrónicos, timeouts, monitores, nos permite ir manejando y viendo cómo ir tratando de manejar la latencia entre los distintos nodos e ir ajustando esto dependiendo de la red.
+=== 1. La red es confiable
 
-* *El ancho de banda es infinito*: Si bien el ancho de banda es mucho mayor que hace unos años, no hay que ir pasando exceso de información o gran cantidad de información entre dos nodos, siempre hay que tener en consideración que una comunicación entre dos nodos pasa en general mediante una conexión de TCP y solo una. Entonces todos los mensajes que mandemos pasarán por un solo canal entre dos nodos, entonces pasar un mensaje muy grande puede generar un bloqueo para otros mensajes consecuentes en este canal y crear un cuello de botella. Además Erlang/Elixir tienen un mecanismo para saber que los nodos están aún vivos que se lo conoce como heartbeat, y funciona de manera en el que los nodos  conectados mandan mensajes cortos entre sí para avisar que aún están vivos y levantados y pueden hablar entre sí llamados beats. Estos mensajes se pasan por el mismo canal que los mensajes comunes entonces bloquear el canal con un mensaje muy grande puede generar que se bloquee el mensaje de beat y luego de pasado un tiempo que se rompa el vínculo entre los nodos.
+Una conexión puede interrumpirse; un mensaje puede perderse, duplicarse o llegar tarde. También puede perderse la respuesta aunque el servidor haya ejecutado la operación. Por eso, ante un timeout, el cliente no sabe necesariamente si la operación no ocurrió o si ocurrió y solo se perdió la respuesta.
 
-* *La red es segura*. Acá no hay mucho que explicar, sabemos que la red es bastante insegura hoy por hoy. En general las aplicaciones se arman en clusters en una red local, y en general hacerlo en nodos en diferentes lugares físicos no está recomendado, de tener que hacerlo, debería implementar algún mecanismo que no viene por default en Erlang/Elixir, mediante ssl, o implementar el protocolo de comunicación entre los nodos. Hay algunos links que después pasaremos de esto.
+Supongamos que un cliente solicita cobrar una compra y no recibe respuesta. Si reintenta el pedido sin protección, el cobro podría ejecutarse más de una vez: no hace falta que la red duplique el mensaje, basta con que se pierda la respuesta de una operación ya ejecutada. Una estrategia habitual es asignar un identificador estable a cada operación y usarlo para reconocer los reintentos. Para que la deduplicación sea efectiva, el registro de ese identificador y el efecto de la operación deben coordinarse de forma atómica; si el cobro lo realiza otro servicio, ese servicio debe aceptar la misma clave de idempotencia o participar en un protocolo que permita resolver el resultado sin ambigüedades. La idempotencia ayuda cuando repetir una operación debe tener el mismo efecto que ejecutarla una vez. Ninguna de estas medidas hace confiable a la red: permite definir resultados seguros a pesar de la incertidumbre.
 
-* *La Topología no cambia*. Uno puede diseñar una aplicación distribuida en una LAN o intranet con una cantidad de máquinas con IP fija y una red pre-establecida, pero la realidad es que.. el hardware cambia con el tiempo, se hacen migraciones de red, o se cambia como era la topología de la LAN o inranet. Entonces sucede que no se puede hardcodear la ip de las máquinas al interconectarlas, para eso, Erlang identifica mendiante username a los nodos, hay un mecanismo que no veremos pero que existe llamado cookies que permite que se pueda identificar a un nodo con un username, no hay que confundirlo con las cookies de http pero son algo similares, aunque nunca deben considerarse un mecanismo de seguridad.
+Los timeouts expresan cuánto se está dispuesto a esperar, no prueban que el componente remoto haya fallado. Los detectores de fallas estudian formalmente cómo tomar decisiones útiles aun cuando puedan sospechar incorrectamente que un proceso cayó <<ChandraToueg1996>>.
 
-* *Solo hay un administrador*. Esto se cae muy rápido en los caso que tengamos una gran cantidad de servidores o incluso cuando nuestro sistema empieza a escalar, como vimos para volver a levantar procesos en Erlang es dentro de todo bastante simple aunque debe hacerse por medio de un administrador o persona si el nodo se cae definitivamente.
+=== 2. La latencia es cero
 
-* *El costo de transporte es cero*. Lease esto como costo de transporte de datos de un nodo a otro en términos de tiempos y/o dinero. Serializar los datos no es gratis o rápido a veces, y la red posee una latencia también como mencionamos que acarrea un costo. En cuanto a costo monetario, siempre hay costo de mantenimiento de la red, servicio de ISP, hardware, personal.
+Toda comunicación tiene demora y esa demora varía. Depende de la distancia, las rutas, la congestión, las colas, la carga de los extremos y otros factores. Aunque una llamada remota normalmente responda rápido, no es seguro diseñar suponiendo que siempre lo hará.
 
-* *La red es homogenea*. Esto último se refiere a que siempre usamos los mismos formatos para operar todo junto. Esto se refiere a que siempre se usa un mismo estándar y no siempre es así, se usan distintos lenguajes y estándares (XML, JSON, no no vamos a compararlos aca), pero en Erlang se tiene en cuenta que siempre nos vamos a comunicar y hablar con nodos y nuestro sistema está en el mismo lenguaje y que hablan el mismo protocolo. Entonces volvemos a un concepto como duck typing, en la que si tenemos un nodo que está implementado en otro lenguaje pero usa el mismo protocolo que erlang, entonces podrá hablar con otros nodos, un caso es cnode.
-Otra manera de intercambiar información es mediante BERT-RPC, cualquier otro sistema que use esta implementación podrá pasar información a un nodo erlang/elixir.
+Una operación que realiza muchas llamadas remotas consecutivas acumula sus demoras: si cada paso espera al anterior, la latencia total puede ser mucho mayor que la de cada llamada individual. Las colas y las demoras ocasionales también afectan los tiempos de respuesta extremos, aunque el promedio parezca aceptable. Por eso conviene reducir interacciones innecesarias, fijar plazos de extremo a extremo y medir percentiles de latencia además de promedios.
+
+La asincronía permite que un proceso continúe con otro trabajo mientras espera un mensaje, pero no elimina el tiempo de comunicación. Si una operación depende del resultado remoto, en algún momento debe esperar, manejar la demora o aceptar que el resultado todavía no se conoce.
+
+Los relojes físicos de dos máquinas tampoco ofrecen, por sí solos, un orden exacto de los eventos: pueden diferir o ajustarse de manera distinta. Cuando importa razonar sobre causalidad, los relojes lógicos permiten representar relaciones de orden entre eventos, aunque no miden cuánto tiempo real transcurrió <<Lamport1978>>.
+
+=== 3. El ancho de banda es infinito
+
+La red tiene capacidad finita y suele ser compartida por múltiples flujos. El tráfico excesivo genera competencia por ancho de banda, colas y demoras; los mensajes grandes también requieren memoria y trabajo de serialización en los extremos. Cuando crece el volumen de datos, un sistema que funcionaba en una prueba pequeña puede saturarse o aumentar mucho su latencia.
+
+Para controlar ese costo se pueden limitar tamaños y tasas, aplicar contrapresión (*backpressure*), transferir solo los datos necesarios y medir el comportamiento bajo carga realista. Agrupar mensajes puede reducir viajes de red, pero también aumentar el tiempo antes de enviar el lote y la memoria necesaria. La optimización es un compromiso que debe medirse, no una regla universal.
+
+=== 4. La red es segura
+
+Una red interna no constituye por sí sola una frontera de seguridad. Las máquinas pueden estar mal configuradas, las credenciales filtrarse y los servicios quedar expuestos por errores de infraestructura. Además, cifrar el canal no resuelve automáticamente quién puede realizar cada operación.
+
+El diseño debe contemplar autenticación de las partes, autorización por operación, protección de secretos, cifrado cuando corresponda y validación de entradas. TLS protege el canal y, en su configuración habitual, permite al cliente verificar la identidad del servidor; si se configura autenticación mutua, el servidor también puede verificar la identidad del cliente. TLS no reemplaza los controles de acceso de la aplicación ni la gestión segura de credenciales. La seguridad debe aplicarse de extremo a extremo allí donde se necesita la garantía, no suponerse por la ubicación de los servidores <<Saltzer1984>>.
+
+=== 5. La topología no cambia
+
+Los nodos se agregan, retiran, reinician o reubican. Cambian direcciones, zonas, rutas, balanceadores y dependencias debido a despliegues, escalado, mantenimiento o fallas. Una lista fija de máquinas o una dirección almacenada para siempre puede dejar de representar la infraestructura real.
+
+Un sistema necesita mecanismos para resolver nombres y descubrir servicios, actualizar la membresía cuando corresponda y recuperarse cuando los nodos cambian. El descubrimiento no garantiza que un servicio esté listo para atender: la salud y la disponibilidad deben comprobarse por separado. También hay que diseñar la transición entre configuraciones; cambiar la lista de miembros sin coordinarlo puede dejar a distintos nodos tomando decisiones incompatibles.
+
+=== 6. Solo hay un administrador
+
+Los servicios distribuidos suelen atravesar equipos, organizaciones y proveedores con objetivos, permisos y ciclos de cambio diferentes. Un equipo puede desplegar una versión mientras otro modifica una dependencia; una política de seguridad o una interrupción de un proveedor puede afectar componentes que la aplicación no administra.
+
+Por eso, además del código, hacen falta acuerdos sobre contratos, versiones, responsables, ventanas de mantenimiento y manejo de incidentes. La observabilidad debe permitir determinar qué componente falló y qué operaciones quedaron inciertas. La automatización de reinicios ayuda a recuperar procesos, pero no sustituye la coordinación operativa ni garantiza que los datos y las dependencias externas estén sanos.
+
+=== 7. El costo de transporte es cero
+
+Enviar un mensaje tiene costos de serialización, copia, transmisión, recepción, validación y procesamiento. También puede implicar almacenamiento, transferencia entre regiones, uso de servicios administrados y trabajo de operación. Incluso si el costo monetario por mensaje es bajo, una comunicación adicional puede aumentar la latencia o la carga.
+
+Conviene evaluar el costo completo de una interacción: cuántos viajes requiere, cuánto dato mueve y qué ocurre cuando se reintenta o se acumulan mensajes. Reducir llamadas puede mejorar el rendimiento, pero enviar lotes enormes puede elevar la memoria, la latencia y el impacto de una falla. La elección depende del patrón de uso y debe confirmarse con mediciones.
+
+=== 8. La red es homogénea
+
+Los participantes pueden usar lenguajes, sistemas operativos, arquitecturas, versiones y representaciones de datos diferentes. Incluso cuando dos servicios aceptan el mismo formato, pueden interpretar de forma distinta un campo, una zona horaria, una unidad o un valor ausente.
+
+La interoperabilidad exige contratos explícitos: definir esquemas, unidades, codificación, errores y reglas de compatibilidad; versionar los cambios; y probar que productores y consumidores puedan evolucionar sin romperse entre sí. No alcanza con serializar una estructura interna ni con elegir JSON, XML u otro formato: el significado y las reglas de evolución también forman parte del protocolo.
+
+=== Cómo usar estas falacias al diseñar
+
+Las falacias no se “resuelven” con una biblioteca única. Para cada interacción remota conviene preguntar:
+
+* ¿Qué sabe el cliente si vence el timeout: que la operación falló o solo que no recibió respuesta?
+* ¿Cómo se manejan los reintentos, los mensajes duplicados y las respuestas tardías?
+* ¿Qué ocurre si la latencia o la carga superan los valores habituales?
+* ¿Qué garantías de consistencia se mantienen durante una partición y cuáles operaciones dejan de estar disponibles?
+* ¿Cómo se autentican los participantes y se autorizan sus acciones?
+* ¿Cómo se descubren los servicios, se cambian las configuraciones y se recupera el sistema?
+* ¿Qué contratos permiten que componentes distintos evolucionen de forma compatible?
+
+Para un servicio de lectura y escritura que requiere respuestas a todas las solicitudes y una visión linealizable del estado, una partición de red impide garantizar ambas propiedades a la vez: el servicio debe rechazar o aplazar algunas operaciones, o responder con el riesgo de que los resultados no formen una única historia consistente. Este es el compromiso formal estudiado por Gilbert y Lynch; no significa simplemente escoger dos de tres etiquetas <<GilbertLynch2002>>. Pensar en estas preguntas desde el diseño hace visibles los compromisos y evita que condiciones normales de la red se conviertan en supuestos invisibles.
+
+=== Erlang/OTP como ejemplo, no como excepción
+
+Erlang/OTP ofrece herramientas para comunicación, supervisión y detección de pérdida de conectividad, pero no elimina las falacias. Por ejemplo, sus *net ticks* supervisan conexiones de distribución; no certifican que la lógica de negocio del nodo remoto esté sana. La distribución nativa también tiene requisitos de compatibilidad y seguridad, y debe configurarse de acuerdo con el entorno. Las referencias oficiales describen esos mecanismos y sus límites <<ErlangDistributed>>, <<ErlangTLS>>, <<ErlangKernel>>.
+
+[bibliography]
+== Referencias
+
+* [[[Waldo1997]]] WALDO, Jim; WYANT, Geoff; WOLLRATH, Ann; y KENDALL, Sam. «A Note on Distributed Computing». En: *Mobile Object Systems: Towards the Programmable Internet*. Lecture Notes in Computer Science, vol. 1222. Springer, 1997, pp. 49–64. https://doi.org/10.1007/3-540-62852-5_6[DOI].
+* [[[GilbertLynch2002]]] GILBERT, Seth y LYNCH, Nancy. «Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services». *ACM SIGACT News*, 33(2), 2002, pp. 51–59. https://doi.org/10.1145/564585.564601[DOI].
+* [[[ChandraToueg1996]]] CHANDRA, Tushar D. y TOUEG, Sam. «Unreliable Failure Detectors for Reliable Distributed Systems». *Journal of the ACM*, 43(2), 1996, pp. 225–267. https://doi.org/10.1145/226643.226647[DOI].
+* [[[Saltzer1984]]] SALTZER, Jerome H.; REED, David P.; y CLARK, David D. «End-to-End Arguments in System Design». *ACM Transactions on Computer Systems*, 2(4), 1984, pp. 277–288. https://doi.org/10.1145/357401.357402[DOI].
+* [[[Lamport1978]]] LAMPORT, Leslie. «Time, Clocks, and the Ordering of Events in a Distributed System». *Communications of the ACM*, 21(7), 1978, pp. 558–565. https://doi.org/10.1145/359545.359563[DOI].
+* [[[RotemGalOzFallacies]]] ROTEM-GAL-OZ, Arnon. «Fallacies of Distributed Computing Explained». https://www.researchgate.net/publication/322500050_Fallacies_of_Distributed_Computing_Explained[ResearchGate].
+* [[[ErlangDistributed]]] Erlang/OTP. _Distributed Erlang_. https://www.erlang.org/doc/system/distributed.html[Documentación oficial].
+* [[[ErlangTLS]]] Erlang/OTP. _Using SSL for Erlang Distribution_. https://www.erlang.org/doc/apps/ssl/ssl_distribution.html[Documentación oficial].
+* [[[ErlangKernel]]] Erlang/OTP. _Kernel Application_. Parámetros de conexiones y `net_ticktime`. https://www.erlang.org/doc/apps/kernel/kernel_app.html[Documentación oficial].
