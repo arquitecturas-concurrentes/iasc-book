@@ -77,9 +77,8 @@
   },
   {
     "path": "mitos_distribucion",
-    "title": "Distribucion Bonus",
-    "extra": true,
-    "description": "Mitos de la distribucion"
+    "title": "Mitos de la distribucion",
+    "description": "Mitos de la distribucion. Un enfoque teorico."
   },
   {
     "path": "intro_contenedores",
