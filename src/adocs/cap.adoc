@@ -85,8 +85,6 @@ En la formulación de Gilbert y Lynch, en cambio, disponibilidad es una propieda
 
 También importa quién cuenta como nodo que «no falló». Como la definición excluye a los nodos declarados fallidos, un algoritmo podría dejar fuera de servicio a todos los nodos durante una partición y satisfacer la condición de manera vacía: no queda ningún nodo al que se le exija responder. La prueba es válida para lo que formaliza, pero esa interpretación no expresa la intención habitual de CAP: analizar qué puede hacer cada lado que continúa operando.
 
-*Para discutir:* si un nodo responde con un error inmediato, ¿es «disponible»? ¿Y si devuelve un resultado válido después de varios minutos? La respuesta cambia según se hable de terminación matemática, éxito funcional o cumplimiento de un SLA.
-
 === Segunda crítica: las conclusiones dependen del modelo de fallas
 
 «Tolerar particiones» no es una propiedad que pueda agregarse al sistema de forma aislada: describe qué fallas admite el modelo usado para razonar. Una partición temporal, tras la cual los mensajes vuelven a llegar, no es lo mismo que una separación permanente. Kleppmann observa que esta distinción importa para interpretar las pruebas:
