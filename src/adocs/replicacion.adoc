@@ -109,7 +109,7 @@ Por ejemplo, una persona actualiza su perfil en el líder y enseguida consulta s
 
 === Lecturas monotónicas en detalle
 
-La garantía de *lecturas monotónicas* es relativa a la secuencia de lecturas de un mismo cliente o sesión: una vez que una lectura devuelve cierto estado, una lectura posterior no debe devolver un estado anterior a ese. En términos de versiones, si una consulta observó la versión `v`, las consultas posteriores de esa sesión deben observar `v` o una versión posterior.
+La garantía de *lecturas monotónicas* es relativa a la secuencia de lecturas de un mismo cliente o sesión: una vez que una lectura devuelve cierto estado, una lectura posterior no debe devolver un estado anterior a ese. En términos de versiones, si una consulta observó la versión `v`, las consultas posteriores de esa sesión deben observar `v` o una versión posterior. Terry y sus coautores la formalizan como una de las garantías de sesión para datos replicados con consistencia débil <<Terry1994>>.
 
 Por ejemplo, una persona abre una conversación cuando el seguidor A ya recibió el mensaje número 42. Luego vuelve a consultar y el balanceador envía la solicitud al seguidor B, que solo aplicó hasta el mensaje 39. Sin una garantía de lecturas monotónicas, el mensaje 42 puede desaparecer momentáneamente de la pantalla. Con esa garantía, el sistema evita responder con un estado anterior al que esa sesión ya observó: podría enviar la lectura a una réplica suficientemente actualizada, hacerla esperar a que B alcance la versión 42 o, si no puede cumplir la garantía, informar que no puede completar la lectura con ese nivel de consistencia.
 
@@ -251,3 +251,4 @@ La replicación es una herramienta para ofrecer garantías y capacidad, no una g
 == Referencias
 
 * [[[Kleppmann2017]]] KLEPPMANN, Martin. *Designing Data-Intensive Applications*. O'Reilly Media, 2017, capítulo 5: «Replication».
+* [[[Terry1994]]] TERRY, Douglas B.; DEMERS, Alan J.; PETERSEN, Karin; SPREITZER, Mike J.; THEIMER, Marvin M.; y WELCH, Brent B. «Session Guarantees for Weakly Consistent Replicated Data». *Proceedings of the 3rd International Conference on Parallel and Distributed Information Systems (PDIS)*, 1994, pp. 140–149. https://doi.org/10.1109/PDIS.1994.331722[DOI].
