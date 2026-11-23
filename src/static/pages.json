@@ -56,6 +56,16 @@
     "description": "OTP Elxir"
   },
   {
+    "path": "distribucion_elixir",
+    "title": "Distribución en BEAM",
+    "description": "Nodos, EPMD, ETS, topologías, mensajería remota y límites de la distribución de Erlang/Elixir."
+  },
+  {
+    "path": "seguridad_beam",
+    "title": "Seguridad de BEAM",
+    "description": "Cookies, TLS, puertos y controles de red para proteger la distribución Erlang/Elixir."
+  },
+  {
     "path": "distribucion",
     "title": "Sistemas distribuidos",
     "description": "Definición, motivaciones y propiedades fundamentales de un sistema distribuido."

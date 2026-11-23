@@ -1,13 +1,97 @@
-= Distribución en Elixir/Erlang (BEAM)
-:description: Distribuyendo en Elixir. Una introducción
+= Distribución en Elixir y Erlang/OTP
+:description: Modelo de nodos, conexiones, mensajería y límites de la distribución en BEAM.
 
-Cuando hablamos de distribución en general, en general estamos solos sin ayuda de algún componente del lenguaje que estamos usando, es decir, estamos solos en la oscuridad sin saber qué es lo que puede suceder. Con erlang/elixir, a pesar de que posee mecanismos como los que vimos, tampoco estamos con mucha más ayuda del lenguaje, o sea seguimos en la oscuridad. Elixir nos da ventajas para tolerancia a fallos y resiliencia pero no mucho más que eso. Cuando se implementó Erlang muchas de las consideraciones que veremos hoy no se tomaron en cuenta por un tema de que la arquitectura en la que fue concebido es distinto a lo que hoy conocemos.
-Elixir posee algunas cosas base por la cuales podemos utilizar como fundaciones para construir aplicaciones distribuidas, que ya vimos interconectando máquinas virtuales entre si, como serializar datos (van a tener que ver la api para esto), y como saber cuando un nodo se cae (esto lo vemos pronto), pero no sobre soluciones específicas como que pasa cuando un proceso se cae o algo falla inesperadamente en una maquina. O sea OTP nos da muchas herramientas para ir manejando y construyendo estas herramientas pero no existe una en particular para solucionar todos los problemas puntuales de nuestra aplicación Erlang/Elixir, o sea no hay bala de plata.
+La distribución de Erlang permite que varias instancias de la máquina virtual BEAM se comuniquen mediante mensajes. Elixir utiliza este mecanismo de Erlang/OTP: no crea una red de actores diferente, sino que ofrece acceso a procesos y herramientas que se ejecutan sobre la misma plataforma.
 
-Una instancia de la máquina virtual de erlang, que está lista para comunicarse con otras vm's las llamaremos nodos. Cuando se inicializa un nodo, se le da un nombre en concreto como vimos con el caso del ping pong y este se conecta a una aplicación llamada Erlang Port Mapper Daemon (EPMD), que ejecuta en cada una de las máquinas que son parte del cluster que estaremos armando, si es el caso que es más de una máquina. EPMD actuará como un name server que permite que los nodos se registren, se contacten con otros nodos y notifiquen cuando hay algún conflicto de nombres.
+Esta capacidad proporciona mecanismos de comunicación y detección de cambios en las conexiones, pero no convierte un conjunto de nodos en una aplicación distribuida completa. La aplicación todavía debe definir qué significan los timeouts, cómo se recupera el estado, qué operaciones pueden reintentarse y cómo se mantienen consistentes los datos.
 
-De esta manera ya podemos empezar a conectar uno nodos con otros, y ver como empiezan a haber comunicación entre estos, un primer approach que se puede ver es que si se tiene un nodo A y otro B solo con una conexión y uno de estos se cae, el otro nodo queda aislado.
+== Nodo: una instancia nombrada de BEAM
 
-Si B estaba comunicado con C y necesita procesar algo que puede solo hacerlo A y B solo lo hacia delegando a A, esta funcionalidad ya no funciona ya que A esta aislado. Una primera idea es interconectar a todos con todos. Esta idea podría ser interesante, más que nada por una cuestión de tolerancia a fallos, pero sucede que puede ser un problema si la aplicación escala y se necesitan interconectar más nodos. Será dificil de tener cientos y cientos de nodos interconectados en sí más que nada por la cantidad de conexiones que necesitan, también hay que recordar que se necesita un puerto por nodo al que se está conectando. La topología más común a esto es hacerlo en forma de anillo, algo parecido a lo que hay en token ring, pero sin el token.
+Un *nodo* es una instancia en ejecución del sistema Erlang/BEAM que se inició con un nombre de distribución. El nombre tiene la forma `nombre@host`; por ejemplo, `catalogo@servidor-1.ejemplo.net`. El nombre identifica al nodo en la red de distribución y no debe confundirse con el nombre de una aplicación o de un proceso.
 
-Una vez que se conectaron los nodos, estos son ya independientes, poseen su registro del proceso, sus tablas de ETS y módulos independientes unos de otros. Un nodo cuando se cae no hace que se caigan los nodos asociados. Lo interesante de la conexión entre nodos es que se pueden mandar mensajes de la misma manera en la que se lo hace entre procesos de un mismo nodo. La serialización/deserialización lo hace automáticamente y de manera transparente el nodo. Veremos que las estructuras incluidas los pids funcionan de la misma manera remotamente como localmente, esto significa que puede mandarse mensajes de pids sobre la red y comunicarlos mediante mensajes.
+En Elixir, un nodo se puede iniciar con un nombre largo:
+
+[source,bash]
+----
+elixir --name catalogo@servidor-1.ejemplo.net
+----
+
+o con un nombre corto:
+
+[source,bash]
+----
+elixir --sname catalogo
+----
+
+Los nombres largos usan el nombre de host completo; los cortos, una forma abreviada apropiada para redes locales o entornos de desarrollo. Los dos tipos no se pueden mezclar en una conexión: todos los nodos que se comunican deben usar el mismo dominio de nombres y poder resolver las direcciones correspondientes. La elección concreta depende del DNS, la red y el despliegue <<ErlangDistributedSystem>>.
+
+Cada nodo tiene su propio espacio de procesos, heaps, tablas ETS y estado en memoria. *ETS* (Erlang Term Storage) es un mecanismo de almacenamiento en memoria que permite a procesos de una misma VM consultar y modificar tablas de términos Erlang. Según el tipo de tabla, los datos pueden organizarse como pares clave-valor (`set`), claves ordenadas (`ordered_set`) o colecciones con claves repetidas (`bag` y `duplicate_bag`). Los permisos también varían: una tabla `protected`, por ejemplo, permite lecturas a otros procesos locales, pero reserva las escrituras a su proceso propietario <<ErlangETS>>.
+
+ETS no es memoria compartida entre nodos ni una base de datos distribuida: cada tabla pertenece a una VM, normalmente desaparece cuando termina su propietario y no se replica automáticamente. Para usar datos de otro nodo hay que enviar mensajes o elegir un mecanismo de persistencia o replicación apropiado. Conectar VMs no convierte sus heaps, tablas ETS o procesos en un único espacio de memoria.
+
+== Descubrimiento y establecimiento de conexiones
+
+En la distribución TCP/IP clásica, cada host que aloja nodos usa el *Erlang Port Mapper Daemon* (EPMD), un servicio de descubrimiento de nombres. Al iniciar, un nodo registra en el EPMD local su nombre y el puerto TCP donde acepta conexiones de distribución. Cuando otro nodo quiere conectarse, consulta el EPMD del host de destino para resolver el nombre al puerto correspondiente. El puerto usual de EPMD es `4369`; el puerto de distribución del nodo es otro y puede asignarse desde un rango configurable <<ErlangEPMD>>.
+
+EPMD no es un directorio global del cluster: cada instancia conoce los nodos registrados en su host. Tampoco transporta mensajes, replica datos ni detecta si una aplicación está sana. Su papel se limita a ayudar a establecer conexiones nuevas. Una vez establecida la conexión entre nodos, los mensajes circulan directamente por esa conexión de distribución, no a través de EPMD. Por eso, una configuración de red debe contemplar tanto el descubrimiento como los puertos de distribución.
+
+Una vez ubicado el nodo, las instancias establecen una conexión de distribución. En la configuración predeterminada, las conexiones visibles se propagan de manera transitiva: si A conecta con B y B conoce a C, A también intenta conectarse con C. Por eso el anillo no es una topología estándar que deba suponerse para Erlang/OTP. El comportamiento puede limitarse con opciones como `-connect_all false`; también existen nodos ocultos para conexiones explícitas que no participan de la conectividad visible general <<ErlangDistributedSystem>> <<ErlangKernel>>.
+
+[.center]
+image::distribucion/distribucion-beam.svg[Descubrimiento de nodos mediante EPMD y conexiones transitivas entre instancias BEAM, width=760]
+
+En un despliegue real, la resolución de nombres, el acceso a EPMD y los puertos de distribución deben ser compatibles con DNS, firewalls, contenedores y reglas de red. Los puertos concretos pueden configurarse; no se debe asumir que habilitar un único puerto conocido basta para todos los nodos.
+
+== Envío de mensajes entre nodos
+
+Una vez conectados, los procesos pueden intercambiar mensajes a través de la distribución. Un PID remoto puede identificar al proceso destinatario y la VM serializa el término para transportarlo por la conexión. La sintaxis puede parecerse a la mensajería local:
+
+[source,elixir]
+----
+worker = :"worker@servidor-2.ejemplo.net"
+Node.connect(worker)
+send({:procesador, worker}, {:procesar, tarea})
+----
+
+En este ejemplo, `:procesador` es un nombre registrado en el nodo remoto. Los nombres registrados comunes pertenecen al nodo donde se registraron; para enviar a uno remoto se indica también el nodo, como en la tupla `{nombre, nodo}`. Un PID, por su parte, puede referirse a un proceso de otro nodo. La documentación describe la transparencia de la mensajería, los links y los monitors entre nodos, pero esa semejanza sintáctica no elimina los efectos de la red <<ErlangDistributedSystem>>.
+
+Una operación remota puede demorarse, fallar o quedar sin una respuesta observable. Si el emisor recibe un timeout, no siempre puede saber si el destinatario no recibió la solicitud, si la procesó pero se perdió la respuesta o si sigue trabajando. Por eso reintentar una operación no la vuelve automáticamente idempotente ni garantiza ejecución exactamente una vez. Las llamadas remotas, incluidos `GenServer.call/3`, necesitan timeouts y una política de recuperación adecuada al dominio.
+
+== Conexiones y fallas
+
+La distribución puede informar que una conexión se estableció o se perdió; también permite que procesos monitoricen nodos y reciban notificaciones de caída de nodo. Esa notificación describe la conectividad observada por la VM, no demuestra que la máquina remota se haya apagado. Una partición de red puede separar dos nodos que siguen ejecutándose.
+
+De la misma manera, que el nodo vuelva a conectarse no significa que su estado de aplicación esté sincronizado. Los mensajes que estaban en tránsito, el estado persistido y las operaciones interrumpidas requieren una política propia de recuperación. Para profundizar en timeouts, notificaciones `nodeup` y `nodedown`, y netsplits, véase https://arquitecturas-concurrentes.github.io/iasc-book/interleaving/[Interleaving y netsplits].
+
+Los *links* y *monitors* remotos permiten propagar señales de ciclo de vida entre procesos distribuidos, pero no reemplazan la supervisión ni constituyen replicación. Un supervisor OTP reinicia procesos de acuerdo con su estrategia y su ámbito de ejecución; por sí solo no conserva el estado perdido ni garantiza que un proceso remoto, un nodo o una operación distribuida se recupere correctamente. Véanse también https://arquitecturas-concurrentes.github.io/iasc-book/otp/[Elixir/Erlang OTP] y https://arquitecturas-concurrentes.github.io/iasc-book/heartbeat_gossip/[Heartbeats y gossip].
+
+== Topología y escala
+
+Una topología especifica qué pares de nodos mantienen conexiones directas y cómo se incorporan o retiran miembros. En una *malla completa*, cada nodo tiene una conexión con cada otro nodo. Para `n` nodos, esto implica hasta `n(n-1)/2` conexiones de pares; la comunicación directa es sencilla, pero crecen el consumo de sockets, memoria y trabajo de supervisión. La conectividad transitiva predeterminada de Erlang/OTP resulta conveniente en grupos acotados, pero no debe confundirse con una estrategia automática de escalado a miles de nodos.
+
+Otras topologías cambian el costo y la responsabilidad de enrutamiento:
+
+* En una *estrella*, un nodo central conecta con los demás. Reduce conexiones entre pares, pero concentra tráfico y crea un posible cuello de botella o punto único de falla, a menos que se agregue redundancia.
+* En un *anillo*, cada nodo tiene pocos vecinos. El número de conexiones puede ser lineal, pero una comunicación entre nodos no vecinos requiere que la aplicación la reenvíe por nodos intermedios. Erlang Distribution no convierte automáticamente cualquier anillo configurado en un sistema de enrutamiento multip salto.
+* En una *jerarquía o grupos*, los nodos se organizan por dominios o regiones. Puede limitar el alcance de conexiones y facilitar la administración, pero la comunicación entre grupos necesita gateways, puentes o protocolos de aplicación explícitos.
+
+La distribución incorporada de Erlang/OTP no impone por sí sola una estrella, un anillo o una jerarquía. Si se desactiva la conexión automática, la aplicación o las herramientas de operación deben establecer los enlaces necesarios. Además, cambiar la topología puede afectar servicios que dependen de la membresía visible, como `global`; la conectividad, la membresía y la replicación de datos son problemas relacionados, pero distintos.
+
+== Cuándo usar la distribución de BEAM
+
+La distribución de BEAM es adecuada cuando una aplicación necesita que procesos en varias VMs se envíen mensajes, supervisen conectividad o colaboren usando abstracciones propias del ecosistema Erlang/OTP. Su mensajería transparente permite reutilizar patrones de actores y herramientas OTP, siempre que el sistema se despliegue en una red controlada y la aplicación trate explícitamente los fallos remotos.
+
+No reemplaza una base de datos, un broker de mensajes, un protocolo de consenso ni una arquitectura de servicios. ETS permanece local a cada nodo; los mensajes remotos no garantizan ejecución exactamente una vez; y una conexión visible no prueba que una aplicación esté sana. Si se necesita persistencia, replicación, reintentos durables, aislamiento entre organizaciones o una topología con muchos nodos, esas propiedades deben agregarse mediante componentes y protocolos diseñados para ellas.
+
+La elección resulta más razonable cuando el conjunto de nodos es acotado y administrado como una unidad, los servicios necesitan interacciones directas entre procesos, y el equipo puede operar nombres, conexiones y seguridad de distribución. Para despliegues con membresía muy dinámica, redes no confiables, comunicaciones entre dominios administrativos o requisitos fuertes de aislamiento, conviene evaluar alternativas como gateways, colas, APIs explícitas o un sistema de mensajería dedicado.
+
+La seguridad de nodos, cookies, puertos y TLS se trata por separado en la página sobre https://arquitecturas-concurrentes.github.io/iasc-book/seguridad_beam/[seguridad de BEAM y la distribución de Elixir].
+
+[bibliography]
+== Referencias
+
+* [[[ErlangDistributedSystem]]] ERLANG/OTP. «Distributed Erlang System». *Erlang/OTP System Documentation*. https://www.erlang.org/doc/system/distributed.html[Documentación oficial].
+* [[[ErlangEPMD]]] ERLANG/OTP. «Erlang Port Mapper Daemon». *Erlang/OTP ERTS User's Guide*. https://www.erlang.org/doc/apps/erts/epmd_cmd.html[Documentación oficial].
+* [[[ErlangETS]]] ERLANG/OTP. «ETS». *Erlang/OTP Standard Library Reference*. https://www.erlang.org/doc/apps/stdlib/ets.html[Documentación oficial].
+* [[[ErlangKernel]]] ERLANG/OTP. «Kernel Application». *Erlang/OTP Kernel Reference*. https://www.erlang.org/doc/apps/kernel/kernel_app.html[Documentación oficial].
+* [[[ElixirNode]]] ELIXIR. «Node». *Elixir v1.18 Documentation*. https://hexdocs.pm/elixir/Node.html[Documentación oficial].

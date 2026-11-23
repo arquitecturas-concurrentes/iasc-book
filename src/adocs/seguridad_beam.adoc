@@ -1,0 +1,73 @@
+= Seguridad de BEAM y distribución en Elixir
+:description: Amenazas, autenticación, cifrado y controles operativos para nodos Erlang/Elixir distribuidos.
+
+La distribución de Erlang/OTP permite que nodos BEAM establezcan conexiones y ejecuten operaciones remotas. Esa capacidad implica una frontera de seguridad importante: quien logra conectarse como nodo de confianza puede obtener capacidades amplias sobre los procesos y servicios del cluster. La distribución debe tratarse como una interfaz privilegiada, no como un puerto de aplicación común.
+
+Esta página presenta controles defensivos para proteger nodos y sus conexiones. No reemplaza una revisión de amenazas específica del sistema ni las guías de configuración de la versión de OTP utilizada.
+
+== Modelo de amenazas
+
+El diseño debe considerar, al menos, estos riesgos:
+
+* acceso de una máquina no autorizada a los puertos de distribución;
+* robo o filtración de una cookie de Erlang desde archivos, imágenes, logs, variables o sistemas de despliegue;
+* escucha o modificación del tráfico en una red no confiable cuando la distribución no usa cifrado;
+* abuso de una credencial válida para ejecutar operaciones remotas con los privilegios del nodo;
+* errores de DNS, puertos, membresía o configuración que conecten entornos que debían permanecer separados.
+
+La pregunta central no es solo «¿el nodo tiene cookie?», sino qué capacidades obtiene un participante autenticado y qué controles impiden que una red o un entorno equivocado alcance esa interfaz.
+
+== La cookie no sustituye TLS ni controles de red
+
+Los nodos usan una *magic cookie* compartida para autenticar conexiones de distribución. Si la cookie no coincide, el establecimiento de la conexión se rechaza. Esto ayuda a separar grupos de nodos, pero no equivale a una identidad robusta con autorización granular: los nodos que comparten la cookie forman, en la práctica, un mismo dominio de confianza.
+
+La documentación oficial advierte que la autenticación clásica de cookies no está diseñada como protección criptográfica suficiente ante un atacante activo y que el transporte TCP por defecto no cifra el tráfico. Por eso, una cookie fuerte no debe tratarse como sustituto de cifrado, autenticación TLS, segmentación de red o control de acceso <<ErlangDistributedSystem>> <<ErlangTLSDistribution>>.
+
+== Controles de despliegue
+
+=== Restringir el alcance de red
+
+* Mantener los nodos detrás de redes privadas y permitir conexiones solo desde hosts y segmentos necesarios.
+* No publicar EPMD ni los puertos de distribución directamente en Internet.
+* Configurar explícitamente direcciones y rangos de puertos para que los firewalls puedan aplicar reglas mínimas.
+* Separar los entornos de desarrollo, pruebas y producción con credenciales y redes distintas.
+* Revisar el acceso tanto al puerto de descubrimiento como a los puertos de distribución del nodo.
+
+EPMD ayuda a resolver nombres hacia los puertos de distribución; no es un proxy de seguridad ni un filtro de autorización. Un nodo oculto o `-connect_all false` puede cambiar visibilidad y comportamiento de conexiones, pero no reemplaza los controles de acceso a la red.
+
+=== Gestionar las cookies como credenciales
+
+Las cookies deben generarse con entropía adecuada, entregarse mediante un gestor de secretos o mecanismo de provisión protegido, y restringirse al usuario del sistema que ejecuta la VM. No deben escribirse en el código fuente, artefactos públicos, argumentos visibles, logs ni imágenes reutilizadas entre ambientes.
+
+La rotación requiere coordinación: los nodos que deben comunicarse necesitan credenciales compatibles. Conviene planificar el cambio, validar quién conserva acceso, revocar copias antiguas y probar el procedimiento de recuperación. La cookie compartida tampoco ofrece por sí sola autorización por proceso o por operación; las aplicaciones deben validar qué solicitudes acepta cada servicio.
+
+=== Cifrar la distribución con TLS
+
+Erlang/OTP permite usar distribución sobre TLS mediante `inet_tls_dist`. TLS puede proteger la confidencialidad e integridad del transporte y autenticar certificados según su configuración. Todos los nodos participantes deben usar un mecanismo compatible y validar correctamente las autoridades certificantes, nombres y certificados <<ErlangTLSDistribution>>.
+
+Activar TLS no elimina la necesidad de aislar la red, proteger cookies, limitar quién puede iniciar nodos ni revisar permisos de los servicios remotos. La seguridad depende de las opciones de certificados y validación configuradas; una sesión cifrada con validación débil no ofrece la misma garantía que una identidad correctamente verificada.
+
+== Nombres, membresía y topología
+
+Los nombres de nodos y los servicios de resolución deben administrarse de forma predecible. Los nombres cortos y largos no son intercambiables, y una resolución DNS incorrecta puede dirigir conexiones al host equivocado. Las reglas de red deben seguir la topología que realmente se configuró, no una suposición sobre una estrella, un anillo o una malla.
+
+La conexión transitiva predeterminada puede ampliar qué nodos intentan conectarse entre sí. Si se limita con `-connect_all false`, nodos ocultos u otra política de membresía, hay que comprobar que el resultado coincide con el dominio de confianza y que los servicios OTP necesarios siguen funcionando. Ninguna de estas opciones debe considerarse un mecanismo criptográfico de autorización.
+
+== Operación y respuesta
+
+Una estrategia defensiva debe contemplar:
+
+* registro y revisión de cambios en membresía y conexiones, sin exponer cookies ni datos sensibles;
+* alertas ante conexiones inesperadas, fallas reiteradas de autenticación o cambios de topología;
+* actualización o revocación de credenciales si se sospecha una filtración;
+* procedimientos para aislar un nodo comprometido y volver a incorporarlo con credenciales y estado verificados;
+* pruebas periódicas de certificados, reglas de firewall, rotación y recuperación.
+
+Los nodos conectados deben considerarse parte de una misma frontera de privilegios. Si distintas aplicaciones o equipos no comparten ese nivel de confianza, conviene separarlos en redes o clusters distintos y comunicar sus servicios mediante interfaces más acotadas.
+
+[bibliography]
+== Referencias
+
+* [[[ErlangDistributedSystem]]] ERLANG/OTP. «Distributed Erlang System». *Erlang/OTP System Documentation*. https://www.erlang.org/doc/system/distributed.html[Documentación oficial].
+* [[[ErlangTLSDistribution]]] ERLANG/OTP. «Using SSL for Erlang Distribution». *Erlang/OTP SSL User's Guide*. https://www.erlang.org/doc/apps/ssl/ssl_distribution.html[Documentación oficial].
+* [[[ErlangEPMD]]] ERLANG/OTP. «Erlang Port Mapper Daemon». *Erlang/OTP ERTS User's Guide*. https://www.erlang.org/doc/apps/erts/epmd_cmd.html[Documentación oficial].

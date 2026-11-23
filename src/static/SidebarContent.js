@@ -148,6 +148,21 @@ export const sidearContent = [
     ],
   },
   {
+    href: '#dist-elixir',
+    title: 'Distribución en Elixir',
+    icon: 'fa fa-chevron-down',
+    child: [
+      {
+        href: '/tema/distribucion_elixir',
+        title: 'Distribución en BEAM',
+      },
+      {
+        href: '/tema/seguridad_beam',
+        title: 'Seguridad de BEAM',
+      },
+    ],
+  },
+  {
     href: '#cont',
     title: 'Contenedores',
     icon: 'fa fa-chevron-down',

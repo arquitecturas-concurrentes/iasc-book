@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" role="img" aria-labelledby="title desc">
+  <title id="title">Descubrimiento y conexiones en la distribución BEAM</title>
+  <desc id="desc">EPMD ayuda a resolver el nombre de un nodo hacia su dirección y puerto. Luego los nodos establecen conexiones TCP de distribución. Por defecto, las conexiones visibles son transitivas y tienden a formar una malla.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52677a"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#357a57"/>
+    </marker>
+  </defs>
+  <rect width="960" height="470" rx="14" fill="#f8fafc"/>
+  <g font-family="Arial, sans-serif" fill="#263746">
+    <text x="480" y="34" text-anchor="middle" font-size="21" font-weight="700">Nombre → descubrimiento → conexión de distribución</text>
+
+    <rect x="35" y="82" width="255" height="142" rx="12" fill="#fff" stroke="#718096" stroke-width="2"/>
+    <text x="162" y="110" text-anchor="middle" font-size="17" font-weight="700">Máquina A</text>
+    <rect x="61" y="127" width="203" height="76" rx="9" fill="#eaf2fb" stroke="#3570a3" stroke-width="2"/>
+    <text x="162" y="153" text-anchor="middle" font-size="15" font-weight="700">BEAM · api@a.ejemplo</text>
+    <text x="162" y="177" text-anchor="middle" font-size="13">procesos, heap y ETS locales</text>
+
+    <rect x="352" y="90" width="245" height="126" rx="12" fill="#fff8e9" stroke="#c58b32" stroke-width="2"/>
+    <text x="474" y="121" text-anchor="middle" font-size="17" font-weight="700">EPMD en máquina B</text>
+    <text x="474" y="151" text-anchor="middle" font-size="14">resuelve nombre del nodo</text>
+    <text x="474" y="176" text-anchor="middle" font-size="14">→ dirección y puerto</text>
+    <text x="474" y="199" text-anchor="middle" font-size="12" fill="#6b7280">no enruta mensajes de aplicación</text>
+
+    <rect x="670" y="82" width="255" height="142" rx="12" fill="#fff" stroke="#718096" stroke-width="2"/>
+    <text x="797" y="110" text-anchor="middle" font-size="17" font-weight="700">Máquina B</text>
+    <rect x="696" y="127" width="203" height="76" rx="9" fill="#edf7f0" stroke="#4b8c68" stroke-width="2"/>
+    <text x="797" y="153" text-anchor="middle" font-size="15" font-weight="700">BEAM · worker@b.ejemplo</text>
+    <text x="797" y="177" text-anchor="middle" font-size="13">procesos, heap y ETS locales</text>
+
+    <line x1="290" y1="143" x2="342" y2="143" stroke="#52677a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="316" y="131" text-anchor="middle" font-size="11">consulta</text>
+    <line x1="607" y1="165" x2="660" y2="165" stroke="#52677a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="633" y="153" text-anchor="middle" font-size="11">conectar</text>
+    <path d="M264 192 C380 255, 625 255, 696 192" fill="none" stroke="#357a57" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+    <text x="480" y="251" text-anchor="middle" font-size="13" fill="#357a57">conexión de distribución (TCP por defecto)</text>
+
+    <rect x="44" y="294" width="872" height="141" rx="12" fill="#fff" stroke="#d7dee6"/>
+    <text x="70" y="322" font-size="16" font-weight="700">Conexión transitiva predeterminada</text>
+    <circle cx="248" cy="374" r="30" fill="#eaf2fb" stroke="#3570a3" stroke-width="2"/>
+    <text x="248" y="380" text-anchor="middle" font-size="15" font-weight="700">A</text>
+    <circle cx="480" cy="374" r="30" fill="#eaf2fb" stroke="#3570a3" stroke-width="2"/>
+    <text x="480" y="380" text-anchor="middle" font-size="15" font-weight="700">B</text>
+    <circle cx="712" cy="374" r="30" fill="#eaf2fb" stroke="#3570a3" stroke-width="2"/>
+    <text x="712" y="380" text-anchor="middle" font-size="15" font-weight="700">C</text>
+    <line x1="280" y1="374" x2="438" y2="374" stroke="#52677a" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="512" y1="374" x2="670" y2="374" stroke="#52677a" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M248 338 C342 289, 618 289, 712 338" fill="none" stroke="#357a57" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow-green)"/>
+    <text x="480" y="304" text-anchor="middle" font-size="12" fill="#357a57">A también intenta conectar con C</text>
+    <text x="480" y="420" text-anchor="middle" font-size="12" fill="#52677a">Topología conceptual. Puede limitarse la conectividad con la configuración del sistema.</text>
+  </g>
+</svg>
