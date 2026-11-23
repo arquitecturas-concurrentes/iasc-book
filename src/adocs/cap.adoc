@@ -1,81 +1,165 @@
-= Mi otra gorra es un teorema
-
-Hay alguna manera de que manteniendo la aplicación disponible durante intearleaves no haya pérdida de datos?
-La respuesta rápida es no. No hay manera que la aplicación funcione correctamente en un interleave. esta idea es conocida como el teorema CAPfootnote:3[https://learnyousomeerlang.com/distribunomicon. Distribunomicon - Learn you some Erlang for greater good].
+= CAP: consistencia y disponibilidad ante una partición
 
 [.center.iasc-image]
-image::distribucion/image1.png[]
+image::distribucion/image1.png[Ilustración de la gorra del teorema CAP, width=340]
 
-Consistencia: Esta es la habilidad que nuestra sistema, tenga 2 o 312123243 nodos que pueda responder a consultas y que tenga el mismo estado, no importa al nodo al que se la hace la consulta. Esto es algo que se logra con transacciones o un mecanismo equivalente. Entonces se tiene que poder ver a todos los nodos como un bloque indivisible. Esto es lo que vimos al comienzo con los contadores, que siempre quede en un estado conocido para el sistema y que no haya por ej. dos nodos que respondan algo distinto al mismo tiempo de realizar la consulta.
+¿Qué debería hacer un sistema cuando dos nodos no pueden comunicarse y ambos reciben una operación? Si los dos responden como si tuvieran la información más reciente, pueden confirmar resultados incompatibles. Si esperan a coordinarse, alguno quizá no pueda responder. El teorema CAP permite razonar sobre esta tensión, pero suele resumirse de una forma que induce a error: «hay que elegir dos de tres».
 
-Disponibilidad: Es simple que siempre que se le pida al sistema por algo de información el sistema me responda, y si no lo hace no está disponible.
+La idea central es más precisa: *si ocurre una partición de red, un sistema con datos compartidos no puede garantizar a la vez que toda operación responda y que cada respuesta respete la consistencia fuerte definida por el teorema*. Fuera de una partición, CAP no obliga a renunciar a ninguna de esas dos propiedades.
 
-Particionamiento: Esta parte del teorema es un poco más capciosa. Tolerancia a las particiones significa que el sistema puede seguir funcionando (y contener información útil, estado) aún cuando las partes no puedan comunicarse entre sí. Todo el punto de la tolerancia a la partición es que ese sistema pueda trabajar con mensajes que estén posiblemente perdidos entre componentes. Esto es algo abstracto pero iremos explicando más de esto.
+== Tres conceptos, con definiciones precisas
 
-== CAP Clasico o Tradicional
+En la formulación formal de Gilbert y Lynch, los términos describen garantías específicas. No deben confundirse con etiquetas generales de calidad de un producto o de una base de datos <<GilbertLynch2002>>.
 
-La interpretación que veremos ahora es la clásica en la que solo se puede tener dos de los tres conceptos de CAPfootnote:1[http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.67.6951&rep=rep1&type=pdf - Gilbert and Lynch. Brewer conjecture and the feasibility of consistent, available, partition-tolerant web services. ACM SIGACT News (2002) vol. 33 (2) pp. 59], es decir se puede tener CA, CP o AP. No hay manera de que se puedan tener los tres. Lo malo es que no es posible tener las tres cosas incluso con un fallo de red. Lo bueno es que es un teorema, después veremos que esto es más abierto en la interpretación gradual.  tener Consistencia y Disponibilidad no es posible a menos que teóricamente no falle nunca la red, y si sucede en un nodo todo debería fallar. Entonces nos quedan las otras dos partes. AP o CP. Cuando hay un netsplit o interleave la disponibilidad o consistencia permanecen, pero no ambas.
+* *Consistencia (C):* en este resultado significa *consistencia linealizable*: cada operación parece ocurrir de manera atómica en un único orden, compatible con el orden real en que se ejecutaron. Una lectura no debe devolver un valor viejo si ya se confirmó una escritura posterior. No es simplemente la «C» de ACID.
+* *Disponibilidad (A):* cada solicitud recibida por un nodo que no falló obtiene una respuesta. Responder con un error o rechazar una escritura también cuenta como respuesta en algunos usos coloquiales, pero no equivale a completar satisfactoriamente la operación; por eso hay que especificar qué garantía se está evaluando.
+* *Tolerancia a particiones (P):* el sistema contempla que la comunicación entre grupos de nodos se interrumpa o demore sin límite conocido. P no es un botón que se apaga para evitar la decisión: en un sistema distribuido, una interrupción de red puede ocurrir. Lo que se diseña es el comportamiento frente a ella.
 
-El esquema que toman ambas opciones son las siguientes:
+Los timeouts y los *heartbeats* pueden ayudar a sospechar que una comunicación se interrumpió, pero no prueban que el otro nodo haya fallado ni eligen la política correcta. Para más contexto sobre esa incertidumbre, véase la sección sobre https://arquitecturas-concurrentes.github.io/iasc-book/heartbeat_gossip/[heartbeats y gossip] y la de https://arquitecturas-concurrentes.github.io/iasc-book/interleaving/[interleaving y netsplits].
 
-CP: El estado no cambio, no hay nada que hacer
+== El caso mínimo: dos nodos y una partición
 
-AP: Tiene más flexibilidad y problemas que resolver, se utilizan distintas estrategias:
-
-* La última escritura gana, es una resolución del conflicto en donde cualquiera que haga la última escritura, es el valor del estado que queda.
-* Esto puede ser algo abierto ya que en sistemas distribuidos, los timestamps generados pueden ser en el mismo momento o no estarlo incluso presente en el sistema.
-* Se puede elegir al ganador de la escritura aleatoriamente
-* Métodos más sofisticados ayudan a reducir los conflictos por medio de timestamps como el primer caso pero con relojes relativos. Los relojes relativos trabajan incrementalmente con un valor que se suma a cada escritura. Lamport Clocks extiende más esta idea
-* El que almacena el estado, si es un nodo central u otro sistema debe elegir cual de los estados es el correcto, un poco lo que sucede con git cuando tenemos un conflicto.
-
-=== BBDD y CAP
-
-Este es el gráfico que vimos en clase sobre CAP y BBDD, el post en el que se detalla más el siguiente:  http://blog.nahurst.com/visual-guide-to-nosql-systems
+Supongamos que dos nodos guardan copias de un mismo dato. La red se parte y cada nodo recibe una escritura. Si ambos la confirman sin conocer la operación del otro, no hay una única historia linealizable que explique las dos respuestas. Si, en cambio, un nodo espera a comunicarse con el otro antes de contestar, la operación de ese lado puede quedar sin respuesta mientras dure la partición.
 
 [.center.iasc-image]
-image::distribucion/image14.png[]
+image::distribucion/cap-particion.svg[Dos nodos aislados durante una partición y las decisiones posibles, width=760]
 
-== Cap Gradual
+[cols="1,1,2", options="header"]
+|===
+|Estrategia durante la partición
+|Qué prioriza
+|Qué debe aceptar el diseño
 
-El otro concepto, un poco más gradual hace hincapié en que hoy por hoy no se puede solo tener dos de estos conceptos que permiten simplificar estos conceptos ya separados, y no hay que elegir entre uno u otro de los otros conceptos aparte de particiones, hablamos de consistencia y disponibilidad, sino que hay un rango de flexibilidad para manejar y recuperarse de las particionesfootnote:4[http://www.infoq.com/articles/cap-twelve-years-later-how-the-rules-have-changed - Eric A Brewer. CAP twelve years later: How the "`rules`" have changed. IEEE Computer Magazine, 45(2):23--29, February 2012. doi:10.1109/MC.2012.37.].
+|No confirmar operaciones que requieren coordinación
+|Consistencia fuerte en las operaciones que sí se confirman
+|Algunos nodos u operaciones pueden rechazar o aplazar solicitudes. No implica necesariamente apagar todo el sistema.
 
-== Mas Sobre CAP
+|Aceptar escrituras independientes en ambos lados
+|Responder a más operaciones mientras no hay comunicación
+|Pueden existir resultados incompatibles; luego hace falta reconciliarlos según reglas de la aplicación.
+|===
 
-La manera más fácil de entender CAP es pensar que dos nodos separados de una partición, permitiendo que al menos de estos nodos se actualice, permite que el otro se vuelva inconsistente, entonces se deja de lado C.  De la misma manera si se preserva la consistencia, un lado de la partición debe actuar como no disponible, dejando de lado A. Solo cuando se comunican los nodos es posible de preservar tanto C como A, dejando de la P. Entonces siempre se piensa en que se debe elegir dos de tres opciones, por el momento centrémonos en el caso en el que se necesiten realizar particiones, aunque dependendiendo del sistema, no siempre aparecen o se necesitan particiones. Entonces la elección entre C y A puede ocurrir varias veces en el sistema con una granularidad bastante fina, y no siempre es algo consistente en todo el sistema, pueden haber sistemas que prioricen una opción sobre otra. La disponibilidad es continuo entre 0 y 100 porciento, pero puede existir niveles de consistencia.
-En el caso de la interpretación clásica de CAP, no se considera la latencia y se lo ignora, aunque en práctica, la latencia y las particiones están relacionadas en gran medida. La esencia de CAP toma parte durante un timeout, un período en el que programa debe tomar una decisión sobre la partición:
+En el vocabulario habitual, la primera estrategia suele llamarse *CP* y la segunda *AP*. Son abreviaturas para describir qué se prioriza *durante una partición*, no una clasificación completa de una base de datos. Tampoco significan que todos los datos y todas las operaciones de un sistema deban seguir siempre la misma política.
 
-* Cancelar la operación y disminuir la disponibilidad
-* Continuar con la operación y arriesgar a que aparezcan inconsistencias
+Por ejemplo, una tienda con una sola unidad de un producto puede rechazar la compra en un lado sin coordinación, o aceptar operaciones locales y correr el riesgo de confirmar dos ventas. «Gana la última escritura» puede resolver qué valor conservar, pero no deshace por sí sola una compra ya confirmada ni restaura una invariante del negocio.
 
-Los timeouts y los *heartbeats* pueden ayudar a detectar o sospechar una interrupción de comunicación, pero no determinan por sí mismos qué política adoptar. Para una explicación de estos mecanismos de detección y de la propagación de cambios de membresía mediante *gossip*, véase la página sobre https://arquitecturas-concurrentes.github.io/iasc-book/heartbeat_gossip/[heartbeats y gossip].
+== Por qué «elegir dos de tres» confunde
 
-Entonces si queremos volver a intentar comunicarnos con el otro nodo, para querer mantener la consistencia, solo demora la decisión si no responde, entonces se puede decir que una partición es algo atado al tiempo en una comunicación. Si no se puede mantener la consistencia con las implicaciones de tiempo en la conexión implican una operación entre C o A. A veces tan solo se puede sacrificar C en pos de tener mayor A o viceversa, y de acuerdo a la partición y el momento y el escenario en el que está el sistema, priorizar una u otra. Por ejemplo, PNUTS de Yahoo incurre en la inconsistencia manteniendo copias remotas asincrónicamente. Sin embargo, hace una copia local maestra, que decrementa la latencia. Esta estrategia trabaja bien en práctica porque los datos de un usuario simple es naturalmente particionado de acuerdo a la localización del usuario. Facebook, usa otra estrategia,  que es la de tener la copia maestra en un lugar, y un usuario remoto en realidad tendría una copia stale más cercana a esta copia maestra. Sin embargo, cuando los usuarios actualizan su página, la actualización va a la copia maestra directamente y los usuarios leerán de esta copia maestra en poco tiempo, a los 20-30 segundos los usuarios empiezan a tener una idea más cercana de lo que está en la copia maestra.
-Entonces si tenemos particiones, tiene sentido elegir entre A y C? Elegir entre C y A existiendo particiones significa que la probabilidad de particiones puede existir y en caso de falla, fallen múltiples componentes simultáneamente. En realidad lo que sucede es que el sistema realmente pierde algo tanto de C como de A, entonces las tres propiedades en cierta manera son importantes. Hay veces en las que se tiene un sistema en un solo datacenter ( en un solo lugar) y como no poseen particiones, tales diseños incluyendo las RBDMS tradicionales, no necesitan considerar P y son en general AC en su totalidad, estos sistemas en cambio no se particionan sino que optan por el esquema de replicación.
+La frase sugiere que las tres propiedades son opciones simétricas y que un sistema debe escoger una pareja para siempre. No es así:
 
-== Manejando particiones
+* *P describe una condición de falla.* Si hay partición, los nodos afectados no pueden intercambiar información como de costumbre; un diseño debe decidir cómo responder.
+* *La tensión entre C y A aparece ante esa condición.* Sin una partición, los nodos pueden coordinarse y ofrecer ambas garantías. No se «sacrifica P» para obtener una combinación CA: simplemente no está ocurriendo la falla que plantea el teorema.
+* *La decisión puede ser más fina que una etiqueta.* Puede variar según el dato, la operación, el lado que conserva un quórum o el nivel de garantía que la aplicación exige.
+* *Una respuesta no es necesariamente una operación exitosa.* Rechazar una escritura a tiempo y completar una escritura son comportamientos distintos, aunque ambos puedan contarse como respuestas en una definición amplia de disponibilidad.
 
-En el caso en el que se deban manejar las particiones, estas solo dependen del tiempo en el que se generan y luego se debe unificar estas cuando se restauran, entonces una partición se ve como en la siguiente imagen:
+Por eso, decir que una base de datos «es AP» o «es CP» suele ocultar detalles relevantes: qué operaciones quedan disponibles, para qué datos, ante qué topología y con qué garantía de lectura o escritura.
 
-[.center.iasc-image]
-image::distribucion/image11.jpg[]
+== Recuperar la comunicación no resuelve el conflicto
 
-y hay tres momentos en una partición
+Cuando vuelve la red, las réplicas pueden intercambiar sus cambios. Pero converger a un mismo valor no garantiza que ese valor sea correcto. El diseño debe decidir cómo manejar operaciones duplicadas, escrituras incompatibles y reglas del dominio que dejaron de cumplirse.
 
-* El momento en el que comienza una partición
-* Entrar en una partición explícitamente, que puede limitar algunas operaciones
-* Inicial la recuperación de una partición cuando se necesita unificar las particiones de un sistema.
+Algunas opciones son:
 
-El último paso apunta a restaurar la consistencia y arreglar los cambios y valores inválidos en las invariantes que se generaron cuando el sistema se particiona. La imagen muestra la evolución de una partición. Una operación normal es una secuencia de operaciones atómicas, y, por lo tanto las particiones empiezan entre operaciones. Si tenemos dos nodos que están interconectados y dejan de hablarse durante un tiempo entonces es muy probable que se haya iniciado una partición, en ese caso el primero inicializa este modo, si en realidad existe una partición, entonces el otro nodo también entrará en este modo, pero solo de un lado se admite la partición. En estos casos debe comunicarse esto al otro nodo para que solo quede de un lado. Cuando un sistema entre en modo partición, dos estrategias son posibles. La primera opción es limitar las operaciones reduciendo la disponibilidad y el segundo guardando información extra sobre las operaciones que pueden ser de ayuda en la recuperación de la partición.
-Entonces en este punto la comunicación se resume entre los nodos y debe volver a reunificarse el estado único del sistema, en este punto se sabe el estado de ambos nodos y sus historias, la historia en realidad es mejor que las invariantes que forman el estado por un tema que se puede determinar mejor cuál sería el estado final a tomar. El diseñador debe resolver dos problemas
+* permitir escrituras solo en un líder o en un quórum, y rechazar las que no puedan coordinarse;
+* aceptar operaciones en más de un lado cuando se puedan combinar de forma segura;
+* conservar suficiente historia para detectar conflictos y resolverlos según reglas explícitas;
+* compensar efectos ya confirmados, o pedir resolución manual cuando no existe una combinación automática correcta.
 
-* Ambos lados deben quedar consistentes
-* Debe haber una compensación para los errores cometidos durante la fase de partición.
+Los relojes y las marcas de tiempo ayudan a ordenar algunos eventos, pero no dicen por sí solos qué resultado es justo o válido para la aplicación. La reconciliación debe partir de las invariantes del dominio, no solo de una técnica para fusionar registros.
 
-En general se hace una especie de merge dependiendo de la estrategia entre los estados, algo similar a lo que se ve en un CVS, pero hay muchos sistemas que no pueden hacer este mergeo de datos por un tema que no es posible, entonces es el caso en el que se reduce las operaciones disponibles en un sistema durante una partición, Google Docs es un caso de este tipo. Otras opciones son las de tomar por medio de algún algoritmo el dato más nuevo y tomar esas invariantes más nuevas como las definitivas en el sistema.
+== Qué aporta la interpretación gradual
 
-=== Adicional
+Brewer señaló que la formulación «dos de tres» simplifica en exceso el espacio de diseño. Las particiones pueden ser poco frecuentes, y los sistemas tienen margen para elegir cómo conservar consistencia y disponibilidad durante la falla y cómo recuperarse después. La decisión puede variar entre componentes y operaciones; además, consistencia y disponibilidad admiten distintos niveles en sistemas reales <<Brewer2012>>.
 
-[.warning]
-_Esta seccion necesita un mayor desarrollo del tema y de citas._
+Esto no contradice el resultado formal: CAP establece un límite para garantías estrictas bajo una partición. La perspectiva gradual ayuda a pensar qué compromisos tienen sentido dentro de ese límite, en vez de etiquetar todo el sistema como si una propiedad se perdiera por completo.
 
-Existen tambien criticas al teoremafootnote:2[Kleppmann, M. (2015). A Critique of the CAP Theorem. https://doi.org/10.17863/CAM.13083], en el que se mencionan entre otras cosas, algunas confusiones y ambiguedades de los terminos, y algunos problemas en su formalización. Estas criticas se centran un poco en la dificil aplicacion que puede llegar a tener a veces sobre los sistemas reales.
+== La crítica de Kleppmann: ¿CAP ayuda a diseñar sistemas reales?
+
+En *A Critique of the CAP Theorem*, Martin Kleppmann no intenta demostrar que sea posible mantener todas las garantías ante cualquier falla ni presenta un nuevo límite de imposibilidad. Su crítica apunta a la distancia entre *lo que las distintas versiones de CAP definen formalmente* y *lo que normalmente entendemos por disponibilidad y tolerancia a fallas al diseñar un servicio*. El paper recorre las definiciones, examina el modelo y las pruebas de Gilbert y Lynch, y luego reúne resultados previos para proponer otra manera de analizar el costo de coordinación: la sensibilidad de cada operación a la demora de red <<Kleppmann2015>>.
+
+=== Primera crítica: «disponible» puede significar cosas distintas
+
+En ingeniería, solemos medir la disponibilidad observada: qué proporción de las solicitudes termina *correctamente* dentro del plazo acordado. Por ejemplo, un servicio puede considerarse disponible si responde con éxito en menos de 500 ms. El resultado depende del tráfico, las fallas, la ubicación de los clientes y el período medido; es un indicador operacional, no una etiqueta absoluta que un algoritmo lleva consigo.
+
+En la formulación de Gilbert y Lynch, en cambio, disponibilidad es una propiedad teórica de *terminación*: toda solicitud que recibe un nodo que no falló debe terminar en algún momento, sin un límite máximo de latencia. Kleppmann subraya la diferencia: bajo esa definición, una operación que demora una semana todavía puede contar como disponible. Para una prueba de imposibilidad, «eventualmente responde» es una condición precisa y útil; para una persona usuaria o un SLA, el plazo es parte esencial de la garantía.
+
+También importa quién cuenta como nodo que «no falló». Como la definición excluye a los nodos declarados fallidos, un algoritmo podría dejar fuera de servicio a todos los nodos durante una partición y satisfacer la condición de manera vacía: no queda ningún nodo al que se le exija responder. La prueba es válida para lo que formaliza, pero esa interpretación no expresa la intención habitual de CAP: analizar qué puede hacer cada lado que continúa operando.
+
+*Para discutir:* si un nodo responde con un error inmediato, ¿es «disponible»? ¿Y si devuelve un resultado válido después de varios minutos? La respuesta cambia según se hable de terminación matemática, éxito funcional o cumplimiento de un SLA.
+
+=== Segunda crítica: las conclusiones dependen del modelo de fallas
+
+«Tolerar particiones» no es una propiedad que pueda agregarse al sistema de forma aislada: describe qué fallas admite el modelo usado para razonar. Una partición temporal, tras la cual los mensajes vuelven a llegar, no es lo mismo que una separación permanente. Kleppmann observa que esta distinción importa para interpretar las pruebas:
+
+* Si una partición puede durar para siempre, los mensajes entre lados pueden no llegar nunca. Un algoritmo que espera para conservar un único orden puede dejar operaciones bloqueadas indefinidamente.
+* Si se consideran enlaces con pérdidas *justas* —pueden perder mensajes durante un período, pero eventualmente entregan los reintentos—, una partición temporal puede terminar. Un algoritmo linealizable puede esperar a que vuelva la comunicación y completar entonces; «responde en algún momento» no garantiza que responda dentro de un plazo práctico.
+* Si la separación es permanente, las réplicas no pueden intercambiar los cambios que desconocen. Tampoco es posible garantizar que todas converjan a un mismo estado si nunca vuelve a fluir información.
+
+Por eso el paper advierte que «CAP demuestra que la consistencia eventual es más disponible» es una conclusión demasiado amplia. Si se permite una partición permanente, ni siquiera la convergencia eventual puede garantizarse en todos los casos. Si se habla de particiones temporales, tanto una operación linealizable como una eventualmente consistente pueden terminar una vez restaurada la comunicación; la diferencia relevante aparece al exigir qué respuestas se pueden dar *mientras tanto*.
+
+Kleppmann propone una formalización más precisa para aislar esa diferencia. En su modelo de enlaces particionables, exige que toda operación termine incluso si algunos mensajes se pierden para siempre; luego pregunta si el sistema puede ser linealizable en todas las ejecuciones sin pérdidas. Su resultado es que no: si una escritura y una lectura ocurren mientras no pueden intercambiar información, hacer terminar ambas puede dejar una lectura obsoleta. En cambio, define una propiedad más débil que solo exige convergencia en ejecuciones sin particiones, y muestra que esa forma de consistencia eventual sí es posible. Así deja explícito qué se exige durante la falla y qué se exige cuando la comunicación funciona. El punto útil para la clase no es memorizar esa variante formal, sino advertir qué supuestos hacen falta para que «CP frente a AP» tenga un significado concreto.
+
+=== Tercera crítica: «consistencia» tampoco nombra una sola garantía
+
+El término *consistencia* se usa para ideas distintas. En CAP puede referirse a linealizabilidad; en ACID, la C se refiere a restricciones de integridad; en otros textos se contrasta «fuerte» con «eventual». No son sinónimos. Además, entre linealizabilidad y convergencia eventual hay modelos intermedios, como consistencia secuencial y causal. La pregunta «¿es consistente?» queda incompleta hasta especificar qué lecturas y escrituras se permiten y qué orden deben respetar.
+
+Esta precisión importa porque las decisiones de una aplicación dependen de la operación. Leer una descripción de producto tolerando un valor algo desactualizado puede ser aceptable; confirmar dos reservas de la última unidad quizá no. Una base de datos no se describe adecuadamente con una sola etiqueta C si ofrece garantías distintas por operación, configuración o tipo de dato.
+
+=== La propuesta alternativa: sensibilidad al retraso
+
+El paper propone analizar *cuánto depende la latencia de una operación de la demora de la red*. En sus ejemplos teóricos, `d` representa esa demora:
+
+* *O(d), sensible al retraso:* si la comunicación se demora, la operación debe esperar y su latencia crece con esa demora.
+* *O(1), independiente del retraso de red:* la operación puede terminar sin esperar una respuesta remota; su latencia de respuesta no crece con `d`. Esto no significa que la operación no use la red ni que la réplica remota ya esté actualizada: la propagación y convergencia pueden ocurrir después.
+
+Para registros replicados y bajo los supuestos analizados por el paper, la tabla resume límites de latencia que ayudan a pensar el compromiso:
+
+[cols="1,1,1", options="header"]
+|===
+|Garantía de consistencia
+|Latencia de lectura
+|Latencia de escritura
+
+|Linealizabilidad
+|O(d)
+|O(d)
+
+|Consistencia secuencial
+|O(1)
+|O(d)
+
+|Consistencia causal
+|O(1)
+|O(1)
+|===
+
+En un registro linealizable, lecturas y escrituras pueden requerir coordinación remota para mantener un único orden observable. Con consistencia secuencial, el resultado resumido permite lecturas que no esperan a la red y escrituras sensibles a la demora; según el algoritmo, también puede priorizarse el caso inverso. La consistencia causal permite que ambas operaciones respondan sin esperar coordinación síncrona, pero el sistema debe preservar las relaciones causales y propagar los cambios.
+
+`O(d)` y `O(1)` aquí expresan dependencia respecto de la demora de red, no tiempos absolutos ni una predicción de rendimiento para cualquier base de datos. Los resultados son límites teóricos para determinados objetos y modelos; una implementación concreta puede añadir viajes de red, colas, procesamiento, almacenamiento y costos de metadatos. En particular, una operación `O(1)` respecto de la red no significa que toda la aplicación sea instantánea ni que no existan costos de reconciliación.
+
+La idea es traducir una partición en una demora muy grande. Si una operación depende de recibir un mensaje remoto, su respuesta puede quedar detenida durante toda la interrupción. Si puede responder sin esa coordinación, la latencia local puede mantenerse acotada, aunque el sistema tenga que reconciliar o propagar el cambio después. Esto hace visible una decisión que la etiqueta «AP» no describe: *¿qué interacción requiere esperar a quién, para qué operación y cuánto tiempo?*
+
+El paper usa como ejemplo una aplicación de calendario en un teléfono: mientras no hay conexión, la persona puede consultar la agenda y agregar eventos; los cambios se sincronizan al recuperar la red. Es una elección razonable si se tolera que otros dispositivos todavía no vean esos eventos y si el dominio permite resolver ediciones concurrentes. No sería automáticamente correcta para una operación que debe impedir dos confirmaciones incompatibles.
+
+También es importante que la demora no tiene por qué ser igual entre todos los nodos. Una operación puede coordinarse con réplicas del mismo centro de datos, pero no con las de otras regiones. Por eso el análisis debe decir *a qué distancia o enlace* es sensible cada operación, en lugar de clasificar al sistema entero como dependiente o independiente de toda la red.
+
+La crítica de Kleppmann no invalida el límite formal de CAP ni afirma que se pueda garantizar cualquier combinación de propiedades. Reconoce que CAP fue influyente al impulsar la exploración de sistemas con garantías más débiles, pero sostiene que ya no debería usarse para justificar decisiones de diseño. Su advertencia es que la versión abreviada del teorema puede ocultar los supuestos sobre fallas, tiempos de respuesta y consistencia. Para justificar una arquitectura, conviene especificar esos supuestos y describir las garantías por operación; *delay-sensitivity* ofrece un vocabulario para analizar cuánto cuesta en latencia mantenerlas.
+
+=== Una guía para aplicar estas ideas
+
+Al diseñar una operación distribuida, conviene preguntar:
+
+. ¿Qué dato o invariante debe protegerse? ¿Qué significa una respuesta correcta para esta operación?
+. ¿Qué garantía de consistencia se necesita: linealizabilidad, orden causal, lecturas eventualmente convergentes u otra?
+. Si no se puede contactar a otro nodo, ¿la operación debe rechazarse, esperar o avanzar con información local?
+. ¿Qué latencia y tiempo de espera son aceptables? ¿Cómo cambia la respuesta si la red se demora, además de cuando se interrumpe?
+. Cuando vuelva la comunicación, ¿cómo se detectan y resuelven conflictos sin perder efectos que ya se confirmaron?
+
+La respuesta puede ser distinta para una consulta de catálogo que para reservar la última unidad de inventario. CAP sirve como punto de partida para reconocer el límite; la especificación de operaciones, las demoras y las reglas de recuperación permite tomar una decisión de arquitectura.
+
+[bibliography]
+== Referencias
+
+* [[[GilbertLynch2002]]] GILBERT, Seth y LYNCH, Nancy. «Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services». *ACM SIGACT News*, 33(2), pp. 51–59, 2002. https://doi.org/10.1145/564585.564601[DOI].
+* [[[Brewer2012]]] BREWER, Eric. «CAP Twelve Years Later: How the “Rules” Have Changed». *Computer*, 45(2), pp. 23–29, 2012. https://doi.org/10.1109/MC.2012.37[DOI].
+* [[[Kleppmann2015]]] KLEPPMANN, Martin. «A Critique of the CAP Theorem», 2015. https://doi.org/10.17863/CAM.13083[DOI]. https://arxiv.org/abs/1509.05393[Versión en arXiv].

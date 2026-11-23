@@ -11,8 +11,8 @@
   },
   {
     "path": "cap",
-    "title": "CAP",
-    "description": "Notas sobre CAP"
+    "title": "CAP: consistencia y disponibilidad",
+    "description": "Qué establece el teorema CAP y cómo pensar sus límites ante una partición de red."
   },
   {
     "path": "cps",

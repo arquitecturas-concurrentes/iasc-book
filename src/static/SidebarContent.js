@@ -119,7 +119,7 @@ export const sidearContent = [
       },
       {
         href: '/tema/cap',
-        title: 'Notas sobre CAP',
+        title: 'CAP: particiones y consistencia',
       },
       {
         href: '/tema/mitos_distribucion',
