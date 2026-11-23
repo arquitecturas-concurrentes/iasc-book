@@ -118,6 +118,14 @@ export const sidearContent = [
         title: 'Interleaving y Netsplits',
       },
       {
+        href: '/tema/dos_generales',
+        title: 'Dos generales y consenso bizantino',
+      },
+      {
+        href: '/tema/protocolos_bft',
+        title: 'Protocolos BFT',
+      },
+      {
         href: '/tema/cap',
         title: 'CAP: particiones y consistencia',
       },

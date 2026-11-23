@@ -71,6 +71,17 @@
     "description": "...."
   },
   {
+    "path": "dos_generales",
+    "title": "Dos generales y consenso bizantino",
+    "description": "Mensajes inciertos, coordinación y tolerancia a participantes bizantinos."
+  },
+  {
+    "path": "protocolos_bft",
+    "title": "Protocolos BFT",
+    "extra": true,
+    "description": "Quórums, fases de PBFT y supuestos de consenso tolerante a fallas bizantinas."
+  },
+  {
     "path": "cap",
     "title": "CAP",
     "description": "Notas sobre CAP"

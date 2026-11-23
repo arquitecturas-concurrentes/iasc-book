@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="680" viewBox="0 0 1000 680" role="img" aria-labelledby="title description">
+  <title id="title">Flujo simplificado de PBFT</title>
+  <desc id="description">Un cliente envía una solicitud a una réplica primaria. La primaria difunde una propuesta, las réplicas correctas intercambian fases prepare y commit, y el cliente acepta respuestas coincidentes de réplicas.</desc>
+  <defs>
+    <style>
+      text { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #172b4d; }
+      .eyebrow { font-size: 15px; font-weight: 700; letter-spacing: 1.2px; }
+      .heading { font-size: 20px; font-weight: 700; }
+      .body { font-size: 16px; }
+      .small { font-size: 14px; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#526581"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#3977b7"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#168a83"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="680" rx="24" fill="#f7f9fc"/>
+  <text x="54" y="52" class="eyebrow" fill="#526581">PBFT · RECORRIDO SIMPLIFICADO DE UNA SOLICITUD</text>
+
+  <rect x="48" y="96" width="180" height="74" rx="15" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="138" y="127" text-anchor="middle" class="heading">Cliente</text>
+  <text x="138" y="150" text-anchor="middle" class="small">solicita operación</text>
+
+  <rect x="398" y="96" width="205" height="74" rx="15" fill="#eaf1ff" stroke="#9bb6df" stroke-width="2"/>
+  <text x="500" y="127" text-anchor="middle" class="heading">Primaria</text>
+  <text x="500" y="150" text-anchor="middle" class="small">propone orden y secuencia</text>
+
+  <rect x="773" y="96" width="180" height="74" rx="15" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="863" y="127" text-anchor="middle" class="heading">Réplicas</text>
+  <text x="863" y="150" text-anchor="middle" class="small">verifican y acuerdan</text>
+
+  <path d="M228 132 H390" stroke="#526581" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="309" y="118" text-anchor="middle" class="small">1 · request</text>
+  <path d="M603 132 H765" stroke="#3977b7" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text x="684" y="118" text-anchor="middle" class="small">2 · pre-prepare</text>
+
+  <rect x="50" y="226" width="900" height="134" rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="82" y="265" class="eyebrow" fill="#3977b7">3 · PREPARE</text>
+  <text x="82" y="297" class="body">
+    <tspan x="82" dy="0">Las réplicas intercambian pruebas de que vieron</tspan>
+    <tspan x="82" dy="24">la misma propuesta para esta vista y posición.</tspan>
+  </text>
+  <circle cx="680" cy="279" r="20" fill="#eaf1ff" stroke="#9bb6df" stroke-width="2"/>
+  <circle cx="770" cy="279" r="20" fill="#eaf1ff" stroke="#9bb6df" stroke-width="2"/>
+  <circle cx="860" cy="279" r="20" fill="#eaf1ff" stroke="#9bb6df" stroke-width="2"/>
+  <path d="M705 279 H744 M795 279 H834 M851 302 L780 330 M689 302 L760 330" fill="none" stroke="#3977b7" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <text x="770" y="348" text-anchor="middle" class="small" fill="#3977b7">validan la propuesta entre sí</text>
+
+  <rect x="50" y="386" width="900" height="134" rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="82" y="425" class="eyebrow" fill="#168a83">4 · COMMIT</text>
+  <text x="82" y="457" class="body">
+    <tspan x="82" dy="0">Con la evidencia requerida, las réplicas confirman</tspan>
+    <tspan x="82" dy="24">la misma decisión y ejecutan en el mismo orden.</tspan>
+  </text>
+  <circle cx="680" cy="439" r="20" fill="#eaf4f3" stroke="#9ccfc8" stroke-width="2"/>
+  <circle cx="770" cy="439" r="20" fill="#eaf4f3" stroke="#9ccfc8" stroke-width="2"/>
+  <circle cx="860" cy="439" r="20" fill="#eaf4f3" stroke="#9ccfc8" stroke-width="2"/>
+  <path d="M705 439 H744 M795 439 H834 M851 462 L780 490 M689 462 L760 490" fill="none" stroke="#168a83" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <text x="770" y="508" text-anchor="middle" class="small" fill="#168a83">reúnen un quórum de confirmaciones</text>
+
+  <path d="M863 520 V574 H230 V180" fill="none" stroke="#526581" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+  <rect x="367" y="553" width="352" height="52" rx="13" fill="#eaf4f3" stroke="#9ccfc8" stroke-width="2"/>
+  <text x="543" y="575" text-anchor="middle" class="small">5 · respuestas coincidentes al cliente</text>
+  <text x="543" y="594" text-anchor="middle" class="small" fill="#526581">en PBFT: f + 1 respuestas iguales</text>
+
+  <text x="500" y="646" text-anchor="middle" class="small" fill="#526581">Esquema didáctico; PBFT completo incluye recuperación, checkpoints y cambios de vista.</text>
+</svg>
