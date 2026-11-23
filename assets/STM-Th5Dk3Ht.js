@@ -1,0 +1,1 @@
+import{h as e,o as t}from"./index-BoIX6ztS.js";import{t as n}from"./RemoteEntryAdoc-CscwUQug.js";var r=`STM`,i=`Memoria Transaccional`,a=`https://raw.githubusercontent.com/arquitecturas-concurrentes/iasc-stm-haskell-2019/master/01_semaphores_and_philosophers/README.adoc`,o={__name:`STM`,setup(o){return(o,s)=>(e(),t(n,{url:a,title:r,description:i}))}};export{o as default};

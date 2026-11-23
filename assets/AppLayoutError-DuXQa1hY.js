@@ -1,0 +1,1 @@
+import{_ as e,a as t,c as n,d as r,h as i,t as a}from"./index-BoIX6ztS.js";var o={name:`AppLayoutError`,components:{}},s={class:`container`},c={class:`inner-content col-sm-8 col-md-10`};function l(a,o,l,u,d,f){let p=e(`router-view`);return i(),n(`div`,null,[t(`div`,s,[t(`div`,c,[r(p)])])])}var u=a(o,[[`render`,l]]);export{u as default};

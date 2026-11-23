@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="430" viewBox="0 0 900 430" role="img" aria-labelledby="title desc">
+  <title id="title">Violación del orden causal en una difusión</title>
+  <desc id="desc">A difunde m1 a B y C. B recibe m1 y luego difunde m2. C recibe m2 antes de la copia retrasada de m1, aunque m2 depende causalmente de m1.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#263238"/>
+    </marker>
+  </defs>
+  <rect width="900" height="430" rx="18" fill="#fff"/>
+  <text x="450" y="40" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="700" fill="#172b4d">Una entrega que invierte la causalidad</text>
+  <g font-family="sans-serif" font-size="19" font-weight="700" text-anchor="middle" fill="#172b4d">
+    <text x="180" y="95">Proceso A</text>
+    <text x="475" y="95">Proceso B</text>
+    <text x="755" y="95">Proceso C</text>
+  </g>
+  <g stroke="#90a4ae" stroke-width="2">
+    <line x1="180" y1="112" x2="180" y2="365"/>
+    <line x1="475" y1="112" x2="475" y2="365"/>
+    <line x1="755" y1="112" x2="755" y2="365"/>
+  </g>
+  <rect x="160" y="125" width="40" height="29" rx="4" fill="#fff59d"/>
+  <text x="180" y="146" text-anchor="middle" font-family="sans-serif" font-size="17" font-style="italic" fill="#263238">t1</text>
+  <path d="M190 145 C285 155, 380 177, 463 190" fill="none" stroke="#1565c0" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="330" y="164" text-anchor="middle" font-family="sans-serif" font-size="17" font-style="italic" fill="#263238">m1</text>
+  <path d="M190 151 C340 200, 520 254, 743 310" fill="none" stroke="#ef6c00" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
+  <text x="555" y="248" text-anchor="middle" font-family="sans-serif" font-size="17" font-style="italic" fill="#ef6c00">m1 retrasado</text>
+  <rect x="455" y="176" width="40" height="29" rx="4" fill="#fff59d"/>
+  <text x="475" y="197" text-anchor="middle" font-family="sans-serif" font-size="17" font-style="italic" fill="#263238">t2</text>
+  <path d="M465 213 C380 240, 280 268, 190 288" fill="none" stroke="#00897b" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="322" y="257" text-anchor="middle" font-family="sans-serif" font-size="17" font-style="italic" fill="#00897b">m2</text>
+  <path d="M485 213 C575 224, 660 238, 743 250" fill="none" stroke="#00897b" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="618" y="222" text-anchor="middle" font-family="sans-serif" font-size="17" font-style="italic" fill="#00897b">m2</text>
+  <circle cx="755" cy="252" r="8" fill="#00897b"/>
+  <text x="775" y="258" font-family="sans-serif" font-size="15" fill="#00897b">entrega m2</text>
+  <circle cx="755" cy="312" r="8" fill="#ef6c00"/>
+  <text x="775" y="318" font-family="sans-serif" font-size="15" fill="#ef6c00">después llega m1</text>
+  <text x="450" y="400" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#455a64">B causa m2 tras recibir m1; un broadcast causal retendría m2 en C.</text>
+</svg>

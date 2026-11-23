@@ -1,0 +1,1 @@
+import{c as e,g as t,h as n,t as r}from"./index-BoIX6ztS.js";var i={};function a(r,i){return n(),e(`div`,null,[t(r.$slots,`default`)])}var o=r(i,[[`render`,a]]);export{o as default};

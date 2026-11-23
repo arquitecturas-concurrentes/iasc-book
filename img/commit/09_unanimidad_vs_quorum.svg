@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280px" height="545px" viewBox="0 0 1280 545" role="img" aria-labelledby="title desc">
+<title id="title">2PC frente a consenso por mayorías</title>
+<desc id="desc">A la izquierda, dos participantes aceptan y uno rechaza, por lo que la transacción distribuida aborta. A la derecha, dos de tres réplicas de un único registro bastan para el quórum de consenso en este ejemplo.</desc>
+<rect x="0" y="0" width="1280" height="545" fill="#ffffff"/>
+
+<text x="34" y="42" fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="25" font-weight="bold" text-anchor="start">La mayoría no siempre significa lo mismo</text>
+<line x1="34" y1="61" x2="1246" y2="61" stroke="#117985" stroke-width="3"/>
+<rect x="33" y="86" width="585" height="405" rx="17" fill="#eaf1fa" stroke="#b5c8d5" stroke-width="1.5"/>
+<rect x="660" y="86" width="585" height="405" rx="17" fill="#eaf5f5" stroke="#b5c8d5" stroke-width="1.5"/>
+<text x="325" y="127" fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="bold" text-anchor="middle">2PC: recursos distintos</text>
+<text x="952" y="127" fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">Consenso: réplicas del mismo estado</text>
+<text x="325" y="161" fill="#65778a" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="normal" text-anchor="middle">Una sola transacción, tres partes obligatorias</text>
+<text x="952" y="161" fill="#65778a" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="normal" text-anchor="middle">Un registro lógico, tres copias equivalentes</text>
+<rect x="70" y="200" width="130" height="93" rx="12" fill="#ffffff" stroke="#b5c8d5" stroke-width="1.5"/>
+<text x="135" y="234" fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="bold" text-anchor="middle">Inventario</text>
+<text x="135" y="268" fill="#117985" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">YES</text>
+<rect x="260" y="200" width="130" height="93" rx="12" fill="#ffffff" stroke="#b5c8d5" stroke-width="1.5"/>
+<text x="325" y="234" fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="bold" text-anchor="middle">Pagos</text>
+<text x="325" y="268" fill="#117985" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">YES</text>
+<rect x="450" y="200" width="130" height="93" rx="12" fill="#ffffff" stroke="#b5c8d5" stroke-width="1.5"/>
+<text x="515" y="234" fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="bold" text-anchor="middle">Pedidos</text>
+<text x="515" y="268" fill="#c24b4c" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">NO</text>
+<rect x="697" y="200" width="130" height="93" rx="12" fill="#ffffff" stroke="#b5c8d5" stroke-width="1.5"/>
+<text x="762" y="234" fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="bold" text-anchor="middle">Réplica 1</text>
+<text x="762" y="268" fill="#117985" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="bold" text-anchor="middle">OK</text>
+<rect x="887" y="200" width="130" height="93" rx="12" fill="#ffffff" stroke="#b5c8d5" stroke-width="1.5"/>
+<text x="952" y="234" fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="bold" text-anchor="middle">Réplica 2</text>
+<text x="952" y="268" fill="#117985" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="bold" text-anchor="middle">OK</text>
+<rect x="1077" y="200" width="130" height="93" rx="12" fill="#ffffff" stroke="#b5c8d5" stroke-width="1.5"/>
+<text x="1142" y="234" fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="bold" text-anchor="middle">Réplica 3</text>
+<text x="1142" y="268" fill="#65778a" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="bold" text-anchor="middle">Sin respuesta</text>
+<line x1="325" y1="300" x2="325" y2="329" stroke="#65778a" stroke-width="2"/>
+<line x1="952" y1="300" x2="952" y2="329" stroke="#65778a" stroke-width="2"/>
+<rect x="125" y="334" width="400" height="66" rx="12" fill="#fff0ef" stroke="#d8ada9" stroke-width="1.5"/>
+<text x="325" y="363" fill="#ae3c40" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">Decisión: ABORT</text>
+<text x="325" y="386" fill="#65778a" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="normal" text-anchor="middle">Un NO impide el commit global</text>
+<rect x="751" y="334" width="400" height="66" rx="12" fill="#dff2ec" stroke="#99cabb" stroke-width="1.5"/>
+<text x="952" y="363" fill="#117985" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">Quórum: 2 de 3 réplicas</text>
+<text x="952" y="386" fill="#65778a" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="normal" text-anchor="middle">Mayoría en este grupo replicado</text>
+<text x="325" y="447" fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="bold" text-anchor="middle">Los tres recursos son necesarios</text>
+<text x="952" y="447" fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="bold" text-anchor="middle">Las tres máquinas representan un mismo registro</text>
+<text x="640" y="526" fill="#65778a" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="bold" text-anchor="middle">No confundir el voto de cada recurso con el quórum de réplicas.</text>
+</svg>

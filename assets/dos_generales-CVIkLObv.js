@@ -1,0 +1,172 @@
+var e=`<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>¿Cómo pueden ponerse de acuerdo dos participantes si los mensajes pueden perderse? ¿Y qué cambia si alguno de ellos puede mentir deliberadamente? El problema de los dos generales y el de los generales bizantinos ayudan a estudiar estas preguntas. Se parecen porque tratan de coordinación distribuida, pero modelan dificultades diferentes: <strong>incertidumbre en la comunicación</strong> en el primero; <strong>participantes arbitrariamente defectuosos o maliciosos</strong> en el segundo.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_el_problema_de_los_dos_generales"><a class="anchor" href="#_el_problema_de_los_dos_generales"></a>El problema de los dos generales</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Dos ejércitos están separados por territorio enemigo. Cada uno tiene un general, y solo pueden coordinarse enviando mensajeros que cruzan ese territorio. Los generales leales quieren acordar si atacan o se retiran: si uno ataca mientras el otro se retira, el ejército que ataca queda en desventaja.</p>
+</div>
+<div class="paragraph">
+<p>Supongamos que el general A envía «ataquemos al amanecer». Si el mensaje llega, el general B sabe que A propone atacar y puede enviar un acuse de recibo. Cuando A recibe el acuse, sabe que B recibió la orden. Pero B todavía no sabe si A recibió el acuse: tal vez el mensajero fue capturado. B puede enviar un segundo acuse, que deja a A con la misma duda sobre el segundo mensajero.</p>
+</div>
+<div class="imageblock center iasc-image">
+<div class="content">
+<img src="/iasc-book/img/distribucion/dos-generales-bizantinos.svg" alt="Secuencia de confirmaciones en el problema de los dos generales y órdenes contradictorias en el problema bizantino" width="760">
+</div>
+</div>
+<div class="paragraph">
+<p>Cada mensaje recibido confirma que llegó el mensaje anterior, pero abre una nueva pregunta acerca de la confirmación recién enviada. Si el protocolo termina después de una cantidad finita de mensajes, existe un último mensaje. Quien lo envía no puede distinguir entre que haya llegado y que se haya perdido; quien lo recibe no puede saber si el emisor sabe que llegó.</p>
+</div>
+<div class="paragraph">
+<p>La dificultad no es encontrar una cantidad «suficientemente grande» de confirmaciones. Si el modelo permite que cualquier mensaje se pierda, incluso el último, ninguna cantidad finita permite garantizar que ambos generales compartan el conocimiento de que van a actuar coordinadamente. Esperar una confirmación más no elimina la incertidumbre: la desplaza al nuevo mensaje. Esta imposibilidad da nombre al problema de los dos generales <a href="#GrayLamport2006" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref">[GrayLamport2006]</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="_qué_se_puede_concluir"><a class="anchor" href="#_qué_se_puede_concluir"></a>Qué se puede concluir</h3>
+<div class="paragraph">
+<p>En un modelo donde los mensajes pueden perderse sin límite y no existe otra forma de comunicación, no hay un protocolo finito que garantice simultáneamente que ambos generales tomen la misma decisión y que la decisión se alcance. Si el protocolo decide atacar tras un timeout, un lado podría haber recibido la orden y el otro no; si espera una certeza absoluta, puede esperar para siempre. Un timeout mide cuánto espera un proceso, pero no demuestra si el otro proceso cayó o si un mensaje solo se retrasó; véase también la sección sobre <a href="https://arquitecturas-concurrentes.github.io/iasc-book/heartbeat_gossip/">heartbeats y gossip</a>.</p>
+</div>
+<div class="paragraph">
+<p>Este resultado no dice que coordinar sea inútil en la práctica. Los sistemas suelen trabajar con objetivos y supuestos más acotados:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>reintentar mensajes y diseñar para que las operaciones sean idempotentes, aceptando que se busca una probabilidad alta de entrega y no una prueba de entrega eventual bajo cualquier falla;</p>
+</li>
+<li>
+<p>usar canales con límites de demora conocidos, señales sincronizadas o una autoridad compartida cuando el entorno realmente las ofrece;</p>
+</li>
+<li>
+<p>acordar una política ante el timeout, aunque sea posible que la decisión falle o que haya que compensarla después;</p>
+</li>
+<li>
+<p>evitar exigir que todos conozcan que todos conocen la decisión; a menudo alcanza con una garantía operacional más débil y bien especificada.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Un acuse de recibo confirma algo sobre un mensaje particular según el protocolo. No convierte automáticamente en cierto que toda la operación se completó ni que todos los participantes comparten el mismo conocimiento. Por eso las aplicaciones deben definir qué significan «enviado», «recibido», «aceptado» y «confirmado».</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_generales_bizantinos_participantes_que_pueden_mentir"><a class="anchor" href="#_generales_bizantinos_participantes_que_pueden_mentir"></a>Generales bizantinos: participantes que pueden mentir</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>El problema de los generales bizantinos estudia otra amenaza. Varios generales, distribuidos alrededor de una ciudad, deben acordar un plan común. Uno de ellos puede ser un traidor: puede enviar órdenes diferentes a distintos generales, inventar información o transmitir mensajes inconsistentes. El problema no consiste solamente en perder un mensaje; es que algunos participantes pueden comportarse arbitrariamente.</p>
+</div>
+<div class="paragraph">
+<p>En la versión clásica se busca que los generales leales cumplan dos propiedades:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Acuerdo:</strong> todos los generales leales deciden el mismo valor.</p>
+</li>
+<li>
+<p><strong>Validez:</strong> si el comandante es leal, los demás generales leales siguen la orden que emitió.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Además, el protocolo debe terminar bajo las condiciones de comunicación que supone el modelo. Si el comandante es traidor, la validez no obliga a los leales a obedecer una orden auténtica inexistente; el acuerdo entre ellos sigue siendo necesario.</p>
+</div>
+<div class="paragraph">
+<p>Consideremos un comandante traidor que le dice «atacar» al general A y «retirarse» al general B. Aunque A y B sean leales, si no pueden comparar de manera fiable lo que recibieron, pueden terminar con decisiones distintas. Un protocolo debe permitir que los leales detecten o toleren esa inconsistencia, en vez de asumir que cada mensaje recibido refleja la intención común del grupo.</p>
+</div>
+<div class="sect2">
+<h3 id="_el_límite_clásico_de_tolerancia"><a class="anchor" href="#_el_límite_clásico_de_tolerancia"></a>El límite clásico de tolerancia</h3>
+<div class="paragraph">
+<p>Lamport, Shostak y Pease estudian el caso de mensajes orales en un sistema síncrono: los mensajes entre participantes leales se entregan de acuerdo con las rondas del modelo; los traidores pueden enviar valores distintos u omitir mensajes; y no hay firmas criptográficas que permitan probar quién originó un contenido reenviado. En ese modelo, para tolerar hasta <code>f</code> generales traidores se necesitan al menos <code>3f + 1</code> participantes. Con tres generales y uno traidor, no existe solución que garantice acuerdo y validez entre los leales; con cuatro generales se puede tolerar un traidor bajo esos supuestos <a href="#LamportShostakPease1982" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref" class="biblioref">[LamportShostakPease1982]</a>.</p>
+</div>
+<div class="paragraph">
+<p>El límite depende del modelo, no es una regla aislada para toda forma de consenso. Si se cambian las hipótesis —por ejemplo, se usan firmas digitales no falsificables, otra topología o distintas garantías de tiempo y entrega— cambian también los protocolos y los límites. Las firmas pueden ayudar a distinguir un mensaje original de uno alterado, pero no hacen que un participante malicioso diga la verdad ni garantizan que un mensaje llegue.</p>
+</div>
+<div class="paragraph">
+<p>En sistemas reales se habla de <strong>tolerancia a fallas bizantinas</strong> cuando se pretende que el sistema siga satisfaciendo garantías incluso si algunos nodos se desvían arbitrariamente del protocolo. Para evaluar una solución hay que preguntar qué fallas cubre, cuántos nodos maliciosos tolera, qué tipo de autenticación usa y qué propiedades mantiene cuando se supera ese límite.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_comparación_dos_problemas_distintos"><a class="anchor" href="#_comparación_dos_problemas_distintos"></a>Comparación: dos problemas distintos</h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col width="33.3333%">
+<col width="33.3333%">
+<col width="33.3334%">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Aspecto</th>
+<th class="tableblock halign-left valign-top">Dos generales</th>
+<th class="tableblock halign-left valign-top">Generales bizantinos</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Dificultad principal</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No se sabe con certeza si llegó una confirmación.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Algunos participantes pueden enviar información falsa o contradictoria.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Supuesto que se analiza</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La comunicación puede perder mensajes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Los nodos pueden tener fallas arbitrarias o actuar de forma maliciosa.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pregunta central</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">¿Se puede garantizar una decisión coordinada usando solo una secuencia finita de mensajes inciertos?</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">¿Pueden los participantes leales acordar una decisión pese a los participantes traidores?</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Herramientas típicas</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reintentos, timeouts, límites temporales y políticas ante incertidumbre.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Votación estructurada, quórums, autenticación y protocolos de tolerancia a fallas bizantinas (<strong>Byzantine Fault Tolerance</strong>, BFT).</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Los protocolos <strong>BFT</strong> permiten que un grupo de procesos llegue a una decisión común aunque algunos participantes se comporten arbitrariamente: pueden fallar, mentir o enviar mensajes contradictorios. Cada protocolo especifica cuántos participantes defectuosos puede tolerar y bajo qué supuestos de red y autenticación. Por ejemplo, muchos protocolos clásicos necesitan al menos <code>3f + 1</code> participantes para tolerar hasta <code>f</code> fallas bizantinas; el límite exacto depende del modelo y del protocolo.</p>
+</div>
+<div class="paragraph">
+<p>Un sistema puede sufrir ambos problemas a la vez: los mensajes entre nodos pueden demorarse o perderse, y algunos nodos pueden además enviar datos maliciosos. Los protocolos concretos deben declarar cómo tratan cada tipo de falla; un mecanismo que resuelve uno no resuelve automáticamente el otro.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_cómo_se_relaciona_con_consenso_y_con_cap"><a class="anchor" href="#_cómo_se_relaciona_con_consenso_y_con_cap"></a>Cómo se relaciona con consenso y con CAP</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Consenso es el problema de lograr que varios procesos decidan un mismo valor con ciertas garantías. Los problemas de los generales ofrecen modelos para ver qué garantías son posibles, pero no son sinónimos de todos los algoritmos de consenso ni describen por sí solos sus condiciones operativas.</p>
+</div>
+<div class="paragraph">
+<p>El problema de los dos generales se centra en la falta de certeza causada por la pérdida de mensajes. Los generales bizantinos añaden participantes que pueden mentir. Esto tampoco debe confundirse con CAP: CAP analiza la tensión entre consistencia linealizable y disponibilidad cuando una red se particiona; no modela por sí mismo procesos maliciosos. Para la discusión de consistencia y particiones, véase la sección sobre <a href="https://arquitecturas-concurrentes.github.io/iasc-book/cap/">CAP</a>.</p>
+</div>
+<div class="paragraph">
+<p>Como regla de lectura, cada vez que un protocolo prometa «consenso» conviene buscar en sus supuestos: ¿pueden fallar mensajes?, ¿pueden detenerse procesos?, ¿pueden mentir?, ¿qué tan sincronizados están los relojes?, ¿cuántas fallas tolera y qué pasa si se supera ese número? Esas respuestas determinan qué significa realmente su garantía.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_referencias"><a class="anchor" href="#_referencias"></a>Referencias</h2>
+<div class="sectionbody">
+<div class="ulist bibliography">
+<ul class="bibliography">
+<li>
+<p><a id="GrayLamport2006"></a>[GrayLamport2006] GRAY, Jim y LAMPORT, Leslie. «Consensus on Transaction Commit». <strong>ACM Transactions on Database Systems</strong>, 31(1), 2006, pp. 133–160. <a href="https://doi.org/10.1145/1132863.1132867">DOI</a>.</p>
+</li>
+<li>
+<p><a id="LamportShostakPease1982"></a>[LamportShostakPease1982] LAMPORT, Leslie; SHOSTAK, Robert; y PEASE, Marshall. «The Byzantine Generals Problem». <strong>ACM Transactions on Programming Languages and Systems</strong>, 4(3), 1982, pp. 382–401. <a href="https://doi.org/10.1145/357172.357176">DOI</a>.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>`;export{e as default};

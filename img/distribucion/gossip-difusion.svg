@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="360" viewBox="0 0 900 360" role="img" aria-labelledby="title desc">
+  <title id="title">Propagación de una actualización mediante gossip</title>
+  <desc id="desc">Un nodo A comparte una actualización con B y C. En rondas posteriores B y C la comparten con otros nodos, y la información alcanza a una porción creciente de los participantes conectados.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#546e7a"/>
+    </marker>
+  </defs>
+  <rect width="900" height="360" rx="18" fill="#fff"/>
+  <text x="450" y="40" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="700" fill="#172b4d">Una actualización se difunde por rondas</text>
+  <text x="145" y="82" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#455a64">Ronda 0</text>
+  <text x="365" y="82" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#455a64">Ronda 1</text>
+  <text x="590" y="82" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#455a64">Ronda 2</text>
+  <text x="790" y="82" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#455a64">Ronda 3</text>
+  <g stroke="#cfd8dc" stroke-width="2">
+    <line x1="145" y1="180" x2="365" y2="125" marker-end="url(#arrow)"/>
+    <line x1="145" y1="180" x2="365" y2="235" marker-end="url(#arrow)"/>
+    <line x1="365" y1="125" x2="590" y2="110" marker-end="url(#arrow)"/>
+    <line x1="365" y1="125" x2="590" y2="180" marker-end="url(#arrow)"/>
+    <line x1="365" y1="235" x2="590" y2="250" marker-end="url(#arrow)"/>
+    <line x1="590" y1="110" x2="790" y2="105" marker-end="url(#arrow)"/>
+    <line x1="590" y1="180" x2="790" y2="190" marker-end="url(#arrow)"/>
+    <line x1="590" y1="250" x2="790" y2="275" marker-end="url(#arrow)"/>
+  </g>
+  <g font-family="sans-serif" font-size="16" text-anchor="middle" font-weight="700">
+    <circle cx="145" cy="180" r="25" fill="#00897b"/><text x="145" y="186" fill="#fff">A</text>
+    <circle cx="365" cy="125" r="25" fill="#00897b"/><text x="365" y="131" fill="#fff">B</text>
+    <circle cx="365" cy="235" r="25" fill="#00897b"/><text x="365" y="241" fill="#fff">C</text>
+    <circle cx="590" cy="110" r="25" fill="#00897b"/><text x="590" y="116" fill="#fff">D</text>
+    <circle cx="590" cy="180" r="25" fill="#00897b"/><text x="590" y="186" fill="#fff">E</text>
+    <circle cx="590" cy="250" r="25" fill="#00897b"/><text x="590" y="256" fill="#fff">F</text>
+    <circle cx="790" cy="105" r="25" fill="#00897b"/><text x="790" y="111" fill="#fff">G</text>
+    <circle cx="790" cy="190" r="25" fill="#00897b"/><text x="790" y="196" fill="#fff">H</text>
+    <circle cx="790" cy="275" r="25" fill="#00897b"/><text x="790" y="281" fill="#fff">I</text>
+  </g>
+  <text x="450" y="328" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#455a64">Esquema idealizado: la difusión es rápida, pero no instantánea ni garantizada durante una partición.</text>
+</svg>

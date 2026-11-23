@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="620" viewBox="0 0 1000 620" role="img" aria-labelledby="title description">
+  <title id="title">Decisiones durante una partición de red</title>
+  <desc id="description">Dos nodos, cada uno con una copia del inventario, quedan aislados. Una estrategia espera coordinación y puede rechazar una operación; otra acepta escrituras en ambos lados y debe reconciliar los conflictos después.</desc>
+  <defs>
+    <style>
+      text { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #172b4d; }
+      .eyebrow { font-size: 15px; font-weight: 700; letter-spacing: 1.4px; }
+      .heading { font-size: 22px; font-weight: 700; }
+      .body { font-size: 17px; }
+      .small { font-size: 15px; }
+    </style>
+  </defs>
+  <rect width="1000" height="620" rx="24" fill="#f7f9fc"/>
+  <text x="54" y="52" class="eyebrow" fill="#526581">CAP · DURANTE UNA PARTICIÓN</text>
+
+  <rect x="72" y="83" width="340" height="132" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <circle cx="112" cy="125" r="13" fill="#168a83"/>
+  <text x="140" y="132" class="heading">Nodo A</text>
+  <text x="96" y="174" class="body">Copia local: 1 unidad</text>
+
+  <rect x="588" y="83" width="340" height="132" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <circle cx="628" cy="125" r="13" fill="#168a83"/>
+  <text x="656" y="132" class="heading">Nodo B</text>
+  <text x="612" y="174" class="body">Copia local: 1 unidad</text>
+
+  <path d="M412 148 H466 M534 148 H588" fill="none" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M477 132 L493 164 M507 132 L523 164" fill="none" stroke="#dc6b42" stroke-width="5" stroke-linecap="round"/>
+  <rect x="425" y="83" width="150" height="34" rx="17" fill="#fff0e8"/>
+  <text x="500" y="106" text-anchor="middle" class="eyebrow" fill="#a33b1c">SIN COMUNICACIÓN</text>
+  <text x="500" y="240" text-anchor="middle" class="small" fill="#526581">Ambos reciben una solicitud para reservar la última unidad</text>
+
+  <rect x="54" y="280" width="432" height="278" rx="18" fill="#eaf4f3" stroke="#b6d9d5" stroke-width="2"/>
+  <rect x="514" y="280" width="432" height="278" rx="18" fill="#fff3ec" stroke="#f0c7b4" stroke-width="2"/>
+
+  <text x="82" y="323" class="eyebrow" fill="#126c67">ESTRATEGIA CP · COORDINAR</text>
+  <text x="82" y="363" class="heading">No confirmar sin coordinar</text>
+  <text x="82" y="405" class="body">
+    <tspan x="82" dy="0">El nodo que no puede coordinarse</tspan>
+    <tspan x="82" dy="26">rechaza o aplaza la operación.</tspan>
+  </text>
+  <rect x="82" y="472" width="376" height="54" rx="12" fill="#ffffff"/>
+  <text x="102" y="505" class="small" fill="#126c67">Evita confirmar dos ventas incompatibles.</text>
+
+  <text x="542" y="323" class="eyebrow" fill="#a34a24">ESTRATEGIA AP · ACEPTAR</text>
+  <text x="542" y="363" class="heading">Aceptar en ambos lados</text>
+  <text x="542" y="405" class="body">
+    <tspan x="542" dy="0">Los dos nodos pueden confirmar;</tspan>
+    <tspan x="542" dy="26">después deben reconciliar el conflicto.</tspan>
+  </text>
+  <rect x="542" y="472" width="376" height="54" rx="12" fill="#ffffff"/>
+  <text x="562" y="505" class="small" fill="#a34a24">Responder no garantiza conservar la invariante.</text>
+
+  <text x="500" y="592" text-anchor="middle" class="small" fill="#526581">La política adecuada depende de la operación y de las reglas del dominio.</text>
+</svg>

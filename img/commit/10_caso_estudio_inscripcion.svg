@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xlink="http://www.w3.org/1999/xlink" baseProfile="full" height="570px" version="1.1" viewBox="0 0 1280 570" width="1280px">
+  <title>Inscripción a seminario con tres participantes transaccionales</title>
+  <desc>Un coordinador pregunta a los servicios de cupos, inscripciones y agenda. Si los tres votan afirmativamente la confirmación es posible; si uno rechaza se aborta toda la transacción.</desc>
+  <defs/>
+  <rect fill="#fff" height="570" width="1280" x="0" y="0"/>
+  <text fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="25" font-weight="bold" text-anchor="start" x="34" y="44">Caso de estudio: una inscripción distribuida</text>
+  <line stroke="#117985" stroke-width="3" x1="34" x2="1246" y1="61" y2="61"/>
+  <rect fill="#eaf1fa" height="102" rx="12" ry="12" stroke="#b5c8d5" stroke-width="1.5" width="440" x="420" y="91"/>
+  <text fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="bold" text-anchor="middle" x="640" y="129">Coordinador de la transacción</text>
+  <text fill="#65778a" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="normal" text-anchor="middle" x="640" y="163">T-1042  ·  PREPARE → DECISIÓN GLOBAL</text>
+  <line stroke="#117985" stroke-width="3" x1="640" x2="640" y1="193" y2="219"/>
+  <line stroke="#117985" stroke-width="3" x1="226" x2="1054" y1="219" y2="219"/>
+  <line stroke="#117985" stroke-width="3" x1="226" x2="226" y1="219" y2="247"/>
+  <polygon fill="#117985" points="219,239 233,239 226,251"/>
+  <line stroke="#117985" stroke-width="3" x1="640" x2="640" y1="219" y2="247"/>
+  <polygon fill="#117985" points="633,239 647,239 640,251"/>
+  <line stroke="#117985" stroke-width="3" x1="1054" x2="1054" y1="219" y2="247"/>
+  <polygon fill="#117985" points="1047,239 1061,239 1054,251"/>
+  <rect fill="#f7fafc" height="178" rx="12" ry="12" stroke="#b5c8d5" stroke-width="1.5" width="372" x="40" y="263"/>
+  <text fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="bold" text-anchor="middle" x="226" y="296">Cupos</text>
+  <line stroke="#b5c8d5" stroke-width="1" x1="69" x2="383" y1="309" y2="309"/>
+  <text fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="normal" text-anchor="middle" x="226" y="340">Verifica plazas disponibles</text>
+  <text fill="#65778a" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="normal" text-anchor="middle" x="226" y="365">Prepara una reserva provisional</text>
+  <rect fill="#e4f2ef" height="39" rx="16" ry="16" stroke="#bdded6" stroke-width="1" width="142" x="155" y="384"/>
+  <text fill="#166b54" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="bold" text-anchor="middle" x="226" y="409">Voto: YES / NO</text>
+  <rect fill="#f7fafc" height="178" rx="12" ry="12" stroke="#b5c8d5" stroke-width="1.5" width="372" x="454" y="263"/>
+  <text fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="bold" text-anchor="middle" x="640" y="296">Inscripciones</text>
+  <line stroke="#b5c8d5" stroke-width="1" x1="483" x2="797" y1="309" y2="309"/>
+  <text fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="normal" text-anchor="middle" x="640" y="340">Comprueba registros duplicados</text>
+  <text fill="#65778a" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="normal" text-anchor="middle" x="640" y="365">Prepara la nueva inscripción</text>
+  <rect fill="#e4f2ef" height="39" rx="16" ry="16" stroke="#bdded6" stroke-width="1" width="142" x="569" y="384"/>
+  <text fill="#166b54" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="bold" text-anchor="middle" x="640" y="409">Voto: YES / NO</text>
+  <rect fill="#f7fafc" height="178" rx="12" ry="12" stroke="#b5c8d5" stroke-width="1.5" width="372" x="868" y="263"/>
+  <text fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="bold" text-anchor="middle" x="1054" y="296">Agenda</text>
+  <line stroke="#b5c8d5" stroke-width="1" x1="897" x2="1211" y1="309" y2="309"/>
+  <text fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="normal" text-anchor="middle" x="1054" y="340">Comprueba el horario</text>
+  <text fill="#65778a" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="normal" text-anchor="middle" x="1054" y="365">Prepara la incorporación del turno</text>
+  <rect fill="#e4f2ef" height="39" rx="16" ry="16" stroke="#bdded6" stroke-width="1" width="142" x="983" y="384"/>
+  <text fill="#166b54" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="bold" text-anchor="middle" x="1054" y="409">Voto: YES / NO</text>
+  <text fill="#14243a" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="bold" text-anchor="middle" x="640" y="475">Regla de confirmación: los tres participantes lógicos deben estar preparados</text>
+  <rect fill="#e5f4ef" height="58" rx="10" ry="10" stroke="#b4d6c5" stroke-width="1.5" width="568" x="48" y="492"/>
+  <text fill="#166b54" font-family="DejaVu Sans,Arial,sans-serif" font-size="19" font-weight="bold" text-anchor="middle" x="332" y="527">YES + YES + YES  →  COMMIT</text>
+  <rect fill="#fae8e9" height="58" rx="10" ry="10" stroke="#e1bdc0" stroke-width="1.5" width="568" x="664" y="492"/>
+  <text fill="#b7444b" font-family="DejaVu Sans,Arial,sans-serif" font-size="19" font-weight="bold" text-anchor="middle" x="948" y="527">YES + YES + NO  →  ABORT</text>
+</svg>

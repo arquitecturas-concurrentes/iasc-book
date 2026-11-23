@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="500" viewBox="0 0 920 500" role="img" aria-labelledby="title desc">
+  <title id="title">Confirmación síncrona y asíncrona</title>
+  <desc id="desc">Dos líneas de tiempo comparan cuándo responde el líder al cliente: en síncrona, espera la confirmación del seguidor; en asíncrona, responde antes de que el seguidor aplique el cambio.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52677a"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#357a57"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#bd7828"/>
+    </marker>
+  </defs>
+  <rect width="920" height="500" rx="14" fill="#f8fafc"/>
+  <g font-family="Arial, sans-serif" fill="#263746">
+    <text x="460" y="34" text-anchor="middle" font-size="21" font-weight="700">Cuándo recibe éxito el cliente</text>
+    <text x="34" y="59" font-size="13" fill="#52677a">El tiempo avanza hacia abajo ↓</text>
+
+    <rect x="28" y="74" width="864" height="180" rx="12" fill="#fff" stroke="#d7dee6"/>
+    <text x="48" y="101" font-size="18" font-weight="700" fill="#357a57">Síncrona · espera la confirmación requerida</text>
+    <text x="190" y="126" text-anchor="middle" font-size="14" font-weight="700">Cliente</text>
+    <text x="460" y="126" text-anchor="middle" font-size="14" font-weight="700">Líder</text>
+    <text x="730" y="126" text-anchor="middle" font-size="14" font-weight="700">Seguidor</text>
+    <line x1="190" y1="134" x2="190" y2="239" stroke="#b8c2cc" stroke-dasharray="5 5"/>
+    <line x1="460" y1="134" x2="460" y2="239" stroke="#b8c2cc" stroke-dasharray="5 5"/>
+    <line x1="730" y1="134" x2="730" y2="239" stroke="#b8c2cc" stroke-dasharray="5 5"/>
+    <line x1="200" y1="151" x2="450" y2="151" stroke="#52677a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="325" y="145" text-anchor="middle" font-size="12">escritura</text>
+    <line x1="470" y1="174" x2="720" y2="174" stroke="#357a57" stroke-width="2" marker-end="url(#arrow-green)"/>
+    <text x="595" y="168" text-anchor="middle" font-size="12">propaga cambio</text>
+    <line x1="720" y1="196" x2="470" y2="196" stroke="#357a57" stroke-width="2" marker-end="url(#arrow-green)"/>
+    <text x="595" y="212" text-anchor="middle" font-size="12">confirmación</text>
+    <line x1="450" y1="226" x2="200" y2="226" stroke="#52677a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="325" y="220" text-anchor="middle" font-size="12">éxito después de la espera</text>
+
+    <rect x="28" y="270" width="864" height="180" rx="12" fill="#fff" stroke="#d7dee6"/>
+    <text x="48" y="297" font-size="18" font-weight="700" fill="#bd7828">Asíncrona · responde sin esperar al seguidor</text>
+    <text x="190" y="322" text-anchor="middle" font-size="14" font-weight="700">Cliente</text>
+    <text x="460" y="322" text-anchor="middle" font-size="14" font-weight="700">Líder</text>
+    <text x="730" y="322" text-anchor="middle" font-size="14" font-weight="700">Seguidor</text>
+    <line x1="190" y1="330" x2="190" y2="435" stroke="#b8c2cc" stroke-dasharray="5 5"/>
+    <line x1="460" y1="330" x2="460" y2="435" stroke="#b8c2cc" stroke-dasharray="5 5"/>
+    <line x1="730" y1="330" x2="730" y2="435" stroke="#b8c2cc" stroke-dasharray="5 5"/>
+    <line x1="200" y1="347" x2="450" y2="347" stroke="#52677a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="325" y="341" text-anchor="middle" font-size="12">escritura</text>
+    <line x1="450" y1="371" x2="200" y2="371" stroke="#bd7828" stroke-width="2" marker-end="url(#arrow-orange)"/>
+    <text x="325" y="389" text-anchor="middle" font-size="12">éxito antes de propagar</text>
+    <line x1="470" y1="414" x2="720" y2="414" stroke="#bd7828" stroke-width="2" marker-end="url(#arrow-orange)"/>
+    <text x="595" y="408" text-anchor="middle" font-size="12">cambio propagado después</text>
+    <text x="460" y="480" text-anchor="middle" font-size="13" fill="#52677a">El riesgo concreto depende de persistencia, quórum y reglas de elección del líder.</text>
+  </g>
+</svg>
