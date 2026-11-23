@@ -167,7 +167,6 @@
   {
     "path": "errores_supervision",
     "title": "Errores y Supervisión",
-    "need_detail": true,
     "description": "Manejo de Errores e Introducción a la supervisión"
   }
 ]
