@@ -144,3 +144,41 @@ div.warning blockquote {
   border-left: none;
   padding-left: 0;
 }
+
+.adoc-container table.tableblock {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  border: 1px solid #dee2e6;
+  border-collapse: collapse;
+  color: #404040;
+  font-size: 0.9em;
+}
+
+.adoc-container table.tableblock th,
+.adoc-container table.tableblock td {
+  min-width: 6rem;
+  padding: 0.75rem;
+  border: 1px solid #dee2e6;
+  vertical-align: top;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.adoc-container table.tableblock thead th {
+  background-color: #f1f3f5;
+  font-weight: 600;
+}
+
+.adoc-container table.tableblock tbody tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+.adoc-container table.tableblock p {
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
