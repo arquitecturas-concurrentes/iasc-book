@@ -60,6 +60,11 @@
     "description": "OTP Elxir"
   },
   {
+    "path": "registry_elixir",
+    "title": "Registry en Elixir",
+    "description": "Localización de procesos, claves, nombres via y combinación con supervisores."
+  },
+  {
     "path": "distribucion_elixir",
     "title": "Distribución en BEAM",
     "description": "Nodos, EPMD, ETS, topologías, mensajería remota y límites de la distribución de Erlang/Elixir."

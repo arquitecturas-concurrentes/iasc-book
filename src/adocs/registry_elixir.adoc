@@ -1,0 +1,141 @@
+== Registry en Elixir: nombres y localización de procesos
+
+Cuando una aplicación inicia procesos, sus clientes necesitan alguna forma de encontrarlos. Se puede pasar el PID explícitamente, pero eso acopla al cliente con quien creó el proceso y obliga a distribuir ese identificador. `Registry` ofrece otra posibilidad: asociar una clave con el proceso que la registró y resolver esa clave cuando se necesita comunicarse con él.
+
+`Registry` es una estructura local a un nodo BEAM y sus entradas viven en memoria. No es una base de datos, no almacena el estado de los procesos y no permite localizar automáticamente procesos de otros nodos. Su responsabilidad es relacionar claves con procesos activos. Si el proceso termina, su entrada se elimina; si el Registry termina, la información de sus entradas también se pierde.
+
+Esta página explica el uso de `Registry` con procesos nombrados, sus variantes de claves y cómo combinarlo con supervisores. Para el contexto de recuperación ante fallas, véase también https://arquitecturas-concurrentes.github.io/iasc-book/errores_supervision[Fallas y supervisión en Erlang/Elixir].
+
+=== Claves únicas y duplicadas
+
+El Registry se inicia con una política de claves:
+
+* `keys: :unique` permite asociar cada clave con un solo proceso. Es la opción apropiada para nombrar un servidor, por ejemplo, el proceso que administra una sesión o un recurso.
+* `keys: :duplicate` permite que varios procesos se registren bajo la misma clave. Es útil para suscripciones o difusión local; la aplicación puede consultar o despachar a los procesos asociados.
+
+Una instancia debe iniciarse normalmente como hijo de un supervisor. El ejemplo mínimo inicia un Registry de claves únicas:
+
+[source,elixir]
+----
+children = [
+  {Registry, keys: :unique, name: MiApp.Registry}
+]
+
+Supervisor.start_link(children, strategy: :one_for_one)
+----
+
+El nombre `MiApp.Registry` identifica al proceso que administra el registro. Las claves (`{:sesion, id}` en los ejemplos siguientes) son valores de Elixir y no tienen que coincidir con nombres de módulos.
+
+=== Registrar un proceso con un nombre `:via`
+
+Los comportamientos como `GenServer` aceptan nombres mediante el protocolo `:via`. La tupla `{:via, Registry, {nombre_del_registry, clave}}` indica que las operaciones al servidor deben resolver esa clave en el Registry:
+
+[source,elixir]
+----
+defmodule Sesion do
+  use GenServer
+
+  def start_link(session_id) do
+    GenServer.start_link(__MODULE__, session_id,
+      name: {:via, Registry, {MiApp.Registry, {:sesion, session_id}}}
+    )
+  end
+
+  @impl true
+  def init(session_id) do
+    {:ok, %{id: session_id, datos: %{}}}
+  end
+
+  def id(session_id) do
+    GenServer.call(
+      {:via, Registry, {MiApp.Registry, {:sesion, session_id}}},
+      :id
+    )
+  end
+
+  @impl true
+  def handle_call(:id, _from, state) do
+    {:reply, state.id, state}
+  end
+end
+----
+
+Al iniciar `Sesion` con un `session_id`, el proceso registra su propia clave. Los clientes pueden llamar a `Sesion.id/1` usando el identificador de sesión sin conocer ni guardar el PID. Si ya hay un proceso registrado con esa misma clave en un Registry `:unique`, el nuevo inicio falla con `{:error, {:already_started, pid}}`.
+
+El registro no reenvía mensajes ni actúa como proxy: la función que usa el nombre resuelve el proceso y la comunicación ocurre con ese proceso. El Registry tampoco guarda el contenido del estado `%{id: ..., datos: ...}`; ese estado pertenece al `GenServer`.
+
+=== Procesos dinámicos: Registry y DynamicSupervisor
+
+Un supervisor estático es apropiado para los componentes que se conocen al iniciar la aplicación. Para crear procesos a demanda, como una instancia por sesión, se combina `Registry` con `DynamicSupervisor`: el supervisor dinámico administra el ciclo de vida de las instancias; el Registry permite encontrarlas por clave.
+
+El orden de inicio importa: el Registry debe estar disponible antes de iniciar procesos que se registran en él. Un supervisor raíz puede iniciar ambos componentes en ese orden:
+
+[source,elixir]
+----
+defmodule MiApp.Supervisor do
+  use Supervisor
+
+  def start_link(_options) do
+    Supervisor.start_link(__MODULE__, :ok, name: __MODULE__)
+  end
+
+  @impl true
+  def init(:ok) do
+    children = [
+      {Registry, keys: :unique, name: MiApp.Registry},
+      {DynamicSupervisor, strategy: :one_for_one, name: MiApp.Sesiones}
+    ]
+
+    Supervisor.init(children, strategy: :one_for_one)
+  end
+end
+----
+
+Con el árbol iniciado, se puede crear dinámicamente una sesión y dirigirse a ella por su nombre:
+
+[source,elixir]
+----
+{:ok, _root} = MiApp.Supervisor.start_link([])
+
+{:ok, session_pid} =
+  DynamicSupervisor.start_child(MiApp.Sesiones, {Sesion, "sesion-123"})
+
+Sesion.id("sesion-123")
+# "sesion-123"
+----
+
+El PID devuelto puede ser útil para administrar esa instancia, por ejemplo, para detenerla con `DynamicSupervisor.terminate_child/2`. Para enviar solicitudes cotidianas, el cliente puede usar la clave y no depender de ese PID.
+
+=== Claves duplicadas y despacho
+
+Con `keys: :duplicate`, varios procesos pueden registrar la misma clave. Esto puede servir para que procesos se suscriban a un tema. `Registry.dispatch/3` ejecuta un callback en el proceso que hace el despacho y le entrega las entradas asociadas; la función de callback decide qué hacer, por ejemplo, enviar un mensaje a cada PID:
+
+[source,elixir]
+----
+Registry.dispatch(MiApp.Eventos, :actualizaciones, fn entries ->
+  for {pid, _value} <- entries do
+    send(pid, {:actualizacion, :nueva})
+  end
+end)
+----
+
+El Registry no entrega los mensajes por sí solo ni convierte el despacho en un protocolo confiable de publicación y suscripción. `send/2` es asincrónico y el emisor no obtiene confirmación de que el receptor procese el mensaje. Si se requiere confirmación, persistencia o reintentos, la aplicación debe implementar esas garantías aparte.
+
+=== Ciclo de vida y fallas
+
+Las entradas están ligadas al proceso que las registró y Registry las elimina cuando este termina. La limpieza puede propagarse de forma diferida, por lo que algunas operaciones podrían encontrar brevemente un PID que ya está muerto; además, cualquier proceso puede terminar entre la búsqueda y el envío. Resolver un nombre no congela el estado del proceso ni garantiza que siga vivo para siempre.
+
+Al registrarse, el proceso queda enlazado al proceso propietario de la partición del Registry. Si esa partición termina de forma anormal, la señal de salida también puede afectar a los procesos registrados, salvo que estos atrapen señales de salida. En la configuración común, donde el Registry y un `DynamicSupervisor` son hijos del mismo supervisor raíz, el supervisor dinámico observa la terminación de sus hijos permanentes y puede reiniciarlos; al ejecutar de nuevo `start_link/1`, estos se registran otra vez.
+
+Este comportamiento recupera procesos y asociaciones, no necesariamente el estado de negocio: cada proceso reiniciado ejecuta `init/1` con los datos iniciales definidos por su especificación. Si el estado debe sobrevivir, se necesita persistirlo o reconstruirlo desde una fuente externa.
+
+También importa qué componente falló y cómo está organizado el árbol. Si termina el Registry, sus tablas de asociaciones se pierden; un proceso que no termina junto con la partición puede quedar vivo pero ya no ser localizable por el nombre anterior. Si termina un `DynamicSupervisor`, sus hijos dinámicos no se guardan en una lista durable que permita recrearlos automáticamente al reiniciar el supervisor. En ambos casos, reiniciar infraestructura no basta para reconstruir cualquier estado o conjunto de procesos: la aplicación debe definir qué instancias deben existir, cómo recuperarlas y en qué orden registrar sus nombres.
+
+En suma, `Registry` resuelve *cómo encontrar* un proceso; `Supervisor` o `DynamicSupervisor` resuelven *cómo iniciar, detener y recuperar* procesos. Ninguno proporciona por sí mismo persistencia de estado.
+
+=== Referencias
+
+* ELIXIR. https://hexdocs.pm/elixir/Registry.html[Documentación de `Registry`]. Claves únicas y duplicadas, registros `:via` y despacho.
+* ELIXIR. https://hexdocs.pm/elixir/DynamicSupervisor.html[Documentación de `DynamicSupervisor`].
+* ELIXIR. https://hexdocs.pm/elixir/Supervisor.html[Documentación de `Supervisor`].
+* ELIXIR. https://hexdocs.pm/elixir/GenServer.html[Documentación de `GenServer`].

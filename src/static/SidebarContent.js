@@ -77,6 +77,10 @@ export const sidearContent = [
         title: 'Elixir/Erlang OTP',
       },
       {
+        href: '/tema/registry_elixir',
+        title: 'Registry en Elixir',
+      },
+      {
         href: '/tema/errores_supervision',
         title: 'Errores y Supervisión'
       }

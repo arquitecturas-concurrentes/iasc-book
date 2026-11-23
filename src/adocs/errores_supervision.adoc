@@ -1,74 +1,294 @@
-== Manejo de Errores e Introducción a la Supervisión
+== Fallas y supervisión en Erlang/Elixir
 
-En objetos uno normalmente tiene tres patrones de comunicación para señalizar errores:
+En un programa secuencial, una excepción no capturada se propaga por la pila de llamadas hasta que algún método la maneja o termina el flujo de ejecución. En un sistema basado en procesos, el código que atiende una solicitud suele ejecutarse en un proceso distinto del que la envió. Por eso, una excepción dentro del proceso servidor no se propaga por la pila del cliente: termina el proceso que la produjo. El cliente puede recibir una respuesta de error o un timeout; si esperaba una llamada síncrona a un proceso que termina, la llamada puede terminar con un `exit` cuya razón corresponde a esa terminación.
 
-* call & return: enviar un mensaje y que este devuelva algo que represente al error, ya sea un código o un objeto más rico
-* continuaciones
-* excepciones: el método que falla lanza la excepción, abortando el envío del mensaje, y propagandola hasta quien lo inició (que en última instancia, es el main, si ninguna porción de código en el medio captura la excepción)
+Esta diferencia es central para razonar sobre fallas. El fallo de un proceso no implica necesariamente que termine toda la aplicación, pero sí puede dejar una función del sistema indisponible. OTP permite definir cómo se inician y relacionan los procesos y qué acción tomar cuando alguno termina. Una parte importante de esa respuesta es la *supervisión*: un proceso supervisor observa a sus hijos y aplica una política de reinicio declarada.
 
+=== Errores locales y fallas de proceso
 
-Con algunas excepciones dadas en general por restricciones de la plataforma (ios, node) el mecanismos de excepciones es el más usado
+Elixir ofrece varias formas de representar o señalar que una operación no pudo completarse. No son mecanismos equivalentes y conviene elegirlos según quién puede tomar una decisión útil:
 
-Hasta acá no hay nada nuevo.
+* *Retornos explícitos*: una función devuelve un resultado que el llamador debe inspeccionar. Es habitual devolver `{:ok, valor}` o `{:error, razon}`. Se usan cuando el fallo es esperado y forma parte del contrato de la función, por ejemplo, que una clave no exista o que una entrada no sea válida.
+* *Excepciones*: `raise` indica una condición excepcional para el flujo actual. Si no se captura, el proceso que ejecutaba ese código termina. Son apropiadas para fallos que el código local no puede o no debe tratar como un resultado ordinario.
+* *Terminaciones de proceso*: un proceso puede detenerse con una razón de salida como `:normal`, `:shutdown` o `{:shutdown, razon}`, o terminar por una excepción no capturada. Las señales forman parte del ciclo de vida de procesos y pueden ser observadas o propagadas a procesos vinculados.
 
-=== Errores en Erlang/Elixir
+En Erlang/Elixir se distinguen las clases `:error`, `:exit` y `:throw`. En Elixir, `raise` produce una excepción de clase `:error`; `exit/1` termina el proceso con una razón de salida; `throw/1` produce un valor para una salida no local del flujo de ejecución que debe capturarse explícitamente. `try/rescue` se usa para rescatar errores; `try/catch` puede capturar exits y throws. `throw` no suele ser el mecanismo para informar errores de dominio: en código ordinario es más claro devolver `{:error, razon}` cuando el fallo es esperado. Si una excepción deja al proceso en un estado inválido, no siempre conviene capturarla; dejar que termine permite que actúe la política de supervisión.
 
-Lo interesante es que en actores tenemos también los tres mecanismos, y los tres tienen cierta aplicabilidad. En erlang en particular tenemos que:
+En una llamada `GenServer.call/3`, por ejemplo, el servidor puede responder `{:error, razon}` sin terminar. Si una excepción no capturada ocurre dentro de un callback, en cambio, el servidor termina; el cliente que esperaba una respuesta no recibe esa excepción a través de la pila de llamadas como ocurriría en una llamada a una función local. Las APIs de `GenServer` documentan el protocolo de llamada, el timeout y las señales de salida <<ElixirGenServer>>.
 
-* *call and return*: es usado frecuentemente para señalizar ausencias de valores o errores que deben ser manejados de forma cercana a quien lo propagó, usando algunos de los siguientes formatos: 
+=== Por qué existe la supervisión
 
-** {ok, Value} / error
-** {value, Value} / error
-** Value / error
+Un proceso BEAM tiene estado y buzón propios. Si termina, desaparecen su estado en memoria y los mensajes que aún estaban en su buzón; los demás procesos no obtienen automáticamente una copia de ese estado. La supervisión no deshace la falla ni restaura los datos perdidos: declara una política para recuperar la *disponibilidad* de un componente reiniciando procesos relacionados o dejando que el fallo escale a un supervisor superior. Más adelante, el ejemplo de `Contador` muestra qué implica esto para el estado de un `GenServer`.
 
-Es bastante evidente que todos estos tipos algebraicos describen functores. Sin embargo, más por convención de la comunidad que por limitaciones propias del lenguaje, se estila manejar esto con pattern matching, en lugar de con combinadores como el fmap. Y además de ello, el lenguaje no posee una sintaxis especial como la do-syntax de Haskell o las for-comprehensions de Scala, lo que aún con combinadores su uso no es transparente. Por ello entonces es que decimos que son usados para manejar errores que deben ser tratados en un lugar cercano a su causa, dado que propogar estos errores es engorroso. 
-
-* *Continuaciones*: teóricamente no hay limitaciones sobre su uso, pero el API estándar no presenta muchos ejemplos de estas para el manejo de errores.
-
-* *Excepciones*: son la base del fail-fast y let-it-crash de Erlang. En Erlang y derivados se diferencian al menos dos tipos de excepciones 
-las excepciones utilizadas para indicar errores (error) y terminaciones de procesos (exit). Lo que indican es que hubo un error y el proceso debe ser detenido.
-los retornos no locales. La diferencia semántica es sutil, y se ve en lo que ocurre al no capturar un retorno no local (throw): el error que se produce por no capturar una excepción de tipo error es justamente ese error. Pero el error de no capturar un throw es.... {nocatch,Value}. Es decir, throw no está indicando que el proceso deba ser detenido, sino que alguien debe manejar ese throw; y el error está en no haberlo manejado (en contraposición con error, donde el error es el lanzamiento propiamente dicho). 
-Mientras que error tiene una semántica de "lanzo esto sin esperar que alguien lo capture", throw tiene una semántica de "lanzo esto porque SE que alguien lo va a manejar".  
-
-Pero  el diablo está en los detalles. 
-
-Más allá de la discusión throw/error, que es un poco anecdótica (podríamos haber vivido sin conocer a throw, y sin usar retornos no locales), lo que vale la pena analizar son las diferencias entre la excepciones de actores y de objetos, o mejor dicho, analizar que son idénticas pero que el modelo de procesos independientes modifica algunas consecuencias. 
-
-Volvamos a la idea original: las excepciones cortan el flujo de ejecución del envio del mensaje, hasta llegar a quien lo inició (el main), es decir, se propagan a través del stack. 
+Un supervisor es un proceso OTP que inicia a sus procesos hijos, conoce sus especificaciones y recibe notificaciones de su terminación. Normalmente los hijos se enlazan con el supervisor: el link permite que el supervisor reciba la señal de salida y gestione el ciclo de vida del hijo. El supervisor, que está preparado para manejar salidas de sus hijos, puede aplicar la política de reinicio definida. Esto forma una estructura separada de la lógica funcional: los servidores realizan el trabajo de la aplicación; los supervisores organizan su inicio, apagado y recuperación.
 
 [.center.iasc-image]
 image::supervisores/error_1.png[]
 
-En Erlang secuencial esto se va a comportar de la misma manera claro. Pero cambia cuando introducimos los procesos:
+La idea suele resumirse como *«dejar que el proceso falle»* (let it crash), pero no significa ignorar errores ni reiniciar indiscriminadamente. El proceso que quedó en un estado inválido puede terminar para que no siga produciendo resultados incorrectos; el supervisor decide si reiniciarlo, y el diseño de la aplicación determina cómo reconstruir el estado necesario. Reiniciar repetidamente un proceso que falla de forma determinista tampoco resuelve la causa: OTP limita los reinicios para evitar ciclos infinitos y escala la falla cuando se supera el límite.
 
-* No hay un main, hay N "mains", uno por cada actor. 
-* El envio de mensajes de un actor a otro actor no ocurre a través del stack, y es asincrónico (y aun los mensajes sincrónicos se conforman a través de mensajes asincrónicos). 
-* El actor es un proceso ejecutable, en contraposición con objetos, donde el método es el código ejecutable. 
-* A diferencia del código de un método de un objeto que es ejecutado por el proceso (hilo, fibra, etc) en el que el envio de mensajes ocurre, el código de un recieve es ejecutado por el proceso asociado al actor receptor. 
+La supervisión es local al árbol de procesos de un nodo BEAM. No es, por sí sola, replicación, persistencia, recuperación de una base de datos ni supervisión de procesos arbitrarios de otras máquinas. En sistemas distribuidos hay que tratar además particiones de red, pérdida de conectividad y consistencia de los datos.
 
-==== Consecuencias
+=== Árbol de supervisión
 
-* una excepción dentro del actor no "destruye" a la cadena de envio de mensajes, sino que destruye al actor mismo. 
-* En el paso de mensajes entre actores, las excepciones que ocurran como parte de un envío de mensajes NO serán reportadas al actor que envió el mensajes (en contraposición a "en el paso de mensajes entre objetos, las excepciones que ocurran como parte de un envío de mensajes serán reportadas al (método del) objeto que envió el mensaje")
-* Qué significa esto, que el manejador de la excepción ya no es el cliente que inició el pedido (como en objetos). Lema: si yo envio un mensaje y ese mensaje provoca la muerte del actor, yo no soy responsable de manejar esa situación. 
-
-Entonces, ¿quien la maneja?. Simple:
-
-Por defecto, nadie. El actor muere. Y esa funcionalidad del sistema queda deshabilitada (ups, eso es malo, pero al menos no muere el programa completo, como lo sería en un ambiente de objetos secuencial)
-
-Pero podemos designar a otro actor para que se encargue de la misma, y tome una acción. Por una cuestión de separación de responsabilidades, este actor responsable de manejar la falla de otro actor se dedicará sólo a eso: será su supervisor <<sup>>. Y la acciones que puede tomar son:
-
-* reiniciarlo
-* dejarlo morir
-* morir también junto con el proceso supervisado (y si alguien lo supervisa, podrá tomar las mismas decisiones)
-
-Es decir, en actores habrá dos estructuras paralelas: la estructura que sirve para resolver la funcionalidad en sí, y la estructura de manejo de error. Por eso, es que en actores el manejo de error es una idea tan importante
+Los supervisores pueden supervisar otros supervisores. La jerarquía resultante se denomina *árbol de supervisión*. En una aplicación OTP, el módulo de `Application` suele iniciar un supervisor raíz. Este arranca componentes compartidos y supervisores subordinados, que a su vez gestionan grupos de servidores o tareas.
 
 [.center.iasc-image]
 image::supervisores/error_2.png[]
 
+Cada supervisor aplica su estrategia a sus hijos directos. Si un hijo es a su vez un supervisor y este termina, el supervisor padre puede reiniciarlo según su propia política. Así, la respuesta a una falla se compone por niveles: un supervisor local intenta recuperar su grupo y, si ya no puede continuar, su terminación puede ser tratada por el nivel superior.
+
+Este árbol expresa dependencias y límites de recuperación. Por ejemplo, si un proceso requiere que otro esté disponible antes de iniciar, el orden de los hijos debe reflejarlo. También conviene agrupar procesos que deben recuperarse juntos bajo un supervisor común, en vez de construir un árbol plano sin considerar sus relaciones.
+
+=== Especificaciones de hijos y configuración
+
+Para iniciar un hijo, un supervisor recibe una lista de *especificaciones de hijos* (child specifications). Cada especificación describe cómo iniciar el proceso y cómo tratar su terminación. Los módulos que usan comportamientos OTP, como `GenServer`, suelen generar una especificación predeterminada a partir de `start_link/1`. También se puede escribir una especificación explícita cuando hace falta ajustar sus propiedades.
+
+Una especificación incluye, conceptualmente:
+
+* `:id`: identificador único dentro de ese supervisor.
+* `:start`: módulo, función y argumentos con que se inicia el hijo.
+* `:restart`: cuándo intentar reiniciarlo (`:permanent`, `:transient` o `:temporary`).
+* `:shutdown`: cuánto esperar para que el hijo termine de forma ordenada antes de forzarlo a salir.
+* `:type`: si se trata de un `:worker` o de un `:supervisor`; ayuda al supervisor a decidir cómo apagarlo.
+
+La función `start_link/1` enlaza el hijo con quien lo inicia. Al arrancarlo como hijo de un supervisor, ese enlace es parte del protocolo de supervisión. Los servidores OTP suelen exponer su función `start_link` y dejar que el supervisor los inicie, en vez de crearlos desde código de negocio mediante `spawn/1`.
+
+El siguiente ejemplo es autocontenido. El trabajador es un `GenServer` con una operación que incrementa un contador y otra que provoca intencionalmente una excepción. El supervisor lo inicia como hijo permanente con estrategia `:one_for_one`:
+
+[source,elixir]
+----
+defmodule Contador do
+  use GenServer
+
+  def start_link(initial_value \\ 0) do
+    GenServer.start_link(__MODULE__, initial_value, name: __MODULE__)
+  end
+
+  @impl true
+  def init(initial_value), do: {:ok, initial_value}
+
+  def incrementar, do: GenServer.call(__MODULE__, :incrementar)
+  def valor, do: GenServer.call(__MODULE__, :valor)
+  def fallar, do: GenServer.call(__MODULE__, :fallar)
+
+  @impl true
+  def handle_call(:incrementar, _from, value) do
+    {:reply, value + 1, value + 1}
+  end
+
+  def handle_call(:valor, _from, value) do
+    {:reply, value, value}
+  end
+
+  def handle_call(:fallar, _from, _value) do
+    raise "falla intencional para la demostración"
+  end
+end
+
+defmodule Contador.Supervisor do
+  use Supervisor
+
+  def start_link(_options) do
+    Supervisor.start_link(__MODULE__, :ok, name: __MODULE__)
+  end
+
+  @impl true
+  def init(:ok) do
+    children = [
+      {Contador, 0}
+    ]
+
+    Supervisor.init(children,
+      strategy: :one_for_one,
+      max_restarts: 3,
+      max_seconds: 5
+    )
+  end
+end
+----
+
+En una sesión de IEx, una vez definidos los módulos, se puede iniciar el supervisor y probar la operación normal:
+
+[source,elixir]
+----
+{:ok, supervisor} = Contador.Supervisor.start_link([])
+Contador.incrementar()
+# 1
+Contador.valor()
+# 1
+----
+
+Si se invoca `Contador.fallar/0`, el callback lanza una excepción y ese proceso `Contador` termina. La llamada que esperaba una respuesta también observa la terminación, por lo que IEx puede mostrar una salida de error; no debe interpretarse como una excepción propagada por la pila del supervisor. El supervisor detecta la terminación y, al ser un hijo `:permanent`, inicia una nueva instancia. `supervisor` conserva el PID del supervisor, no el del trabajador.
+
+El proceso nuevo tiene un PID distinto del que terminó, aunque use el mismo módulo y reciba los mismos argumentos de inicio. El supervisor no conserva una copia del estado anterior ni transfiere automáticamente al nuevo proceso los mensajes que estaban en el buzón del anterior. En este ejemplo, el estado `1` se pierde y `init/1` crea el contador con `0`. Los mensajes que otros procesos ya habían enviado al PID anterior tampoco se redirigen al nuevo PID.
+
+Por eso, hay que distinguir entre *reiniciar el proceso* y *recuperar su estado*. Si el estado solo sirve mientras vive el proceso, volver al valor inicial puede ser correcto. Si debe sobrevivir a una falla, se puede persistir fuera del proceso (por ejemplo, en una base de datos), reconstruirlo a partir de una fuente de verdad o mantenerlo en otro componente cuyo ciclo de vida sea independiente. El reinicio tampoco deshace efectos externos realizados antes de fallar; los reintentos pueden duplicarlos, de modo que el sistema debe definir garantías de idempotencia y tratamiento de operaciones parciales.
+
+==== Estrategias de reinicio
+
+La estrategia especificada al iniciar un supervisor determina qué grupo de hijos reinicia cuando, de acuerdo con su política, un hijo debe reiniciarse:
+
+* `:one_for_one`: reinicia solo al hijo cuya política requiere reinicio. Es una opción común cuando los hijos son independientes.
+* `:one_for_all`: cuando un hijo debe reiniciarse, detiene a todos los hijos del supervisor y reinicia el grupo. Es adecuada cuando el grupo debe comenzar y recuperarse como una unidad.
+* `:rest_for_one`: cuando un hijo debe reiniciarse, reinicia ese hijo y los hijos iniciados después de él en la lista. Sirve cuando los hijos posteriores dependen de los anteriores.
+
+En las dos últimas estrategias el orden de la lista expresa dependencias: los hijos se inician en orden y se detienen en orden inverso. La estrategia de reinicio no reemplaza el diseño de los protocolos entre procesos; expresa el alcance de una recuperación dentro de ese supervisor.
+
+==== Política de reinicio y apagado
+
+La estrategia del supervisor responde a «¿qué grupo de hijos se reinicia?». La opción `:restart` de cada hijo responde a «¿se reinicia este hijo cuando termina?».
+
+* `:permanent`: se intenta reiniciar el hijo ante cualquier terminación, incluso una terminación normal.
+* `:temporary`: no se reinicia, aunque termine de forma anormal.
+* `:transient`: se reinicia si termina de forma anormal, pero no si termina normalmente ni con una razón de apagado (`:shutdown` o `{:shutdown, termino}`).
+
+Un servidor de larga duración suele ser `:permanent`; una tarea finita puede tener otra política, según si completar su trabajo es lo esperado y qué debe pasar si falla. La política debe corresponder al ciclo de vida del proceso, no aplicarse por defecto sin considerar su propósito.
+
+Al apagar un hijo, el supervisor primero intenta darle tiempo para detenerse ordenadamente. `:shutdown` define ese período; si se vence, el proceso se termina forzosamente. El apagado ordenado permite cerrar recursos o terminar trabajo en curso, pero no debería depender de esperar indefinidamente.
+
+==== Detener un hijo intencionalmente
+
+Que un proceso termine «normalmente» no siempre significa que el supervisor lo deje detenido: la política del hijo sigue aplicándose. Si se llama a `GenServer.stop(server, :normal)` o el callback devuelve `{:stop, :normal, nuevo_estado}`, un hijo `:permanent` se reinicia incluso después de una terminación normal. Con `:transient`, una terminación normal no provoca reinicio; `:temporary` tampoco se reinicia, aunque falle.
+
+Si la intención es retirar explícitamente un proceso supervisado, es preferible hacerlo a través del supervisor:
+
+[source,elixir]
+----
+DynamicSupervisor.terminate_child(MiApp.Sesiones, session_pid)
+----
+
+`DynamicSupervisor.terminate_child/2` detiene ese hijo y lo quita del conjunto dinámico, por lo que no vuelve a iniciarse automáticamente. En un `Supervisor` estático, `Supervisor.terminate_child/2` detiene al hijo pero conserva su especificación si no es `:temporary`: puede iniciarse de nuevo explícitamente con `Supervisor.restart_child/2`. La especificación `:temporary` se elimina al terminar; para quitar una especificación conservada se usa `Supervisor.delete_child/2`. `GenServer.stop/3`, en cambio, detiene el servidor con una razón indicada y ejecuta su callback `terminate/2` si está definido; si el servidor sigue registrado como hijo activo, la decisión de reiniciarlo depende de la política configurada. La documentación de https://hexdocs.pm/elixir/GenServer.html#stop/3[`GenServer.stop/3`], https://hexdocs.pm/elixir/Supervisor.html#terminate_child/2[`Supervisor.terminate_child/2`] y https://hexdocs.pm/elixir/DynamicSupervisor.html#terminate_child/2[`DynamicSupervisor.terminate_child/2`] detalla estas diferencias.
+
+==== Intensidad de reinicio
+
+Un supervisor limita cuántas veces reinicia hijos dentro de un intervalo. `:max_restarts` determina el máximo de reinicios y `:max_seconds` la ventana de tiempo. Si se supera el límite, el supervisor termina en lugar de continuar reiniciando un proceso que falla en un bucle. Su supervisor padre puede entonces intentar recuperarlo; si la falla se propaga hasta la raíz, puede terminar el árbol de la aplicación y OTP reportará que la aplicación no pudo mantenerse en ejecución.
+
+Estos límites no son una política de reintentos para una operación de negocio ni una garantía de disponibilidad. Son una protección ante fallas repetidas del árbol. Los valores predeterminados son adecuados para muchos casos, pero los límites se pueden configurar cuando la aplicación tiene una razón concreta para hacerlo.
+
+=== Tipos de supervisores
+
+Los nombres describen responsabilidades diferentes, no estrategias de reinicio intercambiables:
+
+* `Supervisor` administra un conjunto de hijos declarado al iniciar. Es la opción habitual para componentes estables cuya cantidad y relación se conocen al arrancar la aplicación.
+* `DynamicSupervisor` administra hijos que se agregan y quitan durante la ejecución. Es útil para instancias creadas bajo demanda, como sesiones o workers por cliente.
+* `Task.Supervisor` administra procesos de tipo tarea, es decir, trabajos finitos. Ofrece operaciones para iniciar tareas dinámicamente y elegir si el solicitante recibe un resultado, queda enlazado o solo observa la tarea.
+
+Los tres forman parte del árbol de supervisión de la aplicación y pueden ser hijos de otro supervisor. La estrategia `:one_for_one`, `:one_for_all` o `:rest_for_one` describe cómo responde un supervisor a la terminación de sus hijos; no determina si ese supervisor es estático, dinámico o especializado en tareas.
+
+=== Supervisores dinámicos
+
+Un `Supervisor` tradicional recibe una lista fija de hijos al iniciar. Es apropiado para procesos conocidos de antemano y que forman parte estable de la aplicación: por ejemplo, un registro, un servidor de configuración o un supervisor de tareas.
+
+Cuando los procesos se crean y terminan durante la ejecución —por ejemplo, un servidor por sesión, conexión o documento abierto— no resulta práctico declarar de antemano un hijo por instancia. `DynamicSupervisor` supervisa un conjunto variable de hijos: se inicia como un proceso de la aplicación y luego el código solicita dinámicamente iniciar o terminar hijos mediante su API. Cada hijo sigue teniendo su especificación y política de reinicio, pero no todos deben estar presentes desde el arranque.
+
+Ejemplo mínimo de un supervisor dinámico y un trabajador que puede iniciarse varias veces:
+
+[source,elixir]
+----
+defmodule Sesion do
+  use GenServer
+
+  def start_link(session_id) do
+    GenServer.start_link(__MODULE__, session_id)
+  end
+
+  @impl true
+  def init(session_id), do: {:ok, session_id}
+end
+
+defmodule Sesiones.Supervisor do
+  use DynamicSupervisor
+
+  def start_link(_options) do
+    DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__)
+  end
+
+  @impl true
+  def init(:ok) do
+    DynamicSupervisor.init(strategy: :one_for_one)
+  end
+
+  def iniciar(session_id) do
+    DynamicSupervisor.start_child(__MODULE__, {Sesion, session_id})
+  end
+end
+----
+
+El supervisor dinámico también debe iniciarse, normalmente como hijo del supervisor raíz:
+
+[source,elixir]
+----
+children = [
+  {Sesiones.Supervisor, []}
+]
+
+Supervisor.start_link(children, strategy: :one_for_one)
+
+{:ok, pid} = Sesiones.Supervisor.iniciar("sesion-123")
+----
+
+Cada llamada a `iniciar/1` agrega un proceso administrado por `Sesiones.Supervisor`; el PID devuelto identifica esa instancia. Si se necesita localizar las instancias por una clave de negocio en lugar de pasar PID, `DynamicSupervisor` puede combinarse con `Registry`: el primero administra el ciclo de vida y el segundo resuelve nombres. El Registry debe estar iniciado antes que los procesos que se registran en él.
+
+Esta combinación tiene consecuencias ante las fallas: al reiniciar un proceso hijo, vuelve a ejecutar `start_link/1` y puede registrar de nuevo su nombre, pero su estado se reconstruye desde la inicialización, no desde el Registry. Si falla el Registry o el supervisor dinámico, la recuperación depende del árbol, del orden de inicio y de cómo la aplicación reconstruya sus asociaciones e instancias. La explicación detallada y el ejemplo completo están en https://arquitecturas-concurrentes.github.io/iasc-book/registry_elixir[Registry en Elixir: nombres y localización de procesos].
+
+`DynamicSupervisor` no significa que el proceso sea efímero o que deba reiniciarse en cada circunstancia. La política de reinicio sigue siendo parte de la especificación del hijo. Si una instancia dinámica es `:permanent`, el supervisor intentará reiniciarla luego de una falla; para procesos de corta duración que representan una sesión ya finalizada, probablemente se deba definir una política y un apagado explícitos acordes al caso.
+
+Para trabajos finitos que devuelven un resultado, OTP también ofrece `Task.Supervisor`, que administra tareas dinámicas. Según la API elegida, el proceso que solicita la tarea puede quedar enlazado a ella o puede observarla sin ese vínculo; por ejemplo, las variantes `async` y `async_nolink` expresan decisiones distintas sobre el ciclo de vida y la propagación de fallas. Una tarea supervisada no es lo mismo que un servidor de estado de larga duración: la abstracción y la política deben corresponder al tipo de trabajo.
+
+=== Links y monitores
+
+Los *links* y los *monitores* permiten observar terminaciones, pero tienen semánticas distintas y no reemplazan a los supervisores.
+
+Un link es una relación bidireccional de propagación de señales de salida. Si un proceso enlazado termina de forma anormal, la señal puede terminar también al otro proceso. Una terminación normal se trata de manera especial y normalmente no derriba al proceso enlazado. Un proceso puede activar `Process.flag(:trap_exit, true)` para recibir señales de salida como mensajes `{:EXIT, pid, razon}`, en vez de que una señal no normal lo termine directamente. La señal `:kill` no puede atraparse. Los supervisores usan este tipo de mecanismo internamente para administrar hijos; para código de aplicación, no conviene crear links indiscriminadamente porque puede acoplar la disponibilidad de procesos que deberían fallar de manera independiente.
+
+Un monitor es unidireccional y no propagador: un proceso observa a otro sin crear una dependencia de terminación. `Process.monitor/1` devuelve una referencia; cuando el proceso observado termina, el observador recibe un mensaje `{:DOWN, referencia, :process, objeto, razon}`. El monitor no reinicia al proceso observado ni provoca la terminación del observador. Se puede cancelar con `Process.demonitor/2`. La documentación de `Process` describe los links, las señales y los monitores <<ElixirProcess>>.
+
+Ejemplo de un monitor desde IEx:
+
+[source,elixir]
+----
+pid = spawn(fn -> receive do :stop -> :ok end end)
+reference = Process.monitor(pid)
+Process.exit(pid, :shutdown)
+
+receive do
+  {:DOWN, ^reference, :process, ^pid, reason} ->
+    reason
+end
+# :shutdown
+----
+
+El `^` en el patrón exige que `reference` y `pid` coincidan con los valores que ya estaban enlazados a esas variables. El mensaje `:DOWN` informa que el proceso terminó; no implica que el observador tenga que reiniciarlo. Si se necesita una política de reinicio, un supervisor es normalmente la abstracción correcta. Si solo se necesita enterarse de que un proceso terminó, un monitor es más apropiado.
+
+|===
+|Mecanismo |Efecto principal |Uso habitual
+
+|Link
+|Propaga señales de salida entre procesos enlazados.
+|Vincular ciclos de vida que deben fallar juntos; lo usan los supervisores con sus hijos.
+
+|Monitor
+|Notifica al proceso observador mediante un mensaje `:DOWN`.
+|Observar la terminación sin propagarla ni reiniciar al proceso.
+
+|Supervisor
+|Inicia hijos, observa sus terminaciones y aplica estrategias y políticas de reinicio.
+|Administrar de forma declarativa un conjunto de procesos y sus relaciones de recuperación.
+|===
+
+En resumen: un monitor *detecta e informa* una terminación; un link *propaga señales* según las reglas de salida; un supervisor *administra el ciclo de vida* de los procesos hijos y decide qué reiniciar. En una aplicación OTP, la supervisión suele ser la herramienta de recuperación, mientras que los monitores son útiles cuando un proceso necesita reaccionar a la terminación de otro sin asumir su gestión.
 
 [bibliography]
 == Referencias
 
-* [[[sup]]] http://elixir-lang.org/getting-started/mix-otp/supervisor-and-application.html. Supervision trees and applications
+* [[[OTPDesignPrinciples]]] ERLANG/OTP. https://www.erlang.org/doc/system/design_principles.html[_Design Principles_]. Principios de diseño, aplicaciones OTP y árboles de supervisión.
+* [[[ElixirGettingStarted]]] ELIXIR. https://elixir-lang.org/getting-started/mix-otp/supervisor-and-application.html[_Getting Started: Supervisor and Application_]. Introducción guiada a aplicaciones y supervisores.
+* [[[ElixirSupervisor]]] ELIXIR. https://hexdocs.pm/elixir/Supervisor.html[Documentación de `Supervisor`]. Estrategias, especificaciones de hijos y límites de reinicio.
+* [[[ElixirDynamicSupervisor]]] ELIXIR. https://hexdocs.pm/elixir/DynamicSupervisor.html[Documentación de `DynamicSupervisor`].
+* [[[ElixirTaskSupervisor]]] ELIXIR. https://hexdocs.pm/elixir/Task.Supervisor.html[Documentación de `Task.Supervisor`].
+* [[[ElixirGenServer]]] ELIXIR. https://hexdocs.pm/elixir/GenServer.html[Documentación de `GenServer`].
+* [[[ElixirProcess]]] ELIXIR. https://hexdocs.pm/elixir/Process.html[Documentación de `Process`]. Links, monitores, señales y mensajes `:DOWN`.
+* [[[ElixirGenServerStop]]] ELIXIR. https://hexdocs.pm/elixir/GenServer.html#stop/3[Documentación de `GenServer.stop/3`].
+* [[[ElixirSupervisorTerminateChild]]] ELIXIR. https://hexdocs.pm/elixir/Supervisor.html#terminate_child/2[Documentación de `Supervisor.terminate_child/2`].
+* [[[ElixirDynamicSupervisorTerminateChild]]] ELIXIR. https://hexdocs.pm/elixir/DynamicSupervisor.html#terminate_child/2[Documentación de `DynamicSupervisor.terminate_child/2`].

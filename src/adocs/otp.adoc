@@ -1,20 +1,29 @@
 == Introducción a OTP
 
-OTP (Open Telecom Platform) es el conjunto de bibliotecas, herramientas y principios de diseño que acompaña a Erlang/BEAM y que también se usa desde Elixir. No es otro lenguaje ni un único framework: ofrece comportamientos reutilizables para construir procesos, organizar su ciclo de vida y recuperarse ante fallas. En lugar de escribir a mano el bucle de recepción de cada proceso, se puede implementar un comportamiento estándar y dejar que OTP gestione ese bucle.
+OTP (Open Telecom Platform) es el conjunto de bibliotecas, herramientas y principios de diseño que acompaña a Erlang/BEAM y que también se usa desde Elixir. No es otro lenguaje ni un único framework: ofrece comportamientos y convenciones para implementar procesos, componer aplicaciones y definir qué hacer cuando un proceso termina de forma inesperada. Por ejemplo, al usar `GenServer` se escriben los callbacks que describen el comportamiento del servidor y OTP se ocupa del bucle de recepción y de la interacción estándar con ese proceso.
 
-En esta clase nos enfocamos en tres abstracciones:
+El modelo de actores ayuda a entender la idea central: procesos aislados que colaboran mediante mensajes. OTP no cambia esa forma de comunicación; ofrece piezas para no tener que resolver desde cero tareas comunes como mantener estado (`Agent`), atender solicitudes (`GenServer`), ejecutar un trabajo acotado (`Task`), iniciar procesos (`Application`), supervisar su ciclo de vida (`Supervisor`) o encontrarlos por un nombre (`Registry`). Estas piezas tienen funciones distintas y suelen combinarse: una aplicación inicia un árbol de supervisión, el supervisor inicia los procesos de trabajo y un registro permite localizarlos cuando no se quiere depender de conocer directamente su PID.
 
-* `GenServer`, para procesos con estado y un protocolo de solicitudes;
-* `Agent`, para mantener estado simple sin escribir callbacks propios;
-* `Task`, para ejecutar trabajo acotado de manera concurrente.
+== Una aplicación OTP como árbol de procesos
 
-Estas abstracciones no reemplazan el modelo de actores ni el paso de mensajes. Encapsulan patrones comunes sobre procesos BEAM. `Application`, `Supervisor` y `Registry` completan el contexto de cómo se inicia y organiza una aplicación real.
+La arquitectura típica de una aplicación OTP se puede leer como una cadena de responsabilidades:
+
+. *Application* es el punto de entrada del ciclo de vida de la aplicación.
+. La aplicación inicia un supervisor raíz.
+. El supervisor inicia procesos hijos, como servidores, agentes, tareas o incluso otros supervisores.
+. Los procesos de trabajo implementan la lógica y se comunican mediante mensajes; si un proceso termina, el supervisor aplica la política de reinicio declarada para ese hijo.
+
+Esta estructura se llama *árbol de supervisión*. Es importante porque el modo de iniciar un proceso queda declarado junto con el resto de la arquitectura, en vez de dispersarse en llamadas manuales por el código. Los comportamientos de OTP definen contratos de callbacks: el programador escribe las funciones que describen la lógica de la aplicación y el runtime ejecuta el ciclo de vida común alrededor de ellas. Este diseño y sus principios se explican en la guía de https://www.erlang.org/doc/system/design_principles.html[principios de diseño de OTP] <<OTPDesignPrinciples>>.
+
+Supervisar no significa que OTP pueda corregir cualquier error ni que los procesos no fallen. El supervisor decide cómo continuar cuando un hijo termina; la aplicación debe definir qué fallas ameritan reinicio, qué estado puede reconstruirse y qué efectos externos podrían repetirse. Reiniciar un proceso no revierte operaciones ya realizadas ni vuelve persistente su estado en memoria.
 
 == GenServer
 
 `GenServer` es un comportamiento de OTP para implementar un proceso servidor. El módulo define su estado inicial y callbacks que procesan solicitudes; OTP implementa el ciclo de vida y el bucle que recibe mensajes. Por convención, se separa la API pública del módulo —las funciones que usan sus clientes— de los callbacks que ejecuta el proceso servidor.
 
 La llamada subyacente entre procesos sigue siendo por mensajes. `GenServer.call/3` implementa un intercambio de solicitud y respuesta: el cliente espera la respuesta o un timeout, mientras el servidor procesa la solicitud en `handle_call/3`. En cambio, `GenServer.cast/2` envía una solicitud asincrónica sin esperar una respuesta; el cliente no obtiene confirmación de que la operación se haya procesado.
+
+Por eso, se elige `call` cuando el cliente necesita una respuesta para continuar; `cast` sirve cuando no necesita respuesta inmediata y el protocolo puede tolerar que el emisor no sepa si el servidor procesó el mensaje. Un timeout de `call` indica que no se recibió la respuesta a tiempo, pero no demuestra que la operación no se haya ejecutado: el servidor podría haberla procesado y la respuesta haberse demorado. Las llamadas y los casts se procesan en el orden en que llegan al servidor, pero no establecen un orden global respecto de mensajes enviados por otros procesos.
 
 * `handle_call/3` devuelve una tupla como `{:reply, respuesta, nuevo_estado}`.
 * `handle_cast/2` devuelve, por ejemplo, `{:noreply, nuevo_estado}`.
@@ -91,7 +100,7 @@ Más información: https://hexdocs.pm/elixir/Agent.html[documentación de Agent]
 
 == Task
 
-`Task` representa trabajo que se ejecuta concurrentemente y tiene un principio y un fin; no es una abstracción para almacenar estado de largo plazo. Para obtener un resultado, `Task.async/1` inicia la tarea y `Task.await/2` espera su respuesta:
+`Task` representa trabajo que se ejecuta concurrentemente y tiene un principio y un fin; no es una abstracción para almacenar estado de largo plazo. Para obtener un resultado, `Task.async/1` inicia una tarea vinculada al proceso que la crea y devuelve una referencia; `Task.await/2` espera su respuesta:
 
 [source,elixir]
 ----
@@ -100,7 +109,7 @@ Task.await(task)
 # 55
 ----
 
-La espera de `await` ocurre en el proceso cliente; la tarea corre en otro proceso. `Task.start/1` inicia trabajo asincrónico sin recolectar un resultado mediante `await`. Cuando una tarea debe formar parte del ciclo de vida de una aplicación, `Task.start_link/1` o una especificación de hijo de `Task` permiten vincularla al proceso iniciador o iniciarla bajo supervisión, según el caso. Las tareas vinculadas propagan señales de salida de acuerdo con las reglas de links; para aislar y controlar fallas en aplicaciones, se debe elegir conscientemente la estrategia de inicio y supervisión.
+La espera de `await` ocurre en el proceso cliente; la tarea corre en otro proceso. Si la tarea falla, `await` vuelve a levantar la excepción en quien espera. `Task.start/1` inicia trabajo asincrónico sin recolectar un resultado mediante `await`. Cuando una tarea debe formar parte del ciclo de vida de una aplicación, `Task.start_link/1` o una especificación de hijo de `Task` permiten vincularla al proceso iniciador o iniciarla bajo supervisión, según el caso. Las tareas vinculadas propagan señales de salida de acuerdo con las reglas de links; para aislar y controlar fallas en aplicaciones, se debe elegir conscientemente la estrategia de inicio y supervisión.
 
 En el proyecto de la clase, `IASC.WriteHaiku` usa una tarea para escribir o leer un archivo. Es un trabajo finito: una vez terminada la operación, el proceso de la tarea termina. El ejemplo puede consultarse en el https://github.com/arquitecturas-concurrentes/iasc-actors-intro-elixir/blob/master/intro_actors/lib/intro_task.ex[código de Task].
 
@@ -108,20 +117,69 @@ Más información: https://hexdocs.pm/elixir/Task.html[documentación de Task].
 
 == Application, Registry y ETS
 
-`Application` define el punto de entrada para iniciar una aplicación y, habitualmente, su árbol de supervisión. El callback `start/2` de la aplicación inicia el supervisor raíz y sus procesos hijos.
+=== Application
 
-`Registry` permite asociar nombres o claves con procesos y despachar mensajes a esos procesos. No es un almacenamiento persistente de datos de negocio; su uso habitual es localizar procesos dinámicos o implementar patrones de registro y publicación/suscripción.
+En Elixir, una *aplicación OTP* es una unidad de software con configuración, dependencias y un ciclo de vida definido. No debe confundirse con un proceso: una aplicación puede iniciar y coordinar muchos procesos.
 
-ETS (Erlang Term Storage) ofrece tablas en memoria para almacenar y consultar datos desde procesos. Su modelo de acceso y ciclo de vida difieren de los de un `Agent`; elegir entre ambos depende de cómo se comparte y consulta el estado.
+El comportamiento `Application` proporciona el punto de entrada de ese ciclo de vida. Al arrancar la aplicación, OTP llama a `start/2` del módulo configurado para ella. Habitualmente, ese callback inicia y devuelve el supervisor raíz; el supervisor, a su vez, inicia los procesos que la aplicación necesita. Así, al iniciar una aplicación con Mix, no hace falta crear manualmente cada proceso desde la consola: el árbol de supervisión describe qué debe arrancar. Al detener la aplicación, OTP también coordina el cierre de esos procesos.
 
-Más información: https://hexdocs.pm/elixir/Application.html[Application], https://hexdocs.pm/elixir/Registry.html[Registry] y https://elixir-lang.org/getting-started/mix-otp/ets.html[ETS].
+La configuración de Mix indica qué módulo implementa el callback de inicio y qué otras aplicaciones son dependencias. OTP inicia primero las dependencias y luego llama a `start/2`; al apagar, detiene la aplicación y sus procesos de forma coordinada. En proyectos reales, el árbol raíz suele incluir componentes compartidos por toda la aplicación, como un `Registry`, un `DynamicSupervisor` y servidores de larga duración. El callback de `Application` normalmente se limita a construir y arrancar ese árbol.
+
+Una aplicación pequeña puede empezar con un módulo que implemente `Application` y un supervisor. Para que el ejemplo sea autocontenido, el supervisor inicia un `Agent` que mantiene un mapa en memoria:
+
+[source,elixir]
+----
+defmodule MiApp.Application do
+  use Application
+
+  @impl true
+  def start(_type, _args) do
+    children = [
+      {Agent, fn -> %{} end}
+    ]
+
+    Supervisor.start_link(children, strategy: :one_for_one, name: MiApp.Supervisor)
+  end
+end
+----
+
+En este ejemplo, `start/2` no crea directamente el proceso con `Agent.start_link/1`: declara una especificación de hijo para que el supervisor lo inicie y gestione. La aplicación y el supervisor cumplen roles distintos: `Application` conecta el arranque de la aplicación con su supervisor raíz; `Supervisor` administra los procesos hijos. En una aplicación real, un módulo propio puede envolver ese Agent y ofrecer una API con nombre para consultarlo.
+
+Más información: https://hexdocs.pm/elixir/Application.html[documentación de Application] y https://elixir-lang.org/getting-started/mix-otp/supervisor-and-application.html[guía de aplicaciones y supervisores].
+
+=== Registry
+
+`Registry` asocia claves locales a procesos para que los clientes puedan encontrarlos sin guardar directamente sus PID. Las claves pueden ser `:unique` o `:duplicate`; la primera opción sirve para nombres de servidor y la segunda permite patrones como suscripciones. Un Registry no almacena el estado de negocio ni persiste sus entradas. En una aplicación suele iniciarse bajo supervisión y antes que los procesos que se registran en él.
+
+Para una explicación detallada de `:via`, claves únicas y duplicadas, despacho, supervisión dinámica y comportamiento ante fallas, véase https://arquitecturas-concurrentes.github.io/iasc-book/registry_elixir[Registry en Elixir: nombres y localización de procesos].
+
+=== ETS
+
+ETS (Erlang Term Storage) ofrece tablas en memoria para almacenar y consultar datos desde procesos. A diferencia de `Agent`, que presenta una interfaz de proceso para leer o actualizar un estado, ETS ofrece operaciones directas sobre una tabla y permite distintos patrones de acceso concurrente. La tabla y sus datos siguen siendo volátiles: su ciclo de vida está asociado a quien la posee y no se persisten automáticamente en disco.
+
+Más información: https://elixir-lang.org/getting-started/mix-otp/ets.html[guía de ETS].
 
 == Supervisores
 
 Un supervisor es un proceso OTP que inicia y supervisa procesos hijos de acuerdo con sus especificaciones. Los supervisores pueden organizarse en árboles: la aplicación inicia un supervisor raíz, que a su vez puede iniciar otros supervisores y procesos de trabajo. Así se declara cómo se inician, se detienen y se reinician los componentes cuando fallan.
 
-La estrategia determina qué hijos reiniciar ante una falla. Por ejemplo, `:one_for_one` reinicia solo al hijo que falló, mientras que `:one_for_all` reinicia todos los hijos. Un `DynamicSupervisor` permite iniciar hijos dinámicamente después de que el supervisor ya está en marcha; para hijos conocidos al iniciar, se declaran especificaciones en el supervisor habitual.
+Cada hijo tiene una especificación (child spec) que describe cómo iniciarlo y qué política de reinicio y apagado aplicar. La estrategia determina qué hijos reiniciar ante una falla. Por ejemplo, `:one_for_one` reinicia solo al hijo que falló; `:one_for_all` reinicia a todos los hijos del supervisor; y `:rest_for_one` reinicia al hijo fallido y a los que fueron iniciados después de él. El orden de los hijos, por lo tanto, importa en las dos últimas estrategias: al iniciar, se recorren en orden; al apagar, se detienen en orden inverso.
+
+La política `:permanent` intenta reiniciar el hijo ante cualquier terminación, `:temporary` no lo reinicia y `:transient` lo reinicia solo si terminó por una razón anormal. Además, el supervisor limita la cantidad de reinicios dentro de una ventana de tiempo; si se supera el límite, el propio supervisor termina para que el fallo no genere un ciclo de reinicios ilimitado. Un `DynamicSupervisor` permite iniciar hijos dinámicamente después de que el supervisor ya está en marcha; para hijos conocidos al iniciar, se declaran especificaciones en el supervisor habitual.
 
 La supervisión no restaura automáticamente el estado que tenía un proceso antes de terminar. Si se reinicia un `GenServer` o un `Agent`, este se inicializa de nuevo; si el estado debe sobrevivir a una falla, hay que persistirlo o reconstruirlo explícitamente. Por eso, la política de reinicio y la recuperación del estado son decisiones distintas.
 
 Más información: https://hexdocs.pm/elixir/Supervisor.html[Supervisor] y https://hexdocs.pm/elixir/DynamicSupervisor.html[DynamicSupervisor].
+
+[bibliography]
+== Referencias
+
+* [[[OTPDesignPrinciples]]] ERLANG/OTP. https://www.erlang.org/doc/system/design_principles.html[_Design Principles_] — principios y estructura de aplicaciones OTP, árboles de supervisión y recuperación ante fallas.
+* [[[ElixirGenServer]]] ELIXIR. https://hexdocs.pm/elixir/GenServer.html[Documentación de `GenServer`].
+* [[[ElixirAgent]]] ELIXIR. https://hexdocs.pm/elixir/Agent.html[Documentación de `Agent`].
+* [[[ElixirTask]]] ELIXIR. https://hexdocs.pm/elixir/Task.html[Documentación de `Task`].
+* [[[ElixirApplication]]] ELIXIR. https://hexdocs.pm/elixir/Application.html[Documentación de `Application`].
+* [[[ElixirSupervisor]]] ELIXIR. https://hexdocs.pm/elixir/Supervisor.html[Documentación de `Supervisor`].
+* [[[ElixirDynamicSupervisor]]] ELIXIR. https://hexdocs.pm/elixir/DynamicSupervisor.html[Documentación de `DynamicSupervisor`].
+* [[[ElixirRegistry]]] ELIXIR. https://hexdocs.pm/elixir/Registry.html[Documentación de `Registry`].
+* [[[ElixirMixOTP]]] ELIXIR. https://elixir-lang.org/getting-started/mix-otp/supervisor-and-application.html[Getting Started: Supervisor and Application].
