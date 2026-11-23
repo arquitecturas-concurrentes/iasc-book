@@ -9,7 +9,7 @@ ____
 Un sistema distribuido es una colección de elementos informáticos autónomos que se comunican a través de una red, y que aparece a sus usuarios como un único sistema coherente.
 ____
 
-La definición combina dos perspectivas: describe cómo está construido el sistema —con componentes autónomos que se comunican por una red— y qué experiencia busca ofrecer —un servicio que sus usuarios perciben como una unidad—. Cada parte señala una propiedad importante:
+La definición combina dos perspectivas. Por un lado, describe cómo está construido el sistema: sus componentes son autónomos y se comunican por una red. Por otro, indica qué experiencia busca ofrecer: que los usuarios perciban el servicio como una unidad. Cada parte señala una propiedad importante:
 
 * *Elementos autónomos:* los nodos son computadoras o procesos que ejecutan de manera independiente. Pueden tener memoria y estado locales, y cada uno puede fallar sin que los demás fallen al mismo tiempo.
 * *Se comunican a través de una red:* no comparten necesariamente memoria; coordinan su trabajo intercambiando mensajes. La red introduce demoras y puede perder o reordenar mensajes.
