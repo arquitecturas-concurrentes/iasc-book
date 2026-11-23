@@ -1,0 +1,239 @@
+== Procesos y mensajes en Elixir
+
+Elixir es un lenguaje funcional, dinámico y de propósito general que corre sobre la máquina virtual BEAM de Erlang. Favorece la composición de funciones y el uso de datos inmutables: una operación produce un nuevo valor en vez de modificar la estructura que recibió. A lo largo de los ejemplos veremos el *pattern matching*: comparar la forma de un valor con un patrón y, si coinciden, extraer sus partes. Los ejemplos prácticos de esta página están basados en el https://github.com/arquitecturas-concurrentes/iasc-actors-intro-elixir[repositorio introductorio de actores y Elixir] de la materia.
+
+En Elixir, el código se ejecuta dentro de *procesos de BEAM*. Cada proceso tiene su propio contexto de ejecución, un identificador llamado *PID* (process identifier) y un buzón donde se guardan los mensajes recibidos. Los procesos están aislados: no comparten directamente sus variables ni su estado; para comunicarse, se envían mensajes. No son procesos del sistema operativo ni equivalen a un hilo por proceso.
+
+=== ¿Quién administra los procesos?
+
+Los administra el runtime de Erlang/Elixir, llamado ERTS (Erlang Run-Time System), que ejecuta el código de BEAM. El runtime crea y destruye los procesos, mantiene sus buzones y los planifica para que puedan avanzar. Cada proceso de BEAM es una estructura gestionada por la máquina virtual, no un hilo nativo reservado permanentemente para ese proceso.
+
+El planificador de BEAM (*scheduler*) elige qué proceso listo ejecutar y le da tiempo de ejecución. Por defecto, ERTS suele iniciar un scheduler normal por cada procesador lógico disponible; esa configuración puede cambiarse. Cada scheduler normal se ejecuta sobre un hilo del sistema operativo; luego, el planificador del sistema operativo decide cuándo ese hilo obtiene tiempo de CPU. Así, la VM puede alternar entre muchos procesos BEAM usando una cantidad mucho menor de hilos nativos. Si hay varios núcleos disponibles, varios schedulers pueden ejecutar procesos distintos en paralelo.
+
+La VM mantiene procesos listos para ejecutarse en colas de planificación; cada scheduler toma de ellas el próximo proceso que puede avanzar. Un scheduler ejecuta un proceso por vez y, periódicamente, le da la oportunidad a otros procesos listos. La planificación de BEAM se basa en *reductions*, una unidad aproximada de trabajo contabilizada durante la ejecución de funciones y operaciones de Erlang. No equivale a una cantidad fija de milisegundos ni a una instrucción individual de máquina. Cuando el proceso agota su presupuesto de reductions, el scheduler puede pausarlo y darle turno a otro proceso listo. Esto evita que un proceso que calcula durante mucho tiempo monopolice indefinidamente un scheduler. No es una promesa de orden estricto ni de que todos los procesos reciban exactamente el mismo tiempo.
+
+Un proceso que espera en `receive` no ocupa continuamente un scheduler: queda bloqueado hasta que llega un mensaje que puede procesar y entonces vuelve a estar listo. De forma similar, cuando un proceso termina, el runtime libera sus recursos. Este modelo permite tener muchos procesos que esperan sin mantener un hilo nativo dedicado a cada uno. Algunas operaciones nativas largas usan schedulers dedicados del runtime, pero eso no cambia la idea básica: los schedulers de BEAM distribuyen el trabajo de los procesos sobre los hilos de la VM, y el sistema operativo planifica esos hilos sobre los núcleos disponibles.
+
+En IEx se puede consultar cuántos schedulers están en línea y observar el contador de reductions de un proceso. `self/0` devuelve el PID del proceso actual; en este caso, el de la consola:
+
+[source,elixir]
+----
+:erlang.system_info(:schedulers_online)
+Process.info(self(), :reductions)
+----
+
+En Elixir, los módulos de Erlang se escriben con dos puntos delante del nombre: `:erlang` es el módulo que contiene `system_info/1`, una función que recibe un argumento. `:schedulers_online` es un átomo, es decir, una etiqueta constante que indica qué dato consultar. `Process.info/2` consulta información del proceso: `Process` es el módulo y `info/2` la función, que recibe dos argumentos. El número de schedulers devuelto indica cuántos schedulers normales están habilitados; no es la cantidad de procesos ni garantiza que todos estén ocupados. `:reductions` es otra etiqueta constante, y su valor es una medida acumulada aproximada del trabajo del proceso, no un reloj ni una medida directa de segundos.
+
+Por eso, concurrencia y paralelismo no son sinónimos: con un scheduler, varios procesos pueden progresar intercalados; con más de un scheduler y núcleos disponibles, algunos también pueden ejecutarse literalmente al mismo tiempo.
+
+==== Anatomía de un proceso BEAM
+
+De forma conceptual, cada proceso mantiene memoria de ejecución propia y metadatos que el runtime necesita para administrarlo. El diagrama resume los componentes principales:
+
+image::erl_process.png[Componentes conceptuales de un proceso de BEAM, width=700]
+
+* El *stack* ayuda a mantener la información necesaria durante las llamadas a funciones y para continuar la ejecución.
+* El *heap* contiene datos construidos por el proceso, por ejemplo, tuplas y listas. La memoria y la recolección de basura son principalmente locales al proceso.
+* El *mailbox* almacena los mensajes que el proceso recibió y todavía no procesó. El proceso puede esperar en `receive` hasta encontrar un mensaje que coincida con algún patrón.
+* Los metadatos de control del proceso incluyen información que BEAM necesita para planificarlo y mantener relaciones como links. El PID permite identificar y referirse al proceso, pero no es el proceso en sí.
+
+La ilustración es un esquema conceptual, no un plano exacto de memoria ni una equivalencia con el *Process Control Block* de un proceso del sistema operativo. Los detalles internos y su representación pueden variar entre versiones de la VM.
+
+Un proceso no permanece vivo por el solo hecho de haber sido creado: termina cuando termina la función que está ejecutando. Para que pueda atender varios mensajes a lo largo del tiempo, su comportamiento debe esperar mensajes y continuar luego de procesarlos. Vamos a construir esa idea paso a paso: primero veremos un proceso que termina enseguida; después, quiénes son el emisor y el receptor, qué pasa con los mensajes y, por último, cómo un proceso puede quedarse esperando nuevas acciones.
+
+=== Abrir IEx con el proyecto
+
+Desde una terminal, ubicándose en el directorio `intro_actors` del repositorio de la clase, se puede iniciar el intérprete cargando el proyecto Mix:
+
+[source,console]
+----
+iex -S mix
+----
+
+IEx permite evaluar expresiones, llamar funciones y observar sus resultados. `mix` compila y carga el código del proyecto para que los módulos estén disponibles. Si se abre IEx sin `-S mix`, siguen disponibles las funciones del lenguaje y del runtime, pero no necesariamente los módulos del proyecto.
+
+==== Módulos y funciones
+
+En Elixir, un *módulo* agrupa funciones relacionadas bajo un nombre. Por ejemplo, `Process.alive?(pid)` llama a la función `alive?/1` del módulo `Process`; el punto separa el módulo de la función. `alive?/1` recibe un argumento, el PID, y el `?` es parte de su nombre. La notación `/1` indica que la función recibe un argumento.
+
+Un módulo propio se define con `defmodule`, y las funciones públicas que contiene se definen con `def`. Por ejemplo, este módulo agrupa una función que imprime un saludo con `IO.puts/1`:
+
+[source,elixir]
+----
+defmodule Saludo do
+  def decir_hola do
+    IO.puts("Hola")
+  end
+end
+----
+
+Una función del módulo se invoca escribiendo el nombre del módulo, un punto y el nombre de la función: `Saludo.decir_hola()`. Los paréntesis vacíos `()` indican que no se pasan argumentos; por eso también se la puede describir como `decir_hola/0`. Algunas funciones básicas, como `spawn/1`, `send/2` y `self/0`, se pueden llamar sin escribir el nombre de un módulo porque Elixir las importa por defecto. Los módulos organizan código, pero no son procesos: un proceso es una ejecución activa en BEAM. Al invocar una función, esta se ejecuta dentro del proceso que hizo la llamada, salvo que explícitamente se cree otro proceso, por ejemplo, con `spawn/1`.
+
+El proyecto carga el módulo `IntroActors`, definido con `defmodule IntroActors do ... end`. Sus funciones `start/0` y `loop/0` son parte del código del módulo; cuando se llama a `IntroActors.start()`, esa función crea otro proceso y devuelve su PID. Más adelante veremos qué hace ese proceso.
+
+=== Crear procesos y observar su vida
+
+Empecemos con la operación más sencilla: darle una función a `spawn/1`. El runtime crea un proceso nuevo, comienza a ejecutar la función en él y nos devuelve su PID:
+
+[source,elixir]
+----
+succ = fn -> 1 + 1 end
+pid = spawn(succ)
+Process.alive?(pid)
+# Puede dar false: la función ya terminó.
+----
+
+En `succ = ...`, el signo `=` vincula el nombre `succ` con el valor de la derecha; las variables de Elixir no se modifican luego en el lugar. `fn -> 1 + 1 end` crea una función anónima (sin nombre propio) y la guarda en esa variable. No recibe argumentos, calcula `1 + 1` y devuelve el resultado. `spawn/1` recibe esa función, crea un proceso nuevo para ejecutarla y devuelve su PID, que queda vinculado al nombre `pid`. `Process.alive?/1` consulta si ese proceso sigue activo.
+
+Como el cálculo termina enseguida, el proceso también termina. Por eso `Process.alive?(pid)` puede devolver `true` o `false` según si el proceso alcanzó a terminar antes de la consulta; normalmente ya habrá terminado. El PID sirve para identificar al proceso, pero no lo mantiene vivo. Esto nos deja una pregunta para el siguiente paso: ¿qué proceso está ejecutando las expresiones que escribimos en IEx?
+
+`self/0` devuelve el PID del proceso que ejecuta la expresión. El `/0` indica que la función no recibe argumentos. IEx también corre dentro de un proceso de BEAM, así que la consola puede observar su propio PID:
+
+[source,elixir]
+----
+self()
+Process.alive?(self())
+----
+
+La expresión `Process.alive?(self())` pregunta si el PID de la consola corresponde a un proceso que sigue activo. `Process` es un módulo de la biblioteca estándar de Elixir. Las funciones cuyo nombre termina en `?` suelen responder `true` o `false`.
+
+=== Enviar mensajes y revisar el buzón
+
+Todo proceso tiene su propio buzón. Para verlo en acción, enviemos un mensaje a la propia consola. `send/2` recibe dos argumentos: el destinatario y el contenido del mensaje. Lo coloca en el buzón de ese destinatario y devuelve el mensaje enviado; ese valor de retorno no confirma que otro proceso ya lo haya recibido o procesado. `:hola` es un átomo: un valor constante que usamos aquí como etiqueta del mensaje.
+
+[source,elixir]
+----
+send(self(), :hola)
+flush()
+----
+
+`flush/0` es una comodidad provista por la consola IEx para mostrar y retirar los mensajes pendientes del buzón de la propia consola. No es una función general del lenguaje disponible para cualquier proceso de una aplicación. En el código de los procesos, la recepción y el manejo de mensajes se hacen explícitamente con `receive`, que recorre el buzón y procesa el primer mensaje que coincide con alguna cláusula; los mensajes que no coinciden quedan pendientes. `receive` puede esperar si todavía no hay una coincidencia, y el bloque `after` permite ponerle un límite a esa espera. En el siguiente ejemplo, `{...}` forma una tupla que agrupa la etiqueta y el contenido del mensaje. `message` es un nombre nuevo que queda vinculado al segundo elemento cuando se recibe una tupla que coincide:
+
+[source,elixir]
+----
+send(self(), {:hello, "world"})
+
+receive do
+  {:hello, message} -> message
+  {:world, _message} -> "no coincide"
+after
+  1_000 -> "No llegó un mensaje coincidente en un segundo"
+end
+----
+
+En cada cláusula, `:hello` o `:world` identifica qué mensaje se espera. En la primera, `message` se vincula al texto recibido. En la segunda, `_message` indica que hay un segundo elemento, pero no se va a usar; el guion bajo inicial sirve para señalarlo. Si no llega un mensaje coincidente en un segundo, se ejecuta la cláusula `after`.
+
+El timeout no significa que el buzón se haya vaciado: los mensajes que no coincidieron pueden permanecer allí. Ya tenemos las piezas principales del intercambio —un buzón y un proceso que elige qué mensajes procesar—; ahora hagamos que intervengan dos procesos.
+
+=== Comunicación entre dos procesos
+
+En este ejemplo IEx será el receptor y un proceso nuevo será el emisor. `parent = self()` guarda en la variable `parent` el PID de IEx; esa variable queda disponible dentro de la función anónima que ejecuta el proceso hijo. `spawn/1` devuelve el PID del hijo. El proceso nuevo le envía al padre un mensaje con su propio PID:
+
+[source,elixir]
+----
+parent = self()
+
+child = spawn(fn ->
+  send(parent, {:hola, self()})
+end)
+
+receive do
+  {:hola, child_pid} ->
+    "Recibí un mensaje de #{inspect(child_pid)}"
+end
+----
+
+El proceso hijo envía `{:hola, su_pid}` al proceso que guardó el PID del padre. La tupla tiene dos elementos: el átomo `:hola` y el PID del hijo. Dentro de la función anónima, `parent` sigue refiriéndose al PID que guardamos antes de crear al hijo; las funciones anónimas pueden usar valores definidos en el lugar donde se crean. `self()` dentro de esa función devuelve el PID del proceso hijo. En el patrón `{:hola, child_pid}`, el padre busca una tupla cuyo primer elemento sea el átomo `:hola` y vincula el segundo elemento al nombre `child_pid`. `child` contiene el PID que devolvió `spawn/1`; en este ejemplo no hace falta usarlo porque el padre reconoce el mensaje por su contenido. Además, el proceso hijo termina al terminar su función: hizo un trabajo puntual, no quedó funcionando como receptor.
+
+=== Concurrencia y orden de ejecución
+
+Ahora iniciemos varios procesos que hacen el mismo trabajo:
+
+[source,elixir]
+----
+report = fn number ->
+  Process.sleep(50)
+  IO.puts(number)
+end
+
+for number <- 1..10 do
+  spawn(fn -> report.(number) end)
+end
+----
+
+El `for number <- 1..10 do ... end` repite el bloque una vez por cada número del rango `1..10`, vinculando ese número a `number` en cada repetición. Así inicia diez procesos independientes. Cada uno queda listo para que un scheduler de BEAM lo ejecute; no hay una correspondencia fija entre cada proceso creado y un scheduler particular. Como la planificación y el tiempo de ejecución de cada uno no están sincronizados, el orden de las líneas impresas puede variar. `Process.sleep/1` pausa ese proceso durante el tiempo indicado en milisegundos; mientras tanto, el scheduler puede ejecutar otros procesos. La pausa no establece un orden garantizado. Este ejemplo nos deja ver concurrencia y scheduling, pero todavía son diez tareas puntuales, no un actor que atiende pedidos durante toda su vida.
+
+Si el orden importa, el programa tiene que expresarlo mediante un protocolo, por ejemplo, esperando una respuesta antes de iniciar el siguiente trabajo. No conviene inferir un orden de ejecución por el orden en que se llamó a `spawn/1`.
+
+=== Inspeccionar procesos y sus relaciones
+
+Antes de construir ese actor, podemos inspeccionar qué está haciendo un proceso. `Process.info/2` permite consultar, entre otras cosas, el estado, la longitud de su buzón, la función actual, los procesos vinculados y las reductions acumuladas:
+
+[source,elixir]
+----
+Process.info(self(), [:status, :message_queue_len, :current_function, :links, :reductions])
+----
+
+La función `:shell_default.i()` que aparece en algunos ejemplos de la clase lista procesos en la shell Erlang; su salida y disponibilidad dependen de la versión y de la shell utilizada. Para inspección visual también se puede iniciar Observer con `:observer.start()` cuando el entorno gráfico está disponible. `inspect/1`, que usamos en el ejemplo siguiente, convierte valores como un PID a una representación legible para imprimir.
+
+Un proceso creado con `spawn/1` no queda vinculado al proceso que lo creó. Si falla, el padre no recibe automáticamente la excepción como si fuera una llamada ordinaria. `spawn_link/1` crea el proceso y un *link* entre ambos: las señales de salida se propagan de acuerdo con las reglas de links. Si uno termina por una falla, la señal puede terminar también al otro proceso, salvo que este esté configurado para atrapar señales de salida. El manejo explícito de esas señales se verá más adelante.
+
+=== Módulo `IntroActors`: recepción continua de mensajes
+
+Hasta acá creamos procesos para hacer un cálculo y terminar, enviamos mensajes a la consola, y vimos un proceso hijo que envía una sola notificación y finaliza. Ahora queremos algo distinto: un proceso que siga disponible para atender varias acciones. El módulo `IntroActors` del repositorio de la clase implementa ese ciclo. Veamos el código:
+
+[source,elixir]
+----
+defmodule IntroActors do
+  def start do
+    spawn(fn -> loop() end)
+  end
+
+  def start_link do
+    spawn_link(fn -> loop() end)
+  end
+
+  def loop do
+    receive do
+      {_from, :camina} ->
+        IO.puts("Jose empieza a caminar. Proceso #{inspect(self())}")
+
+      {_from, :corre} ->
+        IO.puts("Ni ahi. Proceso #{inspect(self())}")
+
+      {pid, _} ->
+        send(pid, {:error, "Accion Invalida de #{inspect(pid)}"})
+
+      _ ->
+        IO.puts("Accion Invalida...")
+    end
+
+    loop()
+  end
+end
+----
+
+`start/0` crea un proceso sin vincularlo al proceso que lo inicia; `start_link/0` hace lo mismo, pero establece un link. Ambas funciones ejecutan `loop/0` dentro del proceso nuevo y devuelven el PID que permite enviarle mensajes. Fijate en la distinción: `IntroActors` es el módulo que contiene las definiciones de funciones; el proceso es la ejecución que se crea al llamar a `start/0` o `start_link/0`. Si el proceso termina por un error, el link creado por `start_link/0` afecta cómo se propaga la señal de salida al proceso vinculado.
+
+`loop/0` queda esperando en `receive`. Las primeras cláusulas reconocen tuplas de dos elementos cuyo segundo elemento es `:camina` o `:corre`; `_from` indica que hay un primer valor —en este protocolo, el PID del remitente—, pero que esas cláusulas no lo usan. La tercera cláusula acepta cualquier otra tupla de dos elementos, toma el primer elemento como destinatario de una respuesta de error y asume que es un PID válido. La cláusula final, `_`, es un comodín que acepta cualquier mensaje con otra forma. En un programa más robusto convendría validar el mensaje y definir qué hacer si el supuesto PID no es válido.
+
+`IO.puts/1` imprime una línea en la consola. La expresión `#{...}` inserta el resultado de una expresión dentro del texto; por eso `#{inspect(self())}` muestra el PID del proceso actor. En los patrones, `_from` significa que hay un valor en esa posición, pero que no se va a usar. En cambio, `_` solo es un comodín: acepta cualquier valor sin asignarlo a un nombre. Al terminar la cláusula, la recursión vuelve a ejecutar `loop/0` y el proceso espera otro mensaje. Como la llamada recursiva es la última operación de la función, BEAM puede reutilizar el contexto en vez de acumular una llamada nueva por cada mensaje.
+
+Para probar el módulo, iniciamos el actor y usamos el mismo PID para enviarle distintas acciones:
+
+[source,elixir]
+----
+pid = IntroActors.start()
+send(pid, {self(), :camina})
+----
+
+El mensaje contiene el PID del emisor (`self()`) y la acción solicitada (`:camina`). El proceso imprime la acción y vuelve a esperar. Podemos probar otra acción sobre el mismo PID:
+
+[source,elixir]
+----
+send(pid, {self(), :corre})
+----
+
+El proceso no crea un hilo propio ni necesita que el emisor espere a que termine el trabajo. El scheduler de BEAM lo ejecuta cuando está listo; mientras espera en `receive`, no consume continuamente tiempo de scheduler. Así construimos una unidad concurrente que tiene identidad, recibe mensajes, decide cómo procesarlos y conserva su comportamiento entre mensajes: un proceso con el comportamiento de un actor.
+
+El material completo de los ejemplos interactivos está en el https://github.com/arquitecturas-concurrentes/iasc-actors-intro-elixir/blob/master/intro_actors/lib/intro_consola._ex[archivo intro_consola._ex].

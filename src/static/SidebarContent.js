@@ -69,6 +69,10 @@ export const sidearContent = [
         title: 'Introduccion a Actores',
       },
       {
+        href: '/tema/elixir_procesos',
+        title: 'Procesos y mensajes en Elixir',
+      },
+      {
         href: '/tema/otp',
         title: 'Elixir/Erlang OTP',
       },

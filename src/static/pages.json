@@ -47,8 +47,12 @@
   {
     "path": "actores_intro",
     "title": "Introduccion a Actores",
-    "need_detail": true,
     "description": "Actores y Elixir"
+  },
+  {
+    "path": "elixir_procesos",
+    "title": "Procesos y mensajes en Elixir",
+    "description": "Primeros procesos, mensajes y concurrencia con IEx"
   },
   {
     "path": "otp",
@@ -63,6 +67,7 @@
   {
     "path": "seguridad_beam",
     "title": "Seguridad de BEAM",
+    "extra": true,
     "description": "Cookies, TLS, puertos y controles de red para proteger la distribución Erlang/Elixir."
   },
   {
