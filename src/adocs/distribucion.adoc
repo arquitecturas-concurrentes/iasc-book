@@ -2,16 +2,14 @@
 
 == Una definición
 
-En la diapositiva de la materia se presenta esta definición:
+Un sistema distribuido reúne componentes independientes que colaboran mediante una red para ofrecer un servicio común. Una definición más precisa es:
 
 [quote]
 ____
 Un sistema distribuido es una colección de elementos informáticos autónomos que se comunican a través de una red, y que aparece a sus usuarios como un único sistema coherente.
 ____
 
-https://docs.google.com/presentation/d/19GCdaLc10Da3BtGQ_kWDH8oaRwwNb1B2sbNa2pt0ogA/edit?slide=id.gfb064ff389_2_271#slide=id.gfb064ff389_2_271[Diapositiva: ¿Qué es un sistema distribuido?]
-
-Cada parte de la definición señala una propiedad importante:
+La definición combina dos perspectivas: describe cómo está construido el sistema —con componentes autónomos que se comunican por una red— y qué experiencia busca ofrecer —un servicio que sus usuarios perciben como una unidad—. Cada parte señala una propiedad importante:
 
 * *Elementos autónomos:* los nodos son computadoras o procesos que ejecutan de manera independiente. Pueden tener memoria y estado locales, y cada uno puede fallar sin que los demás fallen al mismo tiempo.
 * *Se comunican a través de una red:* no comparten necesariamente memoria; coordinan su trabajo intercambiando mensajes. La red introduce demoras y puede perder o reordenar mensajes.
@@ -31,7 +29,7 @@ Algunas motivaciones frecuentes son:
 * *Descomposición organizativa o funcional:* permitir que partes distintas del sistema tengan límites, responsabilidades o ciclos de despliegue propios.
 * *Dominio naturalmente distribuido:* conectar participantes que ya están en lugares, redes u organizaciones diferentes.
 
-Cada motivación trae decisiones y costos. Replicar datos puede aumentar la disponibilidad de lectura, pero obliga a decidir qué consistencia ofrecer. Separar una aplicación en servicios puede permitir escalarlos por separado, pero agrega comunicación remota, contratos y operación. La distribución no garantiza automáticamente que el sistema sea más rápido, barato o confiable.
+Cada motivación trae decisiones y costos. La https://arquitecturas-concurrentes.github.io/iasc-book/replicacion/[replicación] puede aumentar la disponibilidad de lectura, pero obliga a decidir qué consistencia ofrecer. La https://arquitecturas-concurrentes.github.io/iasc-book/particionamiento/[partición de datos] reparte almacenamiento y trabajo, pero agrega enrutamiento y consultas que pueden cruzar nodos. Separar una aplicación en servicios puede permitir escalarlos por separado, pero agrega comunicación remota, contratos y operación. La distribución no garantiza automáticamente que el sistema sea más rápido, barato o confiable.
 
 == Empezar de manera simple
 

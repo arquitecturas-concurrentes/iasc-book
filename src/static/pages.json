@@ -66,6 +66,16 @@
     "description": "Escala vertical y horizontal, ejes X/Y/Z, particionamiento y manejo de sesiones."
   },
   {
+    "path": "replicacion",
+    "title": "Replicación",
+    "description": "Copias de datos, líderes y seguidores, consistencia, propagación y recuperación ante fallas."
+  },
+  {
+    "path": "particionamiento",
+    "title": "Particionamiento",
+    "description": "Distribución de datos entre nodos, claves, enrutamiento, reequilibrio y combinación con replicación."
+  },
+  {
     "path": "heartbeat_gossip",
     "title": "Heartbeats y gossip",
     "description": "Detección de fallas y diseminación de información en sistemas distribuidos"

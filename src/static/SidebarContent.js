@@ -114,6 +114,14 @@ export const sidearContent = [
         title: 'Escalabilidad',
       },
       {
+        href: '/tema/replicacion',
+        title: 'Replicación',
+      },
+      {
+        href: '/tema/particionamiento',
+        title: 'Particionamiento',
+      },
+      {
         href: '/tema/heartbeat_gossip',
         title: 'Heartbeats y gossip',
       },

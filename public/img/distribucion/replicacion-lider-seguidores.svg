@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="330" viewBox="0 0 900 330" role="img" aria-labelledby="title desc">
+  <title id="title">Replicación basada en un líder</title>
+  <desc id="desc">El cliente envía escrituras al líder. El líder registra y propaga cambios a dos seguidores, que aplican el log y pueden atender lecturas.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52677a"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#357a57"/>
+    </marker>
+  </defs>
+  <rect width="900" height="330" rx="14" fill="#f8fafc"/>
+  <g font-family="Arial, sans-serif" fill="#263746">
+    <text x="450" y="34" text-anchor="middle" font-size="21" font-weight="700">Una copia autoritativa, cambios propagados a seguidores</text>
+    <rect x="45" y="112" width="150" height="84" rx="12" fill="#fff" stroke="#718096" stroke-width="2"/>
+    <text x="120" y="149" text-anchor="middle" font-size="18" font-weight="700">Cliente</text>
+    <text x="120" y="175" text-anchor="middle" font-size="14">escritura / lectura</text>
+    <rect x="350" y="89" width="205" height="130" rx="12" fill="#eaf2fb" stroke="#3570a3" stroke-width="2.5"/>
+    <text x="452" y="122" text-anchor="middle" font-size="19" font-weight="700">Líder</text>
+    <text x="452" y="152" text-anchor="middle" font-size="15">valida y ordena</text>
+    <text x="452" y="177" text-anchor="middle" font-size="15">escrituras en el log</text>
+    <rect x="680" y="67" width="175" height="91" rx="12" fill="#edf7f0" stroke="#4b8c68" stroke-width="2"/>
+    <text x="767" y="101" text-anchor="middle" font-size="18" font-weight="700">Seguidor A</text>
+    <text x="767" y="128" text-anchor="middle" font-size="14">aplica cambios</text>
+    <rect x="680" y="185" width="175" height="91" rx="12" fill="#edf7f0" stroke="#4b8c68" stroke-width="2"/>
+    <text x="767" y="219" text-anchor="middle" font-size="18" font-weight="700">Seguidor B</text>
+    <text x="767" y="246" text-anchor="middle" font-size="14">aplica cambios</text>
+    <line x1="195" y1="135" x2="340" y2="135" stroke="#52677a" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <text x="267" y="120" text-anchor="middle" font-size="14">escritura</text>
+    <line x1="340" y1="174" x2="195" y2="174" stroke="#52677a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="267" y="197" text-anchor="middle" font-size="14">respuesta</text>
+    <line x1="555" y1="126" x2="670" y2="108" stroke="#357a57" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+    <line x1="555" y1="183" x2="670" y2="222" stroke="#357a57" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+    <text x="612" y="88" text-anchor="middle" font-size="13" fill="#357a57">log de cambios</text>
+    <text x="450" y="306" text-anchor="middle" font-size="14" fill="#52677a">El momento de confirmar al cliente depende de cuántas réplicas deban reconocer el cambio.</text>
+  </g>
+</svg>

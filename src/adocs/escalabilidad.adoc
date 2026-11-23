@@ -69,7 +69,7 @@ image::distribucion/image4.png[Ejemplo de particionamiento de datos por rangos]
 
 El sistema necesita determinar qué partición contiene cada dato y dirigir allí las operaciones. Una buena clave reparte la carga; una clave mal elegida puede generar una partición caliente que reciba una proporción excesiva de solicitudes. Cambiar la cantidad o distribución de particiones puede requerir mover datos.
 
-Particionar no es lo mismo que replicar. Al particionar, cada nodo almacena una parte del conjunto; al replicar, varios nodos guardan copias de los mismos datos, total o parcialmente. Una arquitectura puede combinar ambas estrategias.
+Particionar no es lo mismo que replicar. Al particionar, cada nodo almacena una parte del conjunto; al replicar, varios nodos guardan copias de los mismos datos, total o parcialmente. Una arquitectura puede combinar ambas estrategias. Para profundizar, véanse las páginas sobre https://arquitecturas-concurrentes.github.io/iasc-book/particionamiento/[particionamiento] y https://arquitecturas-concurrentes.github.io/iasc-book/replicacion/[replicación].
 
 == Combinar estrategias
 
