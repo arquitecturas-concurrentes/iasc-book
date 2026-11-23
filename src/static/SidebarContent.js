@@ -157,6 +157,14 @@ export const sidearContent = [
         href: '/tema/mitos_distribucion',
         title: 'Mitos en la distribucion',
       },
+      {
+        href: '/tema/consenso_commit',
+        title: 'Algoritmos de Commit',
+      },
+      {
+        href: '/tema/raft',
+        title: 'Raft',
+      }
     ],
   },
   {

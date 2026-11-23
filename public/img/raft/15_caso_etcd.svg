@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xlink="http://www.w3.org/1999/xlink" baseProfile="full" height="710px" version="1.1" viewBox="0 0 1280 710" width="1280px">
+  <defs/>
+  <rect fill="#fff" height="710" width="1280" x="0" y="0"/>
+  <rect fill="#167489" height="8" width="1280" x="0" y="0"/>
+  <text fill="#17354B" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="27" font-weight="bold" text-anchor="start" x="45" y="50">Caso de estudio: etcd utiliza Raft</text>
+  <text fill="#587083" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="15" font-weight="normal" text-anchor="start" x="45" y="83">Ejemplo didáctico con tres integrantes; no representa una ejecución histórica.</text>
+  <rect fill="#EFF6FA" height="58" rx="10" ry="10" stroke="#B9D8E2" stroke-width="1" width="290" x="940" y="31"/>
+  <text fill="#167489" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="15" font-weight="bold" text-anchor="start" x="955" y="53">2 de 3 = mayoría</text>
+  <text fill="#587083" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" x="955" y="75">1 de 3 = sin quórum</text>
+  <rect fill="#EAF7F1" height="177" rx="15" ry="15" stroke="#B6DCCB" stroke-width="1.4" width="1200" x="40" y="120"/>
+  <text fill="#286C57" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="start" x="62" y="153">1. Se escribe /app/config/auditoria = habilitada</text>
+  <rect fill="#fff" height="72" rx="10" ry="10" stroke="#C4D9CF" stroke-width="1.4" width="260" x="85" y="177"/>
+  <text fill="#17354B" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="17" font-weight="bold" text-anchor="start" x="101" y="200">etcd-1</text>
+  <text fill="#587083" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" x="101" y="223">Líder</text>
+  <rect fill="#fff" height="72" rx="10" ry="10" stroke="#C4D9CF" stroke-width="1.4" width="260" x="470" y="177"/>
+  <text fill="#17354B" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="17" font-weight="bold" text-anchor="start" x="486" y="200">etcd-2</text>
+  <text fill="#587083" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" x="486" y="223">Seguidor</text>
+  <rect fill="#fff" height="72" rx="10" ry="10" stroke="#C4D9CF" stroke-width="1.4" width="260" x="855" y="177"/>
+  <text fill="#17354B" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="17" font-weight="bold" text-anchor="start" x="871" y="200">etcd-3</text>
+  <text fill="#587083" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" x="871" y="223">Demorado</text>
+  <line fill="none" stroke="#167489" stroke-width="2.8" x1="345" x2="461" y1="207" y2="207"/>
+  <polygon fill="#167489" points="461.0,207.0 450.4210136494606,212.6643664954786 450.4210136494606,201.3356335045214"/>
+  <text fill="#587083" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="11" font-weight="normal" text-anchor="middle" x="400" y="193">AppendEntries</text>
+  <line fill="none" stroke="#338D75" stroke-width="2.8" x1="463" x2="348" y1="238" y2="238"/>
+  <polygon fill="#338D75" points="348.0,238.0 358.5789863505394,232.3356335045214 358.5789863505394,243.6643664954786"/>
+  <text fill="#338D75" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="13" font-weight="bold" text-anchor="middle" x="403" y="258">ACK</text>
+  <line fill="none" stroke="#8396A0" stroke-dasharray="7,6" stroke-width="2.8" x1="735" x2="844" y1="207" y2="207"/>
+  <polygon fill="#8396A0" points="844.0,207.0 833.4210136494605,212.6643664954786 833.4210136494605,201.3356335045214"/>
+  <text fill="#587083" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="12" font-weight="normal" text-anchor="middle" x="789" y="193">demora</text>
+  <text fill="#286C57" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" x="62" y="285">Dos registros duraderos: el líder puede confirmar y luego responder al cliente.</text>
+  <rect fill="#EFF6FA" height="161" rx="15" ry="15" stroke="#B6D0E0" stroke-width="1.4" width="1200" x="40" y="317"/>
+  <text fill="#1D6179" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="start" x="62" y="352">2. El líder falla después de la confirmación</text>
+  <rect fill="#FFF6F4" height="73" rx="10" ry="10" stroke="#E4C4BD" stroke-width="1.4" width="240" x="71" y="372"/>
+  <text fill="#9C4E39" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="17" font-weight="bold" text-anchor="start" x="86" y="398">etcd-1</text>
+  <text fill="#9C4E39" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" x="86" y="422">No disponible</text>
+  <rect fill="#fff" height="73" rx="10" ry="10" stroke="#B7D4D9" stroke-width="1.4" width="285" x="474" y="372"/>
+  <text fill="#17354B" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="17" font-weight="bold" text-anchor="start" x="489" y="398">etcd-2</text>
+  <text fill="#587083" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" x="489" y="422">Puede resultar elegido líder</text>
+  <rect fill="#fff" height="73" rx="10" ry="10" stroke="#B7D4D9" stroke-width="1.4" width="260" x="873" y="372"/>
+  <text fill="#17354B" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="17" font-weight="bold" text-anchor="start" x="888" y="398">etcd-3</text>
+  <text fill="#587083" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" x="888" y="422">Participa en la elección</text>
+  <line fill="none" stroke="#167489" stroke-width="2.8" x1="767" x2="865" y1="407" y2="407"/>
+  <polygon fill="#167489" points="865.0,407.0 854.4210136494605,412.6643664954786 854.4210136494605,401.3356335045214"/>
+  <text fill="#1D6179" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" x="62" y="466">La entrada confirmada se conserva en los futuros líderes legítimos.</text>
+  <rect fill="#FFF3E4" height="158" rx="15" ry="15" stroke="#E2CDB4" stroke-width="1.4" width="1200" x="40" y="498"/>
+  <text fill="#9C4E39" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="start" x="62" y="534">3. Partición: la minoría no confirma escrituras</text>
+  <rect fill="#fff" height="65" rx="10" ry="10" stroke="#E1C9C1" stroke-width="1.4" width="321" x="76" y="554"/>
+  <text fill="#9C4E39" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="start" x="96" y="579">etcd-1  •  aislado</text>
+  <text fill="#9C4E39" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" x="96" y="603">1/3: sin quórum</text>
+  <rect fill="#fff" height="65" rx="10" ry="10" stroke="#D8CAAE" stroke-width="1.4" width="536" x="616" y="554"/>
+  <text fill="#17354B" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="start" x="639" y="579">etcd-2   +   etcd-3</text>
+  <text fill="#396B5D" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" x="639" y="603">2/3: pueden elegir líder y confirmar</text>
+  <line stroke="#BC7B53" stroke-dasharray="5,5" stroke-width="3" x1="476" x2="476" y1="542" y2="629"/>
+  <text fill="#9C4E39" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" x="62" y="643">La pérdida de mayoría detiene el progreso de la minoría, sin sacrificar la seguridad.</text>
+  <text fill="#587083" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="13" font-weight="normal" text-anchor="start" x="43" y="690">Basado en la documentación oficial de etcd: arquitectura, WAL, quórums y garantías de la API.</text>
+</svg>

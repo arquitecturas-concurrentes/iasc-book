@@ -1,0 +1,464 @@
+= Raft: liderazgo y replicación de registros
+:doctype: article
+:lang: es
+:encoding: utf-8
+:icons: font
+:imagesdir: diagramas
+:figure-caption: Figura
+:table-caption: Tabla
+:source-highlighter: rouge
+:stem: latexmath
+:xrefstyle: short
+:revdate: 2026-11-20
+:revnumber: 1.2
+
+[abstract]
+== Resumen
+
+Raft es un algoritmo de consenso que mantiene un registro de operaciones replicado entre varios servidores. Este capítulo desarrolla la elección de líder, los términos, la replicación del registro, las reglas de confirmación y las garantías de seguridad frente a fallas. También estudia recuperación, instantáneas, cambios de integrantes y un caso de estudio, siguiendo el trabajo de Ongaro y Ousterhout <<OngaroOusterhout2014>>, <<Ongaro2014>>.
+
+== Raft: una estructura para comprender y administrar el consenso
+
+Aunque Raft utiliza términos como *voto* y *confirmación*, resuelve un problema diferente del que abordan los protocolos de commit atómico, como 2PC o 3PC. En un commit atómico, varios participantes de una transacción deben coordinarse para que todos la confirmen o todos la aborten. Si alguno de los participantes necesarios no puede prepararse, la transacción no debe confirmarse.
+
+Raft, en cambio, busca que varias réplicas acuerden una misma secuencia de operaciones. Para avanzar utiliza mayorías de servidores, de modo que no necesita una respuesta de cada réplica en todo momento. Cuando en Raft se dice que una entrada está *confirmada*, significa que el protocolo ya puede considerarla parte estable del registro acordado; no significa, por sí solo, que una transacción distribuida entre distintos recursos haya completado su commit. Por eso Raft puede utilizarse para replicar estado dentro de un servicio, pero no reemplaza automáticamente a un protocolo de commit atómico.
+
+Para acompañar la lectura, se puede explorar esta https://thesecretlivesofdata.com/raft/[visualización gráfica e interactiva del algoritmo de Raft].
+
+=== El enfoque de líder fuerte
+
+Raft fue propuesto por Diego Ongaro y John Ousterhout y presentado en la conferencia USENIX ATC de 2014. Su objetivo es construir y mantener un registro replicado. Los autores organizaron el diseño alrededor de tres asuntos centrales: *elección de líder*, *replicación del registro* y *seguridad*. La idea es reducir la cantidad de situaciones que cada proceso puede generar, de manera que resulte más sencillo comprender por qué el protocolo funciona <<OngaroOusterhout2014>>.
+
+Raft utiliza un *líder fuerte*. En condiciones normales, los clientes envían las operaciones al líder, y este es el único que añade nuevas entradas a su registro para reproducirlas en los demás. Los seguidores no incorporan por su cuenta nuevas solicitudes de clientes como comandos acordados; responden a los mensajes del líder y participan de las elecciones. Así, el flujo de nuevas entradas va del líder hacia los seguidores, evitando que múltiples servidores organicen simultáneamente historiales oficiales.
+
+[.center]
+image::raft/06_roles_raft.svg[Líder, seguidores y flujo de una operación en Raft,align=center,width=100%]
+
+=== Seguidor, candidato y líder
+
+Cada servidor votante puede estar en uno de tres estados. El *seguidor* espera mensajes del líder y atiende solicitudes de voto. Si pasa demasiado tiempo sin recibir comunicaciones válidas de un líder, se convierte en *candidato* e intenta obtener una mayoría. Si reúne suficientes votos, se convierte en *líder* y comienza a enviar mensajes periódicos a los demás. Ante un término mayor observado en un mensaje válido, un candidato o líder retrocede al estado de seguidor.
+
+Los estados describen el rol de un proceso en un momento dado, no tipos de máquinas diferentes. El mismo servidor puede ser seguidor durante horas, candidato por un breve intervalo y luego líder. Lo importante es que la autoridad esté vinculada a un período numerado y que una elección nueva no permita reintroducir una historia que perdió entradas ya confirmadas.
+
+[.center]
+image::raft/07_estados.svg[Transiciones entre seguidor candidato y líder,align=center,width=100%]
+
+=== Términos y numeración de la autoridad
+
+El tiempo lógico de Raft se divide en *términos* (*terms*), identificados con números enteros crecientes. Un término puede contener una elección y, si tiene éxito, un período de liderazgo. También puede terminar sin líder, por ejemplo porque dos candidatos dividieron los votos. Los términos no son intervalos de duración fija ni requieren sincronización de relojes: son una secuencia lógica utilizada para comparar la antigüedad de mensajes y autoridades.
+
+Un proceso actualiza su término local al observar uno superior y abandona cualquier autoridad asociada a un término anterior. Las solicitudes con términos antiguos no deben renovar la confianza en un líder obsoleto. Los términos, junto con el voto emitido durante cada uno, deben persistirse antes de responder de un modo que dependa de ellos.
+
+=== Qué información conserva cada servidor
+
+Las variables del algoritmo se dividen entre estado persistente y estado volátil. El estado que sobrevive a reinicios incluye el término actual, el candidato por el que se votó en ese término y las entradas del registro. Cada entrada posee un índice, el término en que fue creada por un líder y el comando correspondiente. Los índices no son números de versión global independientes del contenido: representan posiciones en una secuencia.
+
+[cols="1,2,2",options="header"]
+|===
+|Variable |Uso |Durabilidad
+|`currentTerm` |Mayor término observado por el servidor. |Persistente.
+|`votedFor` |Candidato al que concedió su voto en el término actual, si existe. |Persistente.
+|`log[]` |Entradas `(índice, término, comando)` en el orden del registro. |Persistente.
+|`commitIndex` |Mayor índice conocido como confirmado. |Volátil en el modelo de referencia; se reconstruye de forma segura.
+|`lastApplied` |Mayor índice aplicado a la máquina de estados. |Volátil en el modelo de referencia; la recuperación exige coordinarlo con el estado de la aplicación.
+|`nextIndex[f]` |Próxima entrada que el líder intentará enviar al seguidor `f`. |Volátil; solo del líder.
+|`matchIndex[f]` |Mayor índice conocido como replicado por el seguidor `f`. |Volátil; solo del líder.
+|===
+
+La distinción entre persistente y volátil depende de la especificación de referencia. Una implementación puede almacenar más información, pero debe mantener las relaciones necesarias entre el registro, los resultados aplicados y los datos visibles para el cliente. Persistir el término y el voto, por ejemplo, evita conceder votos incompatibles después de reiniciar; persistir el registro impide olvidar operaciones que pudieron participar en una confirmación <<Ongaro2014>>.
+
+== Elección de líder: cómo se obtiene una autoridad compartida
+
+=== El temporizador de elección y los mensajes de mantenimiento
+
+Un seguidor espera periódicamente mensajes `AppendEntries` del líder; cuando no hay entradas nuevas, estos mensajes pueden enviarse vacíos y funcionan como *latidos* (*heartbeats*). También puede mantenerse como seguidor al conceder un voto válido. Si vence el temporizador de elección sin recibir la señal esperada, el servidor sospecha que hace falta un nuevo líder. Entonces incrementa su término, vota por sí mismo y solicita votos a los demás mediante `RequestVote`.
+
+La elección no debe interpretarse como la detección infalible de una falla. Un seguidor con una red lenta puede iniciar una elección aunque el líder siga vivo. Esa situación puede producir un término nuevo, y al conocerlo el líder anterior pierde su autoridad. Raft prioriza reglas que hacen seguras estas transiciones frente a la suposición de que todos los temporizadores serán exactos.
+
+Los tiempos de espera aleatorizados reducen la probabilidad de que varios servidores se conviertan en candidatos al mismo tiempo. Si todos usaran exactamente el mismo timeout y comenzaran sincronizados, podrían dividir los votos repetidamente. La aleatorización no constituye por sí sola una prueba de terminación para cualquier ejecución, pero facilita que un candidato termine acumulando una mayoría cuando la red se vuelve estable <<OngaroOusterhout2014>>.
+
+=== Cómo se concede un voto
+
+Una solicitud `RequestVote` incluye el término del candidato y una descripción de la última entrada que conoce: `lastLogIndex` y `lastLogTerm`. El receptor no concede un voto si la solicitud pertenece a un término antiguo. Si observa un término nuevo, actualiza su estado local y puede considerar al candidato. Como máximo concede su voto a un candidato por término, y solo si su registro está *al menos tan actualizado* como el del propio servidor.
+
+La regla de actualización del registro compara primero el término de la última entrada y, solamente si coincide, compara los índices. Para un candidato stem:[C] y un votante stem:[V]:
+
+[stem]
+++++
+\operatorname{actualizado}(C,V)
+\iff
+(t_C>t_V)\lor(t_C=t_V\land i_C\geq i_V).
+++++
+
+Aquí stem:[t] es el término de la última entrada del registro y stem:[i] es su índice. Esta comparación no se reemplaza por «tener más entradas»: un registro más largo puede terminar en entradas de un término antiguo y, aun así, ser menos actualizado que otro más corto. La prioridad del término permite conservar la información relevante sobre decisiones confirmadas.
+
+[.center]
+image::raft/08_eleccion.svg[Secuencia de RequestVote y elección de líder con mayoría,align=center,width=100%]
+
+=== Una mayoría elige como máximo un líder por término
+
+Con cinco votantes, un candidato necesita tres votos. Cada servidor vota como máximo una vez en un mismo término, incluso si se reinicia. Como dos mayorías se intersectan, dos candidatos diferentes no pueden conseguir, cada uno, tres votos distintos para el mismo término. De aquí surge la propiedad de *seguridad de la elección*: como máximo se elige un líder por término.
+
+Un candidato que consigue dos votos sobre cinco todavía no es líder. Si otro recibe los tres votos restantes, será él quien pueda avanzar. Cuando los votos quedan divididos sin mayorías, los candidatos aguardan un nuevo vencimiento del temporizador y vuelven a intentarlo en términos más altos. El resultado puede ser un término sin líder, pero no dos líderes legítimamente elegidos para el mismo término.
+
+Es posible, sin embargo, que dos servidores *crean* temporalmente ser líderes de términos diferentes. Uno de ellos puede estar aislado y desconocer la nueva elección. La propiedad relevante no consiste en impedir toda creencia obsoleta, sino en impedir que esa autoridad antigua confirme operaciones incompatibles con las decisiones del líder actual.
+
+=== La condición de tener un registro actualizado
+
+Exigir un registro suficientemente reciente al candidato es una regla central, no una optimización. Supongamos que el líder anterior había confirmado una operación que se encontraba en la mayoría de los registros. Cualquier mayoría electoral futura debe compartir al menos un servidor con esa mayoría anterior. Sin embargo, la intersección solo sirve si el votante compartido no entrega su voto a un candidato cuyo historial podría omitir esa operación confirmada.
+
+El filtro de `lastLogTerm` y `lastLogIndex`, junto con las reglas de confirmación, impide que llegue a ser líder un servidor incapaz de preservar las entradas confirmadas. Esta propiedad se conoce como *integridad del líder* (*Leader Completeness*): si una entrada fue confirmada en un término, todo líder de los términos posteriores debe contenerla <<OngaroOusterhout2014>>, <<Ongaro2014>>.
+
+== Replicación del registro: cómo se acuerdan las operaciones
+
+=== El ingreso de una solicitud
+
+Cuando un cliente pide ejecutar un comando, el líder crea una entrada al final de su registro con el término actual. A continuación envía solicitudes `AppendEntries` para que los seguidores incorporen esa entrada. Cada solicitud incluye el índice y término que preceden a las entradas enviadas, una secuencia de entradas nuevas —posiblemente vacía— y el índice hasta el cual el líder sabe que el registro está confirmado.
+
+El seguidor no debe añadir las entradas recibidas sin comprobar el historial. Primero verifica que su registro contiene la entrada previa anunciada con el mismo índice y término. Si no coincide, rechaza la solicitud: el líder tendrá que retroceder y buscar un punto común. Si coincide, elimina las entradas *en conflicto* que ocupan índices iguales con términos distintos y agrega las entradas faltantes del líder. El mecanismo hace converger gradualmente los registros hacia un prefijo común <<OngaroOusterhout2014>>.
+
+[.center]
+image::raft/09_replicacion.svg[Replicación de una operación con AppendEntries y confirmación mayoritaria,align=center,width=100%]
+
+=== Propiedad de coincidencia del registro
+
+La *propiedad de coincidencia del registro* (*Log Matching*) afirma que, si dos registros contienen una entrada con el mismo índice y término, entonces ambos registros contienen las mismas entradas en todos los índices anteriores. La comprobación de `prevLogIndex` y `prevLogTerm`, combinada con las reglas para resolver conflictos, permite mantener esta relación.
+
+Esto no significa que todos los registros deban tener exactamente la misma longitud en cada instante. Un seguidor lento puede estar muy atrasado, y otro puede contener entradas no confirmadas que fueron generadas por un líder antiguo. La propiedad es más acotada y más poderosa: cuando coincide una entrada identificada por índice y término, también coincide la historia previa a esa posición.
+
+Para aplicar los comandos, el servidor procesa únicamente las entradas confirmadas que todavía no haya ejecutado, en orden creciente de índice. Un seguidor utiliza la información sobre `leaderCommit` enviada por el líder para avanzar su `commitIndex` hasta el mínimo entre ese valor y el último índice que realmente posee.
+
+=== Los dos índices que administra el líder por seguidor
+
+El líder mantiene `nextIndex[f]`, una estimación del siguiente índice que debería enviar al seguidor `f`, y `matchIndex[f]`, el índice más alto que sabe replicado allí. Si un seguidor rechaza una solicitud porque no coincide el prefijo, el líder disminuye o ajusta `nextIndex` y reintenta. Cuando recibe una respuesta positiva, puede actualizar ambos valores.
+
+Esta lógica explica por qué un servidor que estuvo desconectado no necesita reconstruir el historial a mano. Puede reencontrar automáticamente un prefijo compartido y recibir las entradas ausentes. Si el líder ya compactó los datos que necesita ese seguidor, en lugar de enviar todas las entradas antiguas tendrá que recurrir a una instantánea, como veremos después.
+
+=== Confirmación mediante mayoría: la regla exacta
+
+Una entrada generada por el líder del *término actual* puede declararse confirmada cuando se ha almacenado en una mayoría de servidores votantes. El líder calcula un índice stem:[N] tal que al menos una mayoría tiene `matchIndex >= N`, pero solamente avanza directamente su `commitIndex` hasta stem:[N] si `log[N].term == currentTerm`. Esta última comprobación es esencial:
+
+[stem]
+++++
+\#\{s:\operatorname{matchIndex}(s)\geq N\}\geq
+\left\lfloor\frac{|S|}{2}\right\rfloor+1
+\quad\land\quad
+\operatorname{term}(\operatorname{log}[N])=\operatorname{currentTerm}.
+++++
+
+En la expresión se incluye el propio líder al contar los servidores que poseen la entrada. El detalle del término evita aplicar incorrectamente una regla intuitiva pero falsa: *no toda entrada antigua observada en una mayoría puede declararse confirmada por simple recuento de copias*. En escenarios con cambios de líder, una entrada de un término anterior puede estar replicada en una mayoría y todavía existir una ejecución futura legítima que la reemplace.
+
+¿Cómo se confirman entonces las entradas antiguas que sobreviven en el registro del nuevo líder? Al confirmar una entrada del término actual, todas las entradas que la preceden en el registro de ese líder quedan confirmadas indirectamente. Es una regla conservadora que impide que las entradas antiguas se interpreten fuera de contexto <<OngaroOusterhout2014>>, <<Ongaro2014>>.
+
+[.center]
+image::raft/10_commit_term.svg[La mayoría por sí sola no basta para confirmar directamente una entrada de un término anterior,align=center,width=100%]
+
+=== Confirmado, aplicado y respondido al cliente
+
+Una vez confirmada una entrada, el líder puede aplicarla en orden a su máquina de estados y devolver el resultado al cliente. Un servidor puede haber recibido la entrada sin conocer todavía que está confirmada; cuando se actualiza su `commitIndex`, puede aplicarla también. De ahí que *replicado*, *confirmado* y *aplicado* describan hechos diferentes.
+
+En el caso habitual, una nueva operación necesita un viaje de ida y vuelta entre líder y mayoría de seguidores para alcanzar confirmación, sin exigir que los integrantes más lentos respondan. El costo total de atención al cliente incluye, además, los intercambios con el cliente y el acceso a almacenamiento duradero. Las garantías de rendimiento varían con la implementación, el hardware y las políticas de escritura <<OngaroOusterhout2014>>.
+
+== Seguridad: por qué un cambio de líder no destruye una decisión
+
+=== Cinco propiedades para ordenar el razonamiento
+
+El artículo original presenta un conjunto de propiedades que, en conjunto, explican el comportamiento del protocolo. La *seguridad de la elección* impide dos líderes elegidos en un término; la propiedad de *registro de solo anexado por el líder* indica que un líder no elimina ni sobrescribe sus propias entradas mientras mantiene ese rol; la *coincidencia del registro* relaciona los prefijos de registros que comparten una entrada identificada por índice y término; la *integridad del líder* conserva las entradas confirmadas en todos los líderes posteriores; y la *seguridad de la máquina de estados* impide aplicar comandos distintos en la misma posición en máquinas de estados diferentes.
+
+[cols="1,3",options="header"]
+|===
+|Propiedad |Interpretación
+|Seguridad de elección |A lo sumo un líder elegido por término.
+|Registro de solo anexado por el líder |Un líder no sobrescribe ni elimina entradas de su propio registro.
+|Coincidencia del registro |Índice y término iguales implican un prefijo anterior idéntico.
+|Integridad del líder |Todo líder posterior contiene las entradas previamente confirmadas.
+|Seguridad de la máquina de estados |Dos servidores no aplican comandos diferentes en el mismo índice.
+|===
+
+Estas propiedades se apoyan unas en otras. La elegibilidad del candidato impide que una nueva autoridad pierda una entrada confirmada. La comprobación del prefijo mantiene el orden de las entradas replicadas. La confirmación apropiada evita dar por definitiva una entrada que un líder futuro podría reemplazar. La aplicación secuencial impide que los seguidores ejecuten un historial distinto por adelantado.
+
+=== Un ejemplo de conflicto después de una falla
+
+Supongamos que el servidor A fue líder en el término 4 y escribió una entrada `X` en el índice 7, pero solo consiguió almacenarla en A y B. Antes de obtener una mayoría de cinco, A deja de responder. Otro servidor puede convertirse en líder de un término posterior, siempre que reúna una mayoría y cumpla la condición de registro actualizado. Si el nuevo líder tiene una entrada distinta y legítima para el índice 7, puede reparar los registros de A y B cuando recuperen la comunicación. La entrada `X` no era definitiva: había sido almacenada, pero no confirmada.
+
+El caso cambia si A logró confirmar `X` bajo las reglas de Raft. Entonces todo nuevo líder legítimo deberá conservarla. La distinción no depende de que A hubiera respondido al cliente antes de fallar, sino de si la entrada llegó realmente al estado de confirmación definido por el protocolo.
+
+[.center]
+image::raft/11_falla_lider.svg[Entrada no confirmada reemplazada y entrada confirmada conservada,align=center,width=100%]
+
+=== Por qué la intersección de quórums no alcanza sola
+
+Conviene reconstruir el argumento principal. Una entrada confirmada está respaldada por información distribuida en un conjunto que intersectará cualquier mayoría electoral posterior. Al menos un votante de la nueva elección puede contener información relacionada con esa decisión. Pero el protocolo no se limita a confiar en su presencia: el votante evalúa el historial del candidato, y la forma de confirmar entradas permite demostrar que un candidato que consiguiera una mayoría no puede carecer de una entrada ya confirmada.
+
+Si ignoráramos la regla del registro actualizado, un servidor atrasado podría ser elegido por una mayoría que desconoce parte de la historia y empezar a producir entradas incompatibles. Si ignoráramos la regla especial para confirmar entradas de términos antiguos, el mero hecho de contar copias podría permitir declarar definitiva una entrada sin que quede protegida frente a elecciones futuras. El diseño de Raft hace que estas dos condiciones trabajen juntas <<Ongaro2014>>.
+
+=== Términos más altos y líderes obsoletos
+
+Un líder desconectado puede seguir creyendo que conserva su función. Aun así, le será imposible confirmar nuevas entradas sin comunicarse con una mayoría válida. Si vuelve a contactar con un servidor que ya conoce un término mayor, recibirá ese dato y abandonará su rol. La seguridad depende de las verificaciones del protocolo y de las mayorías, no de que los líderes detecten instantáneamente su propia obsolescencia.
+
+Hay un matiz de implementación importante: los clientes no deberían confiar automáticamente en una lectura local servida por un líder que solo *cree* seguir siendo líder. Para ofrecer lecturas linealizables, la implementación debe comprobar que la autoridad sigue vigente mediante un procedimiento adecuado, por ejemplo una comprobación con quórum basada en `ReadIndex`, y asegurarse de aplicar lo confirmado hasta el índice pertinente. Esta operación de lectura tiene requisitos propios que no deben confundirse con una consulta cualquiera al disco local <<Ongaro2014>>, <<RaftWebsite>>.
+
+== Particiones, persistencia y recuperación
+
+=== Qué ocurre cuando la red se divide
+
+En un grupo de cinco servidores, una partición puede dejar tres servidores de un lado y dos del otro. El lado de tres puede elegir un líder y confirmar entradas si sus integrantes se comunican. El lado de dos no reúne suficientes votos para una elección ni suficientes copias para confirmar entradas nuevas. Puede conservar datos y recibir ciertas solicitudes locales, pero no puede afirmar que está realizando nuevas decisiones por consenso.
+
+Esta regla protege el acuerdo ante la reconexión. Dos componentes disjuntos no pueden sostener simultáneamente dos mayorías de la misma configuración. Si un líder antiguo estaba en el lado minoritario y otro fue elegido en el lado mayoritario, el antiguo termina reconociendo el término superior cuando vuelve a recibir comunicaciones válidas.
+
+[.center]
+image::raft/12_particion.svg[La mayoría puede avanzar mientras la minoría no confirma operaciones,align=center,width=100%]
+
+=== Qué se persiste antes de responder
+
+El término, el voto y las entradas del registro forman la memoria crítica de Raft. Un servidor que votó por un candidato en un término no debe olvidar ese voto tras reiniciar y conceder otro incompatible. Del mismo modo, un seguidor que anunció haber almacenado una entrada no puede descartarla arbitrariamente en una recuperación y seguir afirmando que la replicación anterior ocurrió tal como fue reconocida.
+
+El problema no se resuelve simplemente con escribir estructuras en memoria. Si el almacenamiento puede perder escrituras después de que el servidor ya las anunció como duraderas, el razonamiento sobre mayorías deja de ser válido. En una implementación real hay que precisar los puntos de persistencia, el comportamiento del sistema de archivos y la relación entre el registro de Raft y el estado materializado de la aplicación.
+
+=== Reincorporación de un seguidor atrasado
+
+Cuando un seguidor se reconecta, el líder intenta encontrar el punto más reciente en que coinciden los registros y enviar las entradas que faltan. Las solicitudes rechazadas ofrecen evidencia de que el prefijo elegido no coincide; el líder ajusta los índices de envío hasta alcanzar una coincidencia. Las entradas conflictivas no confirmadas pueden desaparecer del seguidor como parte de esta reparación.
+
+La operación es segura porque el líder legítimo contiene las entradas confirmadas y nunca elimina sus propias entradas. El seguidor no necesita negociar la historia mediante preferencias personales: aplica las reglas de comparación de índices y términos y termina adoptando el prefijo correspondiente al líder actual.
+
+== Compactación del registro y cambios de integrantes
+
+=== Instantáneas: conservar el estado sin almacenar toda la historia
+
+Con el tiempo, un registro puede contener millones de comandos. Conservar cada uno indefinidamente encarece almacenamiento, recuperación y transferencia a nuevos servidores. Raft permite compactar un prefijo ya aplicado mediante una *instantánea* (*snapshot*) que contiene el estado de la máquina y los metadatos necesarios para identificar hasta dónde llega ese estado: el último índice incluido y su término.
+
+La instantánea debe representar un estado consistente de la aplicación. Si un seguidor está tan atrasado que el líder ya descartó las entradas que necesitaría para ponerse al día, el líder puede transmitirle una instantánea mediante `InstallSnapshot`. El receptor instala el estado y conserva, cuando corresponde, la parte del registro que sigue siendo compatible con la instantánea. Después continúa recibiendo entradas normales <<Ongaro2014>>.
+
+[.center]
+image::raft/13_snapshot.svg[Compactación del prefijo y recuperación de un seguidor mediante instantánea,align=center,width=100%]
+
+La compactación no elimina las reglas del consenso. El índice y el término que identifican el límite de la instantánea preservan la información necesaria para comparar historiales. La aplicación debe coordinar el almacenamiento de snapshots con la recuperación del registro para evitar aplicar un comando dos veces o perder efectos que debían quedar representados en el estado persistente.
+
+=== La dificultad de cambiar la configuración
+
+Hasta ahora supusimos un conjunto fijo de votantes. En sistemas reales es necesario añadir, sustituir o retirar servidores. No basta con cambiar una lista de direcciones en todos los nodos: si dos grupos utilizan configuraciones incompatibles durante la transición, podrían formarse mayorías distintas que no se intersecten. La reconfiguración debe ser una operación del propio protocolo, no una modificación externa arbitraria.
+
+El artículo de 2014 describe el *consenso conjunto* (*joint consensus*). Durante una fase transitoria coexisten la configuración antigua y la nueva, y las decisiones relevantes requieren satisfacer las mayorías exigidas por ambas. Después se confirma la nueva configuración. Esta estrategia evita que dos configuraciones independientes sostengan autoridades incompatibles mientras se completa la transición <<OngaroOusterhout2014>>.
+
+La tesis doctoral de Ongaro presenta además una estrategia simplificada que cambia un servidor por vez, con reglas específicas que preservan la seguridad. No son dos pasos que deban mezclarse sin cuidado: son variantes de reconfiguración, cada una con sus propias condiciones. Una implementación debe elegir y respetar un mecanismo completo <<Ongaro2014>>.
+
+[.center]
+image::raft/14_reconfiguracion.svg[Transición de configuración mediante consenso conjunto,align=center,width=100%]
+
+=== ¿Puede seguir atendiendo clientes durante la reconfiguración?
+
+En una reconfiguración correctamente implementada, un sistema puede continuar atendiendo operaciones mientras cambian sus integrantes, siempre que alcance los quórums requeridos en cada etapa. Sin embargo, la vivacidad puede verse afectada si faltan servidores de una configuración que todavía participa de las reglas de decisión. Por eso, al planificar cambios operativos, el orden de incorporación, puesta al día y retiro de servidores forma parte del razonamiento de disponibilidad.
+
+== Interacción con clientes y límites prácticos
+
+=== Reintentos, respuestas perdidas e idempotencia
+
+Supongamos que un cliente envía una operación, el líder la confirma y ejecuta, pero la respuesta se pierde en la red. El cliente no sabe si la solicitud se procesó. Si vuelve a enviarla como una operación nueva, podría aplicarse dos veces. Raft conserva el orden y la durabilidad de las entradas confirmadas, pero una aplicación que quiera ofrecer semántica de ejecución exactamente una vez debe añadir un mecanismo de identificación y deduplicación de solicitudes.
+
+Una estrategia habitual consiste en asignar a cada cliente un identificador estable y un número de secuencia monotónico. La máquina de estados registra la última solicitud aplicada para ese cliente y su resultado. Si vuelve a recibir el mismo identificador, devuelve el resultado anterior sin repetir el efecto. Esta tabla debe formar parte del estado replicado o de la instantánea recuperable; de otro modo, un reinicio podría hacer que se olvidaran las solicitudes ya ejecutadas <<Ongaro2014>>.
+
+=== Escrituras, lecturas y linealizabilidad
+
+Un registro ordenado facilita construir una máquina de estados linealizable: las operaciones pueden observarse como si ocurrieran atómicamente en un orden compatible con el tiempo real. Pero la linealizabilidad no aparece automáticamente por leer desde cualquier réplica. Un seguidor atrasado puede devolver un valor viejo, y un líder aislado que aún no conoce su reemplazo puede responder con información obsoleta.
+
+Las escrituras deben reconocerse tras la confirmación apropiada y la aplicación correspondiente. Las lecturas que pretendan reflejar las escrituras ya completadas necesitan comprobar una barrera de autoridad y de estado; una vía es obtener evidencia reciente de una mayoría y esperar hasta aplicar el índice de confirmación correspondiente. En el procedimiento del artículo extendido también se contempla que un líder recién elegido confirme una entrada de su término antes de responder lecturas linealizables, para asegurarse de conocer las decisiones anteriores. Las lecturas desde seguidores requieren mecanismos adicionales <<Ongaro2014>>.
+
+=== Qué garantiza y qué no garantiza Raft
+
+Raft ofrece un orden replicado seguro de comandos bajo el modelo de fallas no bizantinas y los requisitos de persistencia. No convierte en deterministas operaciones que no lo son: si un comando consulta un reloj local o utiliza números aleatorios no acordados, los servidores podrían divergir aunque aplicaran exactamente el mismo registro. Tampoco vuelve automáticamente atómicas operaciones distribuidas que afectan sistemas externos ajenos al registro ni evita los efectos duplicados sobre otros servicios.
+
+La tolerancia a fallas también tiene un costo: si no queda una mayoría comunicada, las nuevas decisiones deben detenerse. Para un grupo fijo de stem:[N=2f+1] servidores, puede mantenerse la vivacidad con hasta stem:[f] fallas o servidores inaccesibles, siempre que la mayoría restante pueda comunicarse y el período de ejecución resulte suficientemente estable. El hecho de que existan cinco réplicas no reemplaza una estrategia de despliegue, monitoreo y recuperación apropiada.
+
+== Caso de estudio: etcd, un sistema real que utiliza Raft
+
+=== Un almacén distribuido que necesita acordar escrituras
+
+*etcd* es un sistema de almacenamiento distribuido de pares clave-valor, escrito en Go, que se utiliza para conservar información crítica de otros sistemas. Entre sus usos más conocidos está el almacenamiento del estado de los clústeres de Kubernetes. Su implementación utiliza Raft para mantener un registro replicado de operaciones: las escrituras se ordenan y se confirman con la participación de una mayoría, en vez de depender de que un único servidor conserve la información <<EtcdProyecto>>, <<EtcdGlosario>>.
+
+Para observar el protocolo en un contexto concreto, imaginemos un clúster de *tres integrantes de etcd*, llamados `etcd-1`, `etcd-2` y `etcd-3`. El sistema real es etcd, y los pasos que siguen describen su funcionamiento documentado; los nombres de los nodos, los términos, los índices del registro y las fallas simuladas son *valores didácticos*, no una traza obtenida de un incidente real. Suponemos un grupo fijo, sin integrantes no votantes ni cambios de membresía durante el ejemplo.
+
+Una aplicación guarda el indicador `/app/config/auditoria` para informar si debe registrar eventos de auditoría. Se puede enviar una escritura mediante la interfaz real de etcd:
+
+[source,bash]
+----
+etcdctl put /app/config/auditoria habilitada
+----
+
+Esta es una operación ordinaria del almacén de claves, pero representa una decisión que las réplicas deben conservar de manera consistente. Que las tres máquinas tengan una copia del dato no basta por sí solo: hace falta acordar su posición dentro del registro para que futuras elecciones y nuevas escrituras respeten el mismo orden.
+
+=== Una escritura exitosa con dos de tres integrantes
+
+Supongamos que `etcd-1` es el líder del término 12 y que la nueva operación se añade en un índice del registro que, solamente para esta explicación, llamaremos 207. El líder persiste la propuesta y la envía a los seguidores mediante los mecanismos de replicación de Raft. `etcd-2` la almacena de forma duradera y confirma su recepción. `etcd-3` está experimentando demoras, por lo que todavía no responde.
+
+La operación se encuentra entonces en el líder y en un seguidor: *dos de tres integrantes*. Como pertenece al término del líder actual, esta mayoría satisface la regla de confirmación. La entrada ya puede considerarse parte del historial acordado; después se aplica al estado del almacén y se devuelve el resultado al cliente, sin esperar a que `etcd-3` termine de actualizarse. La documentación de etcd distingue precisamente entre el registro persistido para Raft y la aplicación de las operaciones al motor de almacenamiento <<EtcdAlmacenamiento>>, <<EtcdGarantiasAPI>>.
+
+[cols="1,3,3",options="header"]
+|===
+|Instante |Qué sucede |Qué puede afirmarse
+|T1 |`etcd-1` incorpora y persiste una entrada de escritura. |Aún no hay mayoría; no se informa que la operación haya terminado.
+|T2 |`etcd-2` persiste la entrada y responde al líder. |La entrada está replicada en dos de tres integrantes.
+|T3 |El líder confirma la entrada y la operación se aplica. |La escritura puede completarse y devolverse al cliente.
+|T4 |`etcd-3` se pone al día. |El grupo converge, aunque el tercer integrante haya llegado tarde.
+|===
+
+Hay dos números distintos que conviene no confundir. El *índice del registro de Raft* identifica una entrada en la historia replicada. La *revisión de etcd* identifica una modificación del almacén de claves y sirve, por ejemplo, para observar su orden lógico. No son contadores equivalentes ni deben utilizarse indistintamente <<EtcdGarantiasAPI>>.
+
+[.center]
+image::raft/15_caso_etcd.svg[Ejemplo basado en etcd: escritura con mayoría, elección tras una falla y pérdida de quórum,align=center,width=100%]
+
+=== El líder se cae después de confirmar la escritura
+
+Poco después de la confirmación, `etcd-1` deja de funcionar. Los dos integrantes restantes todavía pueden comunicarse: `etcd-2` conserva la entrada confirmada y `etcd-3`, aun si estaba atrasado, puede participar en una elección. Si `etcd-2` reúne los votos necesarios y satisface la condición de registro actualizado, pasa a ser líder de un término posterior y completa la puesta al día de `etcd-3`.
+
+El nuevo líder no puede reemplazar la escritura que ya había quedado confirmada. Esta garantía no depende de que el cliente haya recibido el mensaje de éxito: deriva de la relación entre la mayoría que confirmó la entrada y la mayoría que eligió al nuevo líder, reforzada por la condición de actualización del registro para votar. Este es el efecto práctico de la propiedad de integridad del líder estudiada en las secciones anteriores <<OngaroOusterhout2014>>, <<Ongaro2014>>.
+
+El caso sería diferente si `etcd-1` hubiera fallado *antes de conseguir la mayoría*. Una entrada que solo estaba persistida en el antiguo líder no es todavía una decisión del grupo y podría ser sustituida por el registro de un líder posterior. Almacenar una propuesta y confirmarla son hechos distintos.
+
+=== Una partición: una réplica aislada no puede confirmar nuevas escrituras
+
+Supongamos ahora que `etcd-1` queda incomunicado mientras `etcd-2` y `etcd-3` se mantienen conectados. Los dos últimos reúnen el quórum de un clúster de tres y pueden avanzar tras elegir un líder legítimo. La réplica aislada no tiene una mayoría que respalde nuevas decisiones. Por eso, aunque durante un intervalo todavía crea que conserva el liderazgo, no puede confirmar por sí sola nuevas escrituras.
+
+Desde el punto de vista de la aplicación, algunas solicitudes pueden fallar o exceder su plazo de espera. La ausencia de respuesta no permite deducir siempre si la operación fue aplicada: una escritura podría haberse confirmado y haberse perdido solamente la respuesta. La documentación de etcd advierte expresamente esta incertidumbre frente a interrupciones de comunicación, y también distingue las lecturas linealizables de las lecturas `serializable`, que pueden devolver datos atrasados <<EtcdGarantiasAPI>>.
+
+Una medida práctica para una aplicación es consultar nuevamente la clave usando una lectura que ofrezca las garantías de consistencia requeridas. Cuando la semántica exige que una modificación se aplique solo si el valor o la revisión anterior siguen siendo los esperados, etcd dispone de transacciones con condiciones de comparación. Esto resuelve un problema de concurrencia en la aplicación; no constituye una fase adicional de Raft.
+
+=== Qué permite observar este ejemplo real
+
+El caso muestra por qué etcd puede seguir atendiendo escrituras con una réplica demorada o caída, siempre que quede un quórum. Al mismo tiempo, aclara el costo de esa garantía: si el clúster pierde su mayoría, las escrituras no deben continuar confirmándose como si hubiera una sola autoridad. En un despliegue real, la latencia de la red y la persistencia en disco afectan directamente la velocidad de confirmación; etcd documenta ambos factores como parte de su rendimiento <<EtcdRendimiento>>.
+
+Para discutir en clase, vale la pena preguntarse qué sucede si se pierde la respuesta de `etcdctl put` después de T3, por qué `etcd-3` puede ponerse al día sin invalidar lo anterior y qué ocurriría si dos de los tres integrantes quedaran inaccesibles. Las respuestas dependen de distinguir entre *replicación local, confirmación distribuida y observación del resultado por parte del cliente*.
+
+== Pseudocódigo y trazas para acompañar el estudio
+
+=== Elección: lógica simplificada del candidato
+
+El siguiente pseudocódigo sintetiza la elección sin describir todos los aspectos de la temporización ni las respuestas de error. Representa las reglas del protocolo original, no una implementación lista para producción.
+
+[source,text]
+----
+al vencer el temporizador de elección:
+    rol := candidato
+    currentTerm := currentTerm + 1
+    votedFor := mi_identificador
+    persistir(currentTerm, votedFor)
+    votos := 1
+    enviar RequestVote(currentTerm, ultimoIndice, ultimoTermino)
+
+al recibir RequestVote(t, candidato, ultimoIndice, ultimoTermino):
+    si t < currentTerm:
+        responder voto_rechazado
+    si t > currentTerm:
+        currentTerm := t
+        votedFor := ninguno
+        rol := seguidor
+        persistir(currentTerm, votedFor)
+    si (votedFor es ninguno o votedFor == candidato)
+       y registro_del_candidato_suficientemente_actualizado:
+        votedFor := candidato
+        persistir(votedFor)
+        responder voto_concedido
+    si no:
+        responder voto_rechazado
+
+al reunir mayoría de votos para mi término actual:
+    rol := líder
+    inicializar nextIndex y matchIndex
+    enviar AppendEntries vacíos para anunciar liderazgo
+----
+
+=== Replicación: lógica simplificada del seguidor
+
+[source,text]
+----
+al recibir AppendEntries(t, prevIndex, prevTerm, entries, leaderCommit):
+    si t < currentTerm:
+        responder fracaso
+    si t > currentTerm:
+        actualizar término, abandonar candidatura/liderazgo
+        persistir término y voto si corresponde
+    reconocer al líder válido del término actual
+    si no existe log[prevIndex] con término prevTerm:
+        responder fracaso
+    para cada entrada recibida que entre en conflicto con log local:
+        eliminar la entrada conflictiva y todo el sufijo posterior
+    anexar las entradas nuevas todavía ausentes
+    persistir los cambios antes de reconocer su almacenamiento
+    si leaderCommit > commitIndex:
+        commitIndex := min(leaderCommit, ultimo_indice_local)
+    aplicar en orden las entradas confirmadas todavía pendientes
+    responder éxito
+----
+
+=== Confirmación: la condición del líder
+
+[source,text]
+----
+para cada índice N mayor que commitIndex, en orden descendente:
+    copias := 1 + cantidad_de_seguidores_con(matchIndex >= N)
+    si copias >= mayoría y log[N].term == currentTerm:
+        commitIndex := N
+        aplicar las entradas pendientes en orden
+        notificar el nuevo commitIndex a los seguidores
+        terminar la búsqueda
+----
+
+Es importante conservar en este fragmento la condición `log[N].term == currentTerm`. El pseudocódigo que confirma cualquier entrada antigua por simple mayoría no representa correctamente la regla de seguridad de Raft. Las entradas anteriores se vuelven confirmadas *indirectamente* cuando se confirma una entrada posterior del término actual <<OngaroOusterhout2014>>.
+
+== Costos, ventajas y limitaciones de Raft
+
+=== Por qué resulta útil en sistemas reales
+
+La principal ventaja de Raft es que organiza la coordinación alrededor de una autoridad reconocible y de un historial lineal de operaciones. La elección mediante quórum, los términos crecientes y las comprobaciones del registro forman un diseño que se puede analizar por partes. El líder evita negociar por separado el orden de cada operación entre todos los participantes; los seguidores adoptan las entradas que satisfacen las condiciones de consistencia.
+
+El protocolo conserva la seguridad frente a retrasos, duplicación de mensajes, particiones y reinicios que respeten las condiciones de persistencia. Además, permite continuar cuando una minoría no está disponible. La compactación mediante snapshots reduce el almacenamiento histórico y los mecanismos de reconfiguración permiten modificar el conjunto de servidores sin interrumpir necesariamente todo el servicio.
+
+=== Costos y decisiones de diseño
+
+La contrapartida del liderazgo fuerte es que las nuevas escrituras dependen de la disponibilidad y capacidad del líder. Cuando este falla, el grupo necesita elegir otro antes de volver a confirmar operaciones. Las elecciones repetidas, los discos lentos y las redes inestables pueden degradar sensiblemente el rendimiento. Un servidor situado en la minoría de una partición puede seguir accesible para algunos clientes, pero no debe continuar confirmando operaciones.
+
+Raft tampoco elimina el trabajo de ingeniería alrededor del consenso. La aplicación tiene que hacer deterministas sus efectos, deduplicar solicitudes cuando corresponda, administrar lecturas consistentes, coordinar snapshots con el estado de la máquina y asegurar que las escrituras anunciadas como duraderas resistan reinicios. Los cambios de integrantes requieren protocolos precisos; una modificación improvisada de la configuración puede invalidar la intersección de quórums.
+
+[cols="1,2,2",options="header"]
+|===
+|Aspecto |Ventaja |Costo o condición
+|Líder fuerte |Simplifica el orden de nuevas entradas. |Puede convertirse en cuello de botella y requiere elecciones ante fallas.
+|Mayorías |Permite avanzar sin esperar a todos los servidores. |Una minoría aislada no puede confirmar nuevas operaciones.
+|Términos e historial |Evitan que una autoridad antigua contradiga decisiones confirmadas. |Exigen persistencia correcta y reglas cuidadosas de elección.
+|Reparación del registro |Permite recuperar seguidores atrasados. |Puede requerir transferencias grandes o instantáneas.
+|Instantáneas |Reduce el costo de mantener y transferir historia. |Debe coordinarse con el estado persistente de la máquina.
+|Reconfiguración |Permite incorporar o retirar votantes con seguridad. |Necesita una secuencia de cambios controlada por el protocolo.
+|===
+
+
+== Bibliografía
+
+[bibliography]
+- [[[OngaroOusterhout2014]]] Ongaro, Diego y Ousterhout, John. «In Search of an Understandable Consensus Algorithm». _2014 USENIX Annual Technical Conference (USENIX ATC '14)_, pp. 305–319. USENIX Association, 2014. https://www.usenix.org/conference/atc14/technical-sessions/presentation/ongaro[Publicación y PDF].
+- [[[Ongaro2014]]] Ongaro, Diego. _Consensus: Bridging Theory and Practice_. Tesis doctoral, Stanford University, 2014. https://web.stanford.edu/~ouster/cgi-bin/papers/OngaroPhD.pdf[Texto completo].
+- [[[RaftWebsite]]] Ongaro, Diego y colaboradores. _Raft Consensus Algorithm_. Sitio del proyecto, referencias, material docente y visualizaciones. https://raft.github.io/[raft.github.io].
+- [[[FischerLynchPaterson1985]]] Fischer, Michael J.; Lynch, Nancy A.; y Paterson, Michael S. «Impossibility of Distributed Consensus with One Faulty Process». _Journal of the ACM_, 32(2), pp. 374–382, 1985. https://doi.org/10.1145/3149.214121[DOI].
+- [[[DworkLynchStockmeyer1988]]] Dwork, Cynthia; Lynch, Nancy A.; y Stockmeyer, Larry. «Consensus in the Presence of Partial Synchrony». _Journal of the ACM_, 35(2), pp. 288–323, 1988. https://doi.org/10.1145/42282.42283[DOI].
+- [[[Schneider1990]]] Schneider, Fred B. «Implementing Fault-Tolerant Services Using the State Machine Approach: A Tutorial». _ACM Computing Surveys_, 22(4), pp. 299–319, 1990. https://doi.org/10.1145/98163.98167[DOI].
+- [[[Lynch1996]]] Lynch, Nancy A. _Distributed Algorithms_. Morgan Kaufmann, 1996. ISBN 978-1-55860-348-6.
+- [[[ChandraToueg1996]]] Chandra, Tushar D. y Toueg, Sam. «Unreliable Failure Detectors for Reliable Distributed Systems». _Journal of the ACM_, 43(2), pp. 225–267, 1996. https://doi.org/10.1145/226643.226647[DOI].
+- [[[Wilcox2015]]] Wilcox, James R.; Woos, Doug; Panchekha, Pavel; Tatlock, Zachary; Wang, Xi; Ernst, Michael D.; y Anderson, Thomas. «Verdi: A Framework for Implementing and Verifying Distributed Systems». _PLDI_, 2015. https://doi.org/10.1145/2737924.2737958[DOI].
+- [[[RaftTLA]]] Ongaro, Diego. _Raft TLA+ specification_. Repositorio de la especificación formal vinculada a la tesis. https://github.com/ongardie/raft.tla[Repositorio].
+
+- [[[EtcdProyecto]]] Proyecto etcd. _etcd: Distributed reliable key-value store_. Repositorio oficial y descripción de la arquitectura. https://github.com/etcd-io/etcd[Repositorio oficial].
+- [[[EtcdGlosario]]] Proyecto etcd. _Glossary_, documentación de etcd v3.7. Definiciones de integrante, propuesta, quórum, término y revisión. https://etcd.io/docs/v3.7/learning/glossary/[Documentación oficial].
+- [[[EtcdAlmacenamiento]]] Proyecto etcd. _etcd persistent storage files_, documentación de etcd v3.7. Persistencia de propuestas, WAL y estado de Raft. https://etcd.io/docs/v3.7/learning/persistent-storage-files/[Documentación oficial].
+- [[[EtcdGarantiasAPI]]] Proyecto etcd. _etcd API guarantees_, documentación de etcd v3.7. Linealizabilidad, revisiones y operaciones con respuesta incierta. https://etcd.io/docs/v3.7/learning/api_guarantees/[Documentación oficial].
+- [[[EtcdRendimiento]]] Proyecto etcd. _Performance_, documentación de etcd v3.7. Costos de red y almacenamiento en la replicación. https://etcd.io/docs/v3.7/op-guide/performance/[Documentación oficial].
+
+== Apéndice A. Glosario
+
+* *Candidato:* servidor que solicita votos para convertirse en líder de un término.
+* *Confirmado (`committed`):* entrada que satisface la regla de confirmación y no puede desaparecer del historial de decisiones.
+* *Entrada del registro:* operación identificada por un índice y el término en el que fue añadida.
+* *Índice aplicado (`lastApplied`):* última entrada ejecutada por la máquina de estados local.
+* *Índice confirmado (`commitIndex`):* límite de entradas que el servidor conoce como confirmadas.
+* *Líder:* servidor que coordina la incorporación de nuevas entradas al registro.
+* *Quórum:* conjunto suficiente de participantes; en el grupo fijo básico de Raft, una mayoría estricta de votantes.
+* *Seguidor:* servidor que replica el registro y atiende solicitudes de voto.
+* *Snapshot:* instantánea del estado aplicado y los metadatos de su posición en el registro.
+* *Término (`term`):* época lógica numerada en la que se organizan una elección y, eventualmente, el liderazgo.

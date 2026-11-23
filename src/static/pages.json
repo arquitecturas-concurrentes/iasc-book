@@ -106,6 +106,16 @@
     "description": "Difusión best-effort y confiable, orden FIFO, causal y total en grupos distribuidos."
   },
   {
+    "path": "consenso_commit",
+    "title": "Algoritmos de Commit",
+    "description": "2 y 3 Phase Commit"
+  },
+  {
+    "path": "raft",
+    "title": "Raft",
+    "description": "El algoritmo de consenso Raft y etcd"
+  },
+  {
     "path": "interleaving",
     "title": "Intearleaving Y Netsplits",
     "description": "...."

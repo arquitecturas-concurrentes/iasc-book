@@ -1,12 +1,14 @@
 <template>
-  <div v-if="adocHtml" class="adoc-container" v-html="adocHtml"></div>
+  <div v-if="adocHtml" ref="adocContainer" class="adoc-container" v-html="adocHtml"></div>
 </template>
 <script setup>
 import axios from 'axios'
 import { convert, Extensions } from 'asciidoctor'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, nextTick, onBeforeUnmount } from 'vue'
+import { clearMathJax, typesetMathJax } from '@/composables/useMathJax'
 
 const adocHtml = ref('<p>Loading...</p>')
+const adocContainer = ref(null)
 
 let renderize_adoc = async (src) => {
   // Register custom extension to add biblioref class
@@ -39,6 +41,27 @@ let renderize_adoc = async (src) => {
 const props = defineProps({
   url: String,
 })
+
+onBeforeUnmount(() => {
+  if (adocContainer.value) clearMathJax(adocContainer.value)
+})
+
+watch(
+  adocHtml,
+  async () => {
+    const container = adocContainer.value
+    if (!container) return
+
+    clearMathJax(container)
+    await nextTick()
+
+    try {
+      await typesetMathJax(container)
+    } catch (error) {
+      console.error('Error rendering AsciiDoc math:', error)
+    }
+  },
+)
 
 onMounted(() => {
   axios.get(props.url).then(async (result) => {
