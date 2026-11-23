@@ -107,7 +107,11 @@ export const sidearContent = [
     child: [
       {
         href: '/tema/distribucion',
-        title: 'Introduccion a Distribucion',
+        title: 'Sistemas distribuidos',
+      },
+      {
+        href: '/tema/escalabilidad',
+        title: 'Escalabilidad',
       },
       {
         href: '/tema/heartbeat_gossip',

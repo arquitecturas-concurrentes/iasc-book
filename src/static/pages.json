@@ -57,8 +57,13 @@
   },
   {
     "path": "distribucion",
-    "title": "Distribucion",
-    "description": "Introduccion y nociones de distribucion"
+    "title": "Sistemas distribuidos",
+    "description": "Definición, motivaciones y propiedades fundamentales de un sistema distribuido."
+  },
+  {
+    "path": "escalabilidad",
+    "title": "Escalabilidad",
+    "description": "Escala vertical y horizontal, ejes X/Y/Z, particionamiento y manejo de sesiones."
   },
   {
     "path": "heartbeat_gossip",
