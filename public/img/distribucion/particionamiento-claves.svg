@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="360" viewBox="0 0 900 360" role="img" aria-labelledby="title desc">
+  <title id="title">Enrutamiento de claves a particiones</title>
+  <desc id="desc">Una solicitud con una clave se resuelve mediante el mapa de particiones y se envía al nodo que almacena ese subconjunto.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52677a"/>
+    </marker>
+  </defs>
+  <rect width="900" height="360" rx="14" fill="#f8fafc"/>
+  <g font-family="Arial, sans-serif" fill="#263746">
+    <text x="450" y="36" text-anchor="middle" font-size="21" font-weight="700">Una clave determina qué partición atiende la operación</text>
+    <rect x="35" y="125" width="165" height="92" rx="12" fill="#fff" stroke="#718096" stroke-width="2"/>
+    <text x="117" y="159" text-anchor="middle" font-size="18" font-weight="700">Solicitud</text>
+    <text x="117" y="188" text-anchor="middle" font-size="15">cliente_id = 42</text>
+    <rect x="275" y="113" width="205" height="116" rx="12" fill="#edf2f7" stroke="#718096" stroke-width="2"/>
+    <text x="377" y="147" text-anchor="middle" font-size="18" font-weight="700">Enrutamiento</text>
+    <text x="377" y="176" text-anchor="middle" font-size="14">clave → partición</text>
+    <text x="377" y="200" text-anchor="middle" font-size="13">mapa o función</text>
+    <rect x="600" y="74" width="250" height="69" rx="10" fill="#eaf2fb" stroke="#3570a3" stroke-width="2"/>
+    <text x="725" y="103" text-anchor="middle" font-size="17" font-weight="700">Partición A · Nodo 1</text>
+    <text x="725" y="126" text-anchor="middle" font-size="14">cliente_id 1–33</text>
+    <rect x="600" y="159" width="250" height="69" rx="10" fill="#fff5e8" stroke="#c58b32" stroke-width="2.5"/>
+    <text x="725" y="188" text-anchor="middle" font-size="17" font-weight="700">Partición B · Nodo 2</text>
+    <text x="725" y="211" text-anchor="middle" font-size="14">cliente_id 34–66</text>
+    <rect x="600" y="244" width="250" height="69" rx="10" fill="#edf7f0" stroke="#4b8c68" stroke-width="2"/>
+    <text x="725" y="273" text-anchor="middle" font-size="17" font-weight="700">Partición C · Nodo 3</text>
+    <text x="725" y="296" text-anchor="middle" font-size="14">cliente_id 67–99</text>
+    <line x1="200" y1="171" x2="265" y2="171" stroke="#52677a" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <line x1="480" y1="171" x2="590" y2="194" stroke="#52677a" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <text x="535" y="164" text-anchor="middle" font-size="13">dirige a B</text>
+    <text x="450" y="340" text-anchor="middle" font-size="14" fill="#52677a">Los rangos son ilustrativos: una buena clave también debe repartir la carga y los patrones de acceso.</text>
+  </g>
+</svg>

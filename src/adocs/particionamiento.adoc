@@ -1,0 +1,97 @@
+= Particionamiento: dividir los datos entre nodos
+
+El *particionamiento* divide un conjunto de datos en subconjuntos y asigna cada uno a distintos nodos. Cada nodo almacena una parte del total, en lugar de guardar una copia completa. También se lo llama *sharding* o particionamiento horizontal.
+
+Su objetivo principal es distribuir el almacenamiento y el trabajo cuando un nodo ya no puede atender de forma eficiente el volumen de datos o de solicitudes. A diferencia de la replicación, que conserva copias redundantes, particionar aumenta la capacidad total disponible al repartir el conjunto. Una misma arquitectura suele combinar ambas técnicas: cada partición se replica para sumar tolerancia a fallas y disponibilidad.
+
+[.center]
+image::distribucion/particionamiento-claves.svg[Distribución de claves entre particiones, width=760]
+
+== Un ejemplo: registros de clientes
+
+Supongamos que una aplicación almacena los perfiles de millones de clientes. En lugar de guardar todos los perfiles en un único nodo, puede distribuirlos en varias particiones según una clave. Una consulta por `cliente_id` calcula o busca qué partición contiene ese registro y la envía al nodo correspondiente.
+
+El flujo de una operación incluye, al menos:
+
+. Elegir la clave o criterio que determina dónde se almacena cada registro.
+. Calcular la partición responsable de la clave.
+. Enrutar la consulta o escritura al nodo que sirve esa partición.
+. Mantener metadatos sobre la ubicación y el estado de las particiones.
+
+La aplicación necesita una forma consistente de resolver el destino. Esa información puede estar en el cliente, en un servicio de enrutamiento, en una tabla de metadatos o implícita en una función determinista. Si cambia la asignación, los participantes deben conocer la nueva topología y evitar dirigir escrituras a dueños anteriores.
+
+== Elegir una clave de particionamiento
+
+La clave determina cómo se distribuyen los registros y qué operaciones pueden resolverse localmente. Una clave conveniente tiende a repartir espacio y solicitudes y coincide con los patrones de acceso más importantes.
+
+Algunos criterios comunes son:
+
+* *Rangos:* asignar intervalos de claves a particiones, como identificadores del 1 al 1000 en una y del 1001 al 2000 en otra. Facilita recorrer intervalos ordenados, pero las claves nuevas o populares pueden concentrarse en una partición.
+* *Hash:* aplicar una función a la clave y asignar el resultado a una partición. Suele repartir mejor claves variadas, pero dificulta consultas por rango y puede requerir mover muchos datos al cambiar el número de particiones.
+* *Región o ubicación:* mantener juntos los datos de una zona geográfica puede reducir la latencia local y ayudar a cumplir requisitos de residencia. Si la carga o población está concentrada, el reparto puede ser desigual.
+* *Lista o categoría:* dirigir valores conocidos —por ejemplo, tipo de entidad— a particiones específicas. Puede ajustarse al dominio, aunque una categoría dominante se vuelve un punto caliente.
+
+La clave no debe evaluarse solo por cómo divide el almacenamiento. También hay que preguntar qué consultas se ejecutan, qué escrituras compiten y qué relaciones deben cruzar particiones.
+
+== Distribución uniforme y particiones calientes
+
+Un reparto numéricamente equilibrado de registros no implica una carga equilibrada. Si una clave recibe muchas más solicitudes que las demás, la partición que la contiene puede saturarse aunque las otras tengan capacidad libre. Se la denomina *partición caliente* o *hot shard*.
+
+Por ejemplo, particionar mensajes por `usuario_id` puede distribuir bien a la mayoría de los usuarios, pero una cuenta extremadamente popular puede concentrar muchas lecturas y escrituras. Particionar por tiempo puede facilitar búsquedas recientes, pero también dirigir todas las escrituras nuevas al rango más reciente.
+
+Mitigaciones posibles incluyen elegir otra clave, agregar una segunda dimensión de distribución, dividir claves especialmente activas o mantener una capa de caché. Cada alternativa complica el enrutamiento o la actualización de datos. No hay una función hash que arregle un patrón de acceso concentrado si toda operación debe seguir dirigida al mismo registro lógico.
+
+== Consultas dentro y entre particiones
+
+Una consulta que incluye la clave de particionamiento puede dirigirse a una sola partición. Una consulta que no la incluye quizá deba consultarlas todas (*scatter/gather*), combinando sus resultados. A medida que crecen los nodos, ese recorrido puede aumentar la latencia y el trabajo total.
+
+Lo mismo ocurre con índices y relaciones:
+
+* un índice local a una partición ayuda a consultar sus propios datos;
+* un índice global que abarca varias particiones requiere coordinación y mantenimiento adicionales;
+* una unión entre registros de particiones distintas puede necesitar comunicación de red;
+* una transacción que modifica varias particiones debe definir qué sucede si solo una parte logra completarse.
+
+Por eso la clave de particionamiento debe elegirse junto con el modelo de datos y las consultas principales. Un diseño que distribuye bien la escritura puede volver costosas consultas que recorren todo el conjunto.
+
+== Reequilibrar y mover datos
+
+Al crecer el conjunto o cambiar la carga, las particiones pueden dejar de estar equilibradas. Agregar nodos no reubica automáticamente los registros ni actualiza todos los componentes que enrutan solicitudes.
+
+El reequilibrio puede implicar:
+
+. Asignar rangos o grupos de claves a nuevos nodos.
+. Copiar datos sin perder escrituras que continúan llegando.
+. Cambiar el enrutamiento de forma coordinada.
+. Retirar los datos antiguos cuando se verifica la nueva ubicación.
+
+Una estrategia habitual es dividir el espacio lógico en más particiones que nodos físicos y asignarlas entre ellos. Así se puede mover un subconjunto de particiones cuando se agrega capacidad, en vez de recalcular el destino de todo el conjunto. Aun así, hay que gestionar el traslado concurrente, la carga extra y los errores a mitad de la operación.
+
+== Disponibilidad, recuperación y replicación
+
+Particionar por sí solo no crea una copia de respaldo. Si un nodo contiene la única copia de su partición y falla, los datos de esa partición pueden quedar inaccesibles. El sistema puede repartir carga entre varios nodos y aun así tener un punto único de falla para cada fragmento.
+
+Una solución frecuente es replicar cada partición. Por ejemplo, la partición A puede tener un líder y seguidores, y la partición B tener otro grupo de réplicas. Así se combinan:
+
+* *Particionamiento:* decide qué nodo o grupo es responsable de cada porción de los datos.
+* *Replicación:* mantiene copias redundantes dentro de ese grupo y define cómo se propagan cambios y se recupera una falla.
+
+Esta composición agrega decisiones de coordinación por partición: elección de líder, quórums o confirmaciones, lecturas atrasadas y recuperación. Si una falla de red separa las réplicas de una partición, sus respuestas siguen sujetas a las garantías de consistencia y disponibilidad analizadas en https://arquitecturas-concurrentes.github.io/iasc-book/cap/[CAP].
+
+== Cuándo conviene particionar
+
+El particionamiento puede ser útil cuando el tamaño de los datos, el volumen de solicitudes o los límites de un nodo justifican distribuir el trabajo. Antes de incorporarlo, conviene preguntar:
+
+. ¿Qué recurso limita hoy el sistema y cómo lo muestran las mediciones?
+. ¿Qué clave produce un reparto razonable de datos y solicitudes?
+. ¿Cuántas consultas podrán dirigirse a una sola partición?
+. ¿Qué operaciones requieren combinar datos de varias particiones?
+. ¿Cómo se mueve una partición y se actualiza el enrutamiento sin perder escrituras?
+. ¿Qué mecanismo replica cada partición y qué fallas puede tolerar?
+
+Particionar no es una etapa obligatoria de toda aplicación distribuida. Reduce algunos límites de capacidad, pero añade enrutamiento, cambios de topología, movimiento de datos y operaciones que cruzan particiones. La estrategia adecuada depende de la carga real y de qué costos el sistema está dispuesto a asumir.
+
+[bibliography]
+== Referencias
+
+* [[[Kleppmann2017]]] KLEPPMANN, Martin. *Designing Data-Intensive Applications*. O'Reilly Media, 2017, capítulo 6: «Partitioning».

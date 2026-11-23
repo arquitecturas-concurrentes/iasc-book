@@ -11,8 +11,8 @@
   },
   {
     "path": "cap",
-    "title": "CAP",
-    "description": "Notas sobre CAP"
+    "title": "CAP: consistencia y disponibilidad",
+    "description": "Qué establece el teorema CAP y cómo pensar sus límites ante una partición de red."
   },
   {
     "path": "cps",
@@ -47,8 +47,12 @@
   {
     "path": "actores_intro",
     "title": "Introduccion a Actores",
-    "need_detail": true,
     "description": "Actores y Elixir"
+  },
+  {
+    "path": "elixir_procesos",
+    "title": "Procesos y mensajes en Elixir",
+    "description": "Primeros procesos, mensajes y concurrencia con IEx"
   },
   {
     "path": "otp",
@@ -56,9 +60,50 @@
     "description": "OTP Elxir"
   },
   {
+    "path": "distribucion_elixir",
+    "title": "Distribución en BEAM",
+    "description": "Nodos, EPMD, ETS, topologías, mensajería remota y límites de la distribución de Erlang/Elixir."
+  },
+  {
+    "path": "seguridad_beam",
+    "title": "Seguridad de BEAM",
+    "extra": true,
+    "description": "Cookies, TLS, puertos y controles de red para proteger la distribución Erlang/Elixir."
+  },
+  {
     "path": "distribucion",
-    "title": "Distribucion",
-    "description": "Introduccion y nociones de distribucion"
+    "title": "Sistemas distribuidos",
+    "description": "Definición, motivaciones y propiedades fundamentales de un sistema distribuido."
+  },
+  {
+    "path": "escalabilidad",
+    "title": "Escalabilidad",
+    "description": "Escala vertical y horizontal, ejes X/Y/Z, particionamiento y manejo de sesiones."
+  },
+  {
+    "path": "replicacion",
+    "title": "Replicación",
+    "description": "Copias de datos, líderes y seguidores, consistencia, propagación y recuperación ante fallas."
+  },
+  {
+    "path": "particionamiento",
+    "title": "Particionamiento",
+    "description": "Distribución de datos entre nodos, claves, enrutamiento, reequilibrio y combinación con replicación."
+  },
+  {
+    "path": "heartbeat_gossip",
+    "title": "Heartbeats y gossip",
+    "description": "Detección de fallas y diseminación de información en sistemas distribuidos"
+  },
+  {
+    "path": "relojes",
+    "title": "Relojes físicos y lógicos",
+    "description": "Deriva, sincronización NTP, relojes de Lamport y vectores para razonar sobre eventos distribuidos."
+  },
+  {
+    "path": "broadcast",
+    "title": "Broadcast y orden de mensajes",
+    "description": "Difusión best-effort y confiable, orden FIFO, causal y total en grupos distribuidos."
   },
   {
     "path": "consenso_commit",
@@ -76,15 +121,25 @@
     "description": "...."
   },
   {
+    "path": "dos_generales",
+    "title": "Dos generales y consenso bizantino",
+    "description": "Mensajes inciertos, coordinación y tolerancia a participantes bizantinos."
+  },
+  {
+    "path": "protocolos_bft",
+    "title": "Protocolos BFT",
+    "extra": true,
+    "description": "Quórums, fases de PBFT y supuestos de consenso tolerante a fallas bizantinas."
+  },
+  {
     "path": "cap",
     "title": "CAP",
     "description": "Notas sobre CAP"
   },
   {
     "path": "mitos_distribucion",
-    "title": "Distribucion Bonus",
-    "extra": true,
-    "description": "Mitos de la distribucion"
+    "title": "Mitos de la distribucion",
+    "description": "Mitos de la distribucion. Un enfoque teorico."
   },
   {
     "path": "intro_contenedores",

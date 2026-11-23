@@ -1,0 +1,84 @@
+= Protocolos BFT: consenso con fallas bizantinas
+
+*BFT* viene de *Byzantine Fault Tolerance* (tolerancia a fallas bizantinas). Un protocolo BFT permite que varias réplicas mantengan un servicio coherente aunque algunas se comporten de manera arbitraria: pueden detenerse, enviar datos falsos o presentar propuestas distintas a diferentes participantes. No se limita a detectar que un nodo dejó de responder; busca que los nodos correctos preserven las garantías acordadas aun cuando haya participantes que no siguen el protocolo.
+
+Esta página desarrolla la idea de BFT introducida en https://arquitecturas-concurrentes.github.io/iasc-book/dos_generales/[el problema de los generales bizantinos]. Como ejemplo se usa *Practical Byzantine Fault Tolerance* (PBFT), el protocolo de Castro y Liskov. BFT es una familia de protocolos, no el nombre de un único algoritmo.
+
+== Qué intenta garantizar
+
+Un servicio replicado suele ejecutar operaciones en varias réplicas para evitar que la falla de una máquina detenga todo el sistema. Para que las réplicas no diverjan, necesitan ponerse de acuerdo en el orden de las operaciones y ejecutarlas de forma determinista. Un protocolo BFT añade la posibilidad de que algunas réplicas mientan o se contradigan.
+
+Las garantías suelen explicarse en dos grupos:
+
+* *Seguridad:* dos réplicas correctas no confirman decisiones incompatibles. Una vez que una operación queda comprometida, los cambios de vista y las fallas de nodos no deberían permitir reemplazarla por otra.
+* *Progreso o vivacidad:* las solicitudes correctas pueden avanzar y completarse, en lugar de quedar bloqueadas para siempre.
+
+Estas propiedades tienen supuestos distintos. En PBFT, la seguridad no depende de que la red tenga demoras acotadas; para garantizar progreso se necesita que la comunicación eventualmente se vuelva suficientemente oportuna. Si los mensajes pueden demorarse para siempre, el protocolo no siempre puede distinguir una falla real de una demora y no puede prometer que avanzará.
+
+== Réplicas y quórums
+
+En el modelo clásico de PBFT, para tolerar hasta `f` réplicas bizantinas se usan al menos `3f + 1` réplicas. Por ejemplo, si `f = 1`, el servicio necesita cuatro réplicas. Un quórum de `2f + 1` mensajes tiene una propiedad útil: dos quórums de ese tamaño comparten al menos `f + 1` réplicas. Como máximo `f` pueden ser bizantinas, así que al menos una réplica compartida es correcta.
+
+Ese solapamiento ayuda a impedir que dos grupos distintos confirmen órdenes incompatibles: las réplicas correctas siguen las reglas del protocolo y no validan dos decisiones contradictorias para la misma posición. Las réplicas bizantinas sí pueden enviar mensajes contradictorios, así que el protocolo no se basa en que todos los votos sean honestos; se basa en la cantidad de réplicas correctas que necesariamente aparece en los quórums.
+
+Con `f = 1`, entonces, hay cuatro réplicas y cada quórum tiene tres. Dos grupos de tres entre cuatro comparten al menos dos réplicas; como solo una puede ser bizantina, al menos una de las compartidas debe ser correcta. Este cálculo ilustra el principio del quórum, aunque el protocolo completo necesita más reglas para comprobar propuestas, conservar decisiones previas y recuperarse de fallas.
+
+[.center.iasc-image]
+image::distribucion/bft-pbft.svg[Flujo simplificado de una operación en PBFT, width=760]
+
+La regla `3f + 1` es propia de determinados modelos clásicos de tolerancia bizantina, y no debe tomarse como una receta independiente del protocolo. Cambiar las suposiciones sobre autenticación, sincronía, topología o fallas puede cambiar las cantidades necesarias y las garantías obtenidas.
+
+== PBFT en una operación normal
+
+PBFT organiza las réplicas en *vistas* (*views*). En cada vista hay una réplica primaria que propone el orden y varias réplicas de respaldo que verifican la propuesta. La primaria no puede imponer una decisión por sí sola: las otras réplicas comprueban los mensajes y participan en las fases de acuerdo.
+
+En una versión simplificada del recorrido:
+
+. Un cliente envía una solicitud de operación al servicio.
+. La réplica primaria propone la solicitud con un número de secuencia, que fija su posición en el orden de ejecución.
+. Las réplicas intercambian mensajes de *prepare* para comprobar que las correctas vieron la misma propuesta para esa vista y posición.
+. Luego intercambian mensajes de *commit*. Al reunirse el quórum requerido, la operación queda comprometida y las réplicas correctas la ejecutan en el mismo orden.
+. El cliente espera respuestas coincidentes de varias réplicas correctas antes de aceptar el resultado. En PBFT, espera `f + 1` respuestas iguales: como solo `f` réplicas pueden ser bizantinas, al menos una de esas respuestas proviene de una réplica correcta.
+
+La secuencia suele describirse como *request, pre-prepare, prepare, commit, reply*. Es una simplificación didáctica: la implementación completa también debe manejar duplicados, solicitudes retransmitidas, números de secuencia, puntos de control, recuperación de estado y cambios de vista.
+
+== Si la primaria falla o miente
+
+Una primaria bizantina puede dejar de proponer operaciones, proponer órdenes distintas a diferentes réplicas o enviar mensajes inválidos. Las réplicas correctas validan las propuestas y no aceptan cualquier mensaje solo porque lo envió la primaria. Si no se logra progreso —por ejemplo, vence el timeout de una solicitud— las réplicas pueden iniciar un *cambio de vista* y elegir otra primaria.
+
+El timeout sirve para iniciar la recuperación, no para demostrar que la primaria es maliciosa o que cayó. Tal vez está lenta o la red está demorada. Por eso el protocolo debe preservar la seguridad durante el cambio de vista: la nueva primaria recopila evidencia del trabajo previo para no olvidar una operación que ya pudo haber sido comprometida.
+
+Este mecanismo muestra la diferencia entre seguridad y vivacidad. Una demora puede hacer que el sistema deje de progresar por un tiempo; no debería hacer que las réplicas correctas confirmen dos historias incompatibles. El nuevo líder permite reanudar el progreso cuando las condiciones de comunicación lo permiten.
+
+== Autenticación: quién envió un mensaje
+
+Un protocolo BFT necesita que los participantes puedan verificar de quién provienen los mensajes y que no fueron alterados en tránsito. PBFT usa autenticación entre réplicas y resúmenes criptográficos para validar el contenido intercambiado. Las técnicas exactas varían según la implementación; pueden usarse códigos de autenticación de mensajes o firmas digitales.
+
+La autenticación no hace que un nodo sea honesto. Sirve para atribuir un mensaje a una identidad y detectar modificaciones o suplantaciones según las claves y el modelo criptográfico. Si una réplica autorizada es bizantina, puede mentir usando su propia identidad; la tolerancia proviene del protocolo y de los quórums, no de asumir que toda firma contiene la verdad.
+
+== Costos y límites prácticos
+
+PBFT mostró que la tolerancia bizantina podía implementarse en servicios prácticos, pero requiere más comunicación y trabajo que replicar una sola máquina confiable. En su recorrido clásico, varias fases intercambian mensajes entre réplicas, lo que aumenta el tráfico al crecer el grupo. El paper original describe optimizaciones, entre ellas el uso de MACs y la ejecución por lotes de solicitudes, y presenta una implementación de NFS tolerante a fallas bizantinas <<CastroLiskov1999>>.
+
+Al evaluar un protocolo o una biblioteca BFT, conviene identificar:
+
+* cuántas réplicas y qué proporción de fallas puede tolerar;
+* si contempla fallas bizantinas, caídas simples o ambas;
+* qué supuestos hace sobre la red para la seguridad y cuáles para el progreso;
+* cómo autentica a clientes y réplicas, rota claves y evita la repetición de mensajes;
+* qué sucede al cambiar de líder, recuperarse de una caída o superar el límite de fallas;
+* qué latencia, tráfico, almacenamiento y operación administrativa agrega.
+
+Los protocolos de consenso tolerantes a fallas por caída, como los diseñados para asumir que los procesos se detienen pero no mienten, no se vuelven BFT por el solo hecho de usar quórums. El modelo de falla es distinto y el protocolo debe contemplar explícitamente las propuestas contradictorias.
+
+== Relación con los problemas de los generales
+
+El problema de los generales bizantinos plantea qué significa acordar cuando algunos participantes pueden comportarse arbitrariamente. Un protocolo BFT convierte esa pregunta en un procedimiento concreto: define réplicas, mensajes, quórums, reglas de validación y recuperación.
+
+El problema de los dos generales, en cambio, trata la imposibilidad de obtener certeza común con mensajes que pueden perderse sin límite. Los protocolos BFT prácticos no eliminan la incertidumbre de la red: declaran supuestos bajo los que preservan seguridad y bajo los que pueden progresar. Para distinguir ambos modelos y revisar el límite clásico de `3f + 1`, véase la página sobre https://arquitecturas-concurrentes.github.io/iasc-book/dos_generales/[los dos generales y los generales bizantinos].
+
+[bibliography]
+== Referencias
+
+* [[[CastroLiskov1999]]] CASTRO, Miguel y LISKOV, Barbara. «Practical Byzantine Fault Tolerance». *Proceedings of the Third Symposium on Operating Systems Design and Implementation (OSDI)*, 1999. https://www.usenix.org/conference/osdi-99/practical-byzantine-fault-tolerance[USENIX].
+* [[[LamportShostakPease1982]]] LAMPORT, Leslie; SHOSTAK, Robert; y PEASE, Marshall. «The Byzantine Generals Problem». *ACM Transactions on Programming Languages and Systems*, 4(3), 1982, pp. 382–401. https://doi.org/10.1145/357172.357176[DOI].

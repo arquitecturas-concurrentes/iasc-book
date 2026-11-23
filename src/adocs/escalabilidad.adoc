@@ -1,0 +1,102 @@
+= Escalabilidad: crecer en los ejes X, Y y Z
+
+Escalar un sistema significa aumentar su capacidad para atender carga o almacenar datos. La estrategia depende del cuello de botella: cómputo, memoria, base de datos, tráfico de red o una funcionalidad que concentra muchas solicitudes. No hay una forma de escalar que mejore por sí sola el costo, la disponibilidad y el rendimiento en todos los casos.
+
+Esta página reúne dos enfoques básicos —escalar vertical y horizontalmente— y el modelo de cubo que organiza algunas estrategias horizontales en ejes X, Y y Z. Para el concepto de sistema distribuido y sus costos, véase la https://arquitecturas-concurrentes.github.io/iasc-book/distribucion/[introducción a sistemas distribuidos].
+
+== Escala vertical: aumentar los recursos
+
+Escalar verticalmente (*scale up*) consiste en asignarle más recursos a un nodo existente, por ejemplo, más CPU, memoria o almacenamiento.
+
+[.center.iasc-image]
+image::distribucion/image6.png[Representación de escala vertical]
+
+Puede ser la opción más sencilla cuando el software ya está preparado para usar los recursos adicionales y no se quiere introducir coordinación entre réplicas. Sin embargo, cada máquina tiene un límite, y los equipos de mayor capacidad pueden ser más costosos. También puede ser necesario reiniciar o migrar el servicio al modificar la infraestructura; que haya una interrupción depende de la plataforma y de cómo se haga el cambio.
+
+Escalar verticalmente no elimina necesariamente un punto único de falla: si el nodo que contiene la aplicación o sus datos deja de funcionar, las operaciones que dependen de él pueden dejar de estar disponibles.
+
+== Escala horizontal: sumar nodos
+
+Escalar horizontalmente (*scale out*) consiste en agregar más nodos. Para aprovecharlos, hay que decidir qué trabajo realiza cada uno y cómo se distribuyen las solicitudes y el estado.
+
+[.center.iasc-image]
+image::distribucion/image12.png[Representación de escala horizontal]
+
+Una aplicación puede replicarse en varias instancias y compartir una base de datos; o puede distribuir su aplicación y sus datos de otra manera. En el primer caso, agregar servidores de aplicación no elimina por sí solo el cuello de botella de la base de datos compartida.
+
+[.center.iasc-image]
+image::distribucion/image7.png[Dos alternativas para distribuir aplicación y datos]
+
+Tener varias copias puede permitir que el sistema continúe ante la falla de una instancia, pero no lo garantiza automáticamente. Hay que detectar la falla, retirar o sustituir el nodo, manejar las solicitudes en curso y determinar qué pasa con los datos que la instancia mantenía localmente. La redundancia solo mejora la disponibilidad cuando el sistema puede usar las copias y conservar las garantías requeridas.
+
+=== Balancear solicitudes
+
+Un balanceador dirige solicitudes hacia diferentes nodos de aplicación. Puede usar un reparto simple, como *round robin*, o considerar señales como carga y salud de las instancias.
+
+[.center.iasc-image]
+image::distribucion/image13.png[Distribución de solicitudes mediante un balanceador]
+
+El balanceador debe evitar enviar nuevas solicitudes a instancias que no puedan atenderlas y permitir la recuperación cuando vuelvan a estar disponibles. La distribución puede ser desigual si las solicitudes tienen costos diferentes; por eso el algoritmo de reparto no necesariamente resulta «equitativo» en términos de trabajo.
+
+== El cubo de escalabilidad
+
+El modelo del cubo de escalabilidad presenta tres ejes que se pueden combinar. No es una receta ni una secuencia obligatoria: ayuda a reconocer qué se replica o se divide.
+
+[.center.iasc-image]
+image::distribucion/image9.png[Cubo de escalabilidad y sus ejes X, Y y Z]
+
+=== Eje X: clonar instancias
+
+En el eje X se ejecutan varias copias de una aplicación que ofrecen la misma funcionalidad. Un balanceador reparte las solicitudes entre ellas. Es una forma directa de repartir carga de cómputo, pero requiere decidir cómo comparten o replican el estado.
+
+Si las instancias acceden a una base de datos común, esa base puede convertirse en el próximo cuello de botella. Si cada una guarda su propia copia modificable de los datos, aparecen problemas de coordinación y consistencia. El estado local no compartido —por ejemplo, una sesión guardada solo en memoria de una instancia— también puede causar errores cuando una solicitud siguiente llega a otra copia.
+
+=== Eje Y: dividir responsabilidades
+
+En el eje Y se divide la aplicación en componentes que se ocupan de responsabilidades diferentes. Estos límites pueden seguir capacidades funcionales —como usuarios, catálogo o autenticación— o partes del dominio —como ventas o atención al cliente—.
+
+[.center.iasc-image]
+image::distribucion/image8.png[Descomposición funcional del sistema en el eje Y]
+
+Esta descomposición permite que cada componente evolucione o escale de forma independiente, si su carga y sus dependencias lo permiten. Pero introduce llamadas remotas, contratos entre servicios, observabilidad y despliegues coordinados o compatibles. Separar el código en servicios no garantiza por sí solo que el dominio esté bien dividido ni que la operación sea más sencilla.
+
+=== Eje Z: particionar datos o solicitudes
+
+En el eje Z, los datos o las solicitudes se reparten entre grupos de nodos según una clave o criterio. Esta técnica suele llamarse *sharding* o particionamiento horizontal. Por ejemplo, los registros podrían distribuirse por rango de identificadores o por región.
+
+[.center.iasc-image]
+image::distribucion/image4.png[Ejemplo de particionamiento de datos por rangos]
+
+El sistema necesita determinar qué partición contiene cada dato y dirigir allí las operaciones. Una buena clave reparte la carga; una clave mal elegida puede generar una partición caliente que reciba una proporción excesiva de solicitudes. Cambiar la cantidad o distribución de particiones puede requerir mover datos.
+
+Particionar no es lo mismo que replicar. Al particionar, cada nodo almacena una parte del conjunto; al replicar, varios nodos guardan copias de los mismos datos, total o parcialmente. Una arquitectura puede combinar ambas estrategias. Para profundizar, véanse las páginas sobre https://arquitecturas-concurrentes.github.io/iasc-book/particionamiento/[particionamiento] y https://arquitecturas-concurrentes.github.io/iasc-book/replicacion/[replicación].
+
+== Combinar estrategias
+
+Los ejes pueden combinarse. Por ejemplo, se pueden dividir las responsabilidades en servicios (Y), ejecutar varias réplicas de cada servicio (X) y particionar los datos de un servicio concreto (Z).
+
+[.center.iasc-image]
+image::distribucion/image5.png[Ejemplo de combinación de los ejes de escalabilidad]
+
+Cada combinación agrega sus propios mecanismos: descubrimiento y balanceo, particionado y enrutamiento, replicación, coordinación entre servicios y manejo de fallas. Es importante escalar la parte que limita la capacidad y revisar cómo se propaga el cuello de botella al resto del sistema.
+
+== Sesiones y estado de usuario
+
+Supongamos que una persona inicia sesión en una instancia, que guarda el estado de autenticación en memoria local. Si la siguiente solicitud llega a otra instancia, esta puede no reconocer la sesión.
+
+[.center.iasc-image]
+image::distribucion/image10.png[Una sesión de usuario asociada a una instancia]
+
+Algunas opciones para manejarlo son:
+
+* *Estado compartido:* guardar la sesión en un almacenamiento accesible por las instancias. Ese almacenamiento pasa a ser una dependencia que también requiere disponibilidad, capacidad y una política de consistencia adecuada.
+* *Sesiones sin estado en la aplicación:* llevar un token verificable en cada solicitud. Hay que protegerlo, definir su vencimiento y considerar cómo revocar o actualizar permisos; no equivale a guardar cualquier dato sensible en el cliente.
+* *Afinidad de sesión* (*sticky sessions*): intentar enviar las solicitudes de una persona a la misma instancia. Puede reducir accesos a un almacén compartido, pero no replica el estado ni garantiza continuidad si esa instancia falla.
+
+La elección depende de qué información contiene la sesión, cuánto debe durar y qué comportamiento se espera ante el reinicio o la pérdida de un nodo.
+
+== Para seguir pensando
+
+Antes de elegir una estrategia de escalado, conviene identificar el cuello de botella con mediciones y formular el objetivo: ¿más solicitudes por segundo, menor latencia, continuidad ante fallas o crecimiento del conjunto de datos? Luego hay que evaluar el costo de estado, coordinación y operación que introduce la solución.
+
+https://www.youtube.com/watch?v=PE4gwstWhmc[How We've Scaled Dropbox]

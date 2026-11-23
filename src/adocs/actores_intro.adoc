@@ -1,44 +1,95 @@
-[abstract]
-  Esta seccion se cambiara pronto, y por ahora solo es una mera introduccion a los actores, sin entrar en detalle en Elixir.
-
 == Introducción
 
-El modelo de Actores, como vimos, tiene muchas similitudes al paradigma de objetos aunque con algunas diferencias. El modelo de actores en si se define como uno que puede lidiar con computaciones concurrentes, por lo que hay algunas reglas en cómo deben ser modelados estos componentes, su comportamiento e interacción.
-El modelo de actores tiene su unidad de computación más primitiva que es un actor, y que es una computación que recibe un mensaje y hace un procesamiento en base a eso, tambien ademas de recibir mensajes, puede enviar mensajes, tiene una identidad, que es mediante un id único en el sistema. Si empezamos a ver que un actor posee identidad, y envío/recepción de mensajes, uno pensaría que es bastante similar a la de un objeto, o no?. Bueno también un actor, cuando recibe un mensaje, hace algo dependiendo del mensaje que recibe ( similar a cuando llamamos a un método determinado a un objeto). Existen diferencias entre actores y objetos, y la más notoria es que en un modelo de objetos, varios objetos se ejecutan en una unidad de procesamiento (proceso o thread) y comparten recursos como memoria, esto no es lo mismo en el paradigma de actores en el que los actores son en realidad un contexto de ejecución y están completamente aislados uno de otros y nunca van a compartir memorias u otros recursos. También se debe aclarar que un actor puede mantener un estado privado y que este no puede ser cambiado directamente por otro actor (encapsulamiento). En el modelo de actores, nuestro sistema tiene que estar diagramado en actores y todo es un actor, y tienen que tener direcciones siempre, y esta dirección es lo que hablábamos antes que era el identificador en el ecosistema.
+El *modelo de actores* es un modelo de computación concurrente que describe un sistema como un conjunto de entidades autónomas —los *actores*— que interactúan mediante el envío de mensajes. Fue propuesto como un formalismo para razonar sobre computaciones concurrentes y, con el tiempo, se convirtió también en una influencia importante para el diseño de lenguajes y sistemas distribuidos <<HewittBishopSteiger1973>> <<Agha1986>>.
 
-Los Actores además tienen un mailbox (buzón), en donde van a poder recibir los mensajes de otros actores, y por qué es esto? Bueno porque el envío de mensajes entre actores es asincrónico, por lo cual nunca se sabe exactamente cuando un actor recibe un mensaje, y el modelo elige este modelo de envío de mensajes, ya que al ser una unidad de ejecucion tambien, si se hacen llamadas sincrónicas, el proceso se quedara esperando a una respuesta que puede tal vez nunca llegar o demorar mucho más tiempo, quedando este proceso bloqueado mientras tanto y no dejando de que se pueda ejecutar otro actor que tal vez puede procesar algo. Al poder un actor recibir más de un mensaje en poco tiempo, y al procesar estos de a uno, si se recibe otro mensaje, el actor no lo puede recibir y procesar inmediatamente, por lo que estos mensajes que por el momento el actor no puede procesar quedan encolados en el buzón.
-También estos escenarios suceden al tener múltiples actores que pueden ejecutarse al mismo tiempo, aunque un actor puede procesar un mensaje al mismo tiempo por lo que de nuevo, si un actor recibe al mismo tiempo 3 mensajes, va a ejecutar uno solo a la vez y por lo tanto hay que mantener un estado de que después hay dos mensajes más por ser procesados, esta es la razón de que los actores tengan un buzón. Si queremos que se ejecuten concurrentemente 3 mensajes, deberemos tener 3 actores y que se le envie un mensaje a cada uno.
+Esta introducción presenta sus conceptos generales y luego los relaciona con los procesos de Erlang/Elixir. Conviene distinguir ambos niveles: el modelo es una abstracción de computación, mientras que los procesos de una máquina virtual concreta son una implementación con decisiones y garantías propias.
+
+== El actor y su comportamiento
+
+Un actor combina una identidad con un comportamiento. Su identidad permite que otros actores lo designen como destinatario de mensajes; su comportamiento determina cómo procesa los mensajes que recibe. En las formulaciones clásicas, al procesar un mensaje un actor puede:
+
+* enviar mensajes a otros actores;
+* crear nuevos actores;
+* definir el comportamiento que tendrá al procesar mensajes futuros.
+
+El actor también puede mantener estado. Ese estado es privado: otros actores no lo modifican directamente, sino que solicitan cambios mediante mensajes. De este modo, el comportamiento de un actor puede actualizar su propio estado en respuesta a los mensajes que procesa. Este principio se parece al encapsulamiento de la programación orientada a objetos, pero la interacción no consiste en invocar directamente un método sobre un objeto compartido: el emisor envía un mensaje y el receptor decide cuándo y cómo atenderlo.
 
 [.center.iasc-image]
 image::actors.png[]
 
-== Que pueden hacer los actores
+La identidad no debe confundirse necesariamente con una dirección física ni con un identificador global. La forma de nombrar y localizar actores depende del sistema: por ejemplo, Erlang usa identificadores de proceso (PID) para dirigir mensajes a procesos locales o remotos. Tampoco es necesario que cada actor corresponda a un hilo del sistema operativo; esa decisión pertenece a la implementación.
 
-* Enviar y procesar mensajes de otros actores
-* Crear mas actores
-* ejecutar otro código después de procesar un mensaje.
+== Mensajes, buzones y concurrencia
 
-Mencionamos que los actores son también una abstracción que tiene un contexto de ejecución propio, quien se encarga entonces de ejecutar a los actores. En la VM de Erlang/Elixir, existe algo llamado Scheduler, que se encarga de la coordinación de los actores y de la ejecución sobre un procesador del actor. http://erlang.org/pipermail/erlang-questions/2001-April/003132.html[Mas sobre el scheduler de BEAM]
+En el modelo, el envío de mensajes es asincrónico: el emisor puede continuar sin esperar a que el destinatario procese el mensaje. El mensaje establece una forma de comunicación entre unidades independientes, sin compartir directamente el estado privado del receptor. Si una interacción requiere una respuesta, puede construirse un protocolo de solicitud y respuesta: el emisor envía una solicitud y, más adelante, recibe otro mensaje con el resultado. Que una API presente esa interacción como una llamada sincrónica no significa que el modelo subyacente haya dejado de usar mensajes.
 
-Que pasa cuando un actor no tiene ningun mensaje mas para procesar? El mismo muere. El ciclo de vida de un actor es relativamente corto y está pensado para que realice una acción en particular, reciba, envíe mensajes y cree otros actores, pero cuando deja de tener acciones futuras a realizar el mismo muere. Cómo podemos evitar que esto suceda? Bueno si queremos que un actor pueda quedar vivo, esperando a que reciba un mensaje eventualmente, podemos tan solo hacer eso llamándose a sí mismo y haciendo eso. Podemos ver un ejemplo https://github.com/arquitecturas-concurrentes/iasc-actors-intro-elixir/blob/master/elixir/intro_actors/lib/intro_actors.ex[aquí]
+Una implementación habitual mantiene para cada actor un *buzón* (mailbox), donde se almacenan los mensajes pendientes. Cuando llegan mensajes más rápido de lo que el actor puede procesarlos, estos se acumulan; el actor los atiende de acuerdo con las reglas de su implementación. Por ejemplo, los procesos de Erlang extraen mensajes de una cola mediante `receive` y pueden seleccionar un mensaje que coincida con ciertos patrones. Por eso, no se debe asumir que todos los modelos implementan los buzones exactamente igual ni que todo mensaje se procesa inmediatamente.
 
-Otro tema importante es que un actor no tiene métodos como los objetos, y el comportamiento de esta última está provista por las clases siempre. En Elixir/Erlang, existe algo más o menos similar que son los módulos, que podemos definir funciones que podemos pasarlas al actor para que las ejecute, es importante la siguiente línea del ejemplo anterior
+En una implementación que procesa un mensaje por vez para cada actor, ese actor no ejecuta simultáneamente dos cambios sobre su estado privado. Sin embargo, distintos actores sí pueden avanzar concurrentemente y, si la plataforma dispone de varios núcleos, en paralelo. Esta separación permite razonar sobre el estado local sin un bloqueo compartido por cada acceso, pero no elimina los problemas de coordinación: los actores todavía deben definir protocolos, manejar mensajes pendientes y decidir qué hacer ante demoras o fallas.
 
-[,elixir]
+El envío asincrónico tampoco garantiza por sí solo entrega exactamente una vez, orden global, ausencia de fallas ni capacidad ilimitada del buzón. Esas propiedades dependen del entorno y del protocolo. Si un actor recibe trabajo más rápido de lo que puede completarlo, el crecimiento de su buzón puede aumentar el uso de memoria y la latencia; por ello, los sistemas reales necesitan considerar límites de carga y estrategias de control de flujo.
+
+== Diseñar protocolos entre actores
+
+Un sistema de actores no se define solo por la cantidad de procesos que crea, sino también por los *protocolos* que esos procesos acuerdan. Un protocolo especifica qué mensajes son válidos, qué significan, qué respuestas pueden esperarse y qué transiciones de estado produce cada mensaje. Por ejemplo, un actor que representa una cuenta podría aceptar solicitudes `depositar` y `consultar`; una solicitud de depósito debería definir qué ocurre ante un monto inválido y si el emisor recibe una confirmación.
+
+Al diseñar estos intercambios conviene precisar:
+
+* *Quién inicia y quién responde:* indicar los destinatarios y, si habrá respuesta, cómo se identifica a quien la solicitó.
+* *Qué representa cada mensaje:* definir su estructura y significado, evitando que el emisor y el receptor interpreten de manera distinta los mismos datos.
+* *Qué sucede ante demoras:* establecer si se espera una respuesta, durante cuánto tiempo y qué significa que no llegue. Un timeout indica que la respuesta no se observó a tiempo; no demuestra que la operación no se haya ejecutado.
+* *Qué ocurre ante reintentos:* si una solicitud puede repetirse, definir si debe ser idempotente o incluir un identificador que permita reconocer duplicados. De lo contrario, reintentar un depósito, por ejemplo, podría aplicarlo dos veces.
+* *Cómo se gestionan mensajes inesperados y carga:* definir el tratamiento de mensajes no reconocidos, el crecimiento del buzón y la forma de limitar o regular el ritmo de producción.
+
+Estas decisiones son parte del diseño de la aplicación, no consecuencias automáticas de usar actores. En sistemas distribuidos, además, el intercambio puede involucrar fallas de red y nodos inaccesibles; por ello, una respuesta ausente no permite concluir con certeza qué ocurrió en el receptor.
+
+=== Ejemplo: contador con estado privado
+
+El siguiente ejemplo crea un proceso que conserva un contador. El emisor solicita incrementarlo y envía su propio PID para recibir una respuesta:
+
+[source,elixir]
 ----
-spawn(fn -> loop end)
+counter = fn
+  loop, value ->
+    receive do
+      {:increment, from} ->
+        next_value = value + 1
+        send(from, {:value, next_value})
+        loop.(loop, next_value)
+    end
+end
+
+pid = spawn(fn -> counter.(counter, 0) end)
+send(pid, {:increment, self()})
+
+receive do
+  {:value, value} -> value
+end
 ----
 
-Spawn es la primitiva para crear un actor, y se le puede pasar una función que sea un loop que se llame a sí mismo y de acuerdo al mensaje que reciba realizará una acción. Esta es la manera más simple de que un actor quede vivo después de procesar los mensajes que tiene en el mailbox.
+El estado `value` pertenece al proceso del contador: quien envía el mensaje no lo modifica directamente. Cada mensaje `{:increment, from}` produce una transición al estado siguiente y una respuesta `{:value, next_value}`. La recursión hace que el proceso vuelva a esperar mensajes después de atender uno; en este ejemplo no se manejan mensajes inválidos, timeouts ni terminación, simplificaciones que deben revisarse en una aplicación real. Para programas Elixir de producción, normalmente se prefieren abstracciones de OTP como `GenServer` y supervisores, que estandarizan el ciclo de vida y el manejo de fallas.
 
-Hay otra librería que nos ayuda mucho a no tener que preocuparnos por esto que es OTP, que nos va a ayudar a modelar, mediante módulos que son más bien recurrentes, diferente tipos de actores que harán distintas acciones puntuales que nos van a ayudar bastante a que nos centremos más en el dominio de nuestra aplicación.
+== El modelo de actores en Erlang y Elixir
 
-Que pasa si un actor falla por alguna razón? Bueno el mismo muere y hay que volver a crearlo y si recibió un mensaje en particular hay que enviarselo de nuevo, hay maneras de que podamos evitar esto mediante catcheo de excepciones, aunque puede ser a veces que pueda morir por otras razones, con lo cual a veces es mejor dejar de morir un actor solo... Entonces que hago para poder volver a levantar un actor que se murió sin que tenga que hacerlo uno a mano? Hay un módulo de OTP que veremos en la próxima sección que nos ayuda con este tema y son los supervisores.
+Erlang y Elixir ofrecen procesos ligeros que comparten varias propiedades con los actores: tienen identificadores, reciben mensajes en buzones, mantienen estado local y se ejecutan sin compartir directamente su memoria con otros procesos. El envío normal de mensajes no transfiere el control al proceso receptor ni espera a que este termine su trabajo. La documentación de Erlang describe los procesos como unidades ligeras de ejecución y detalla su creación, comunicación y terminación <<ErlangProcesses>>.
 
-Más info sobre errores en el ecosistema de Erlang/Elixir https://learnyousomeerlang.com/errors-and-exceptions#not-so-fast[aqui]
+En BEAM, los procesos no son equivalentes a hilos del sistema operativo. Los *schedulers* de la máquina virtual distribuyen el trabajo de muchos procesos sobre los recursos disponibles; por lo tanto, crear un proceso no implica reservar un hilo del sistema operativo exclusivamente para él. Esta implementación permite manejar un gran número de procesos concurrentes, aunque el paralelismo efectivo depende de la configuración y los recursos de ejecución.
 
-Adicional:
+La correspondencia con el modelo de actores es útil, pero no debe tomarse como identidad perfecta entre teoría e implementación. Erlang/Elixir proporcionan mecanismos y convenciones concretos —como PID, `send`, `receive`, `spawn` y las abstracciones de OTP— cuyas garantías deben consultarse en su documentación. En particular, el envío asincrónico es distinto de una llamada sincrónica de `GenServer`, que construye un protocolo de solicitud y respuesta sobre la comunicación entre procesos.
 
-Leer principalmente la primera parte que describe brevemente el paradigma de actores junto con actores en Erlang y el scheduling en Erlang.
+Un proceso Erlang no termina simplemente porque su buzón quede vacío. Si su código llega al final, termina; si espera un mensaje en un `receive`, puede permanecer bloqueado a la espera de que llegue uno; también puede terminar por un error o por una señal de salida. Para mantener un proceso que atienda mensajes repetidamente, su comportamiento suele volver a esperar después de procesar cada mensaje. El diseño de ese ciclo y la recuperación ante fallas se desarrollan en las secciones sobre OTP y supervisión.
 
-https://rocketeer.be/articles/concurrency-in-erlang-scala/
+La concurrencia también plantea una cuestión de *orden*. No existe un orden global automático entre mensajes que provienen de actores distintos: si dos emisores envían mensajes al mismo destinatario, el resultado observable depende de cómo y cuándo lleguen y sean procesados. Cuando el orden importa, el protocolo debe expresarlo, por ejemplo, mediante secuencias, dependencias o una autoridad que coordine las operaciones. Las garantías concretas de orden entre procesos dependen de la plataforma y del tipo de comunicación; no deben suponerse a partir de la sola palabra «actor».
+
+Por último, aislamiento no significa que una falla sea irrelevante para el resto del sistema. Un proceso puede fallar sin propagar una excepción por la pila de llamadas de otro proceso, pero otros actores pueden depender de sus respuestas o recibir señales de terminación según cómo estén vinculados y supervisados. En OTP, la estrategia usual es organizar procesos en árboles de supervisión para decidir cómo recuperarse ante fallas, en lugar de tratar cada proceso como una unidad sin relaciones.
+
+Para ver un ejemplo concreto de creación y comunicación entre procesos en Elixir, puede consultarse el https://github.com/arquitecturas-concurrentes/iasc-actors-intro-elixir/blob/master/intro_actors/lib/intro_actors.ex[ejemplo introductorio]. La documentación oficial de Elixir también presenta los procesos y sus mecanismos de comunicación <<ElixirProcesses>>.
+
+[bibliography]
+== Referencias
+
+* [[[HewittBishopSteiger1973]]] HEWITT, Carl; BISHOP, Peter; STEIGER, Richard. «A Universal Modular ACTOR Formalism for Artificial Intelligence». *Proceedings of the 3rd International Joint Conference on Artificial Intelligence (IJCAI)*, 1973, pp. 235–245.
+* [[[Agha1986]]] AGHA, Gul. *Actors: A Model of Concurrent Computation in Distributed Systems*. Cambridge, MA: MIT Press, 1986.
+* [[[Hewitt2010]]] HEWITT, Carl. «Actor Model of Computation: Scalable Robust Information Systems». *Communications of the ACM*, 53(5), 2010, pp. 74–81. https://doi.org/10.1145/1624775.1624804[DOI].
+* [[[ErlangProcesses]]] ERLANG/OTP. «Processes». *Erlang Reference Manual*. https://www.erlang.org/doc/system/ref_man_processes.html[Documentación oficial].
+* [[[ElixirProcesses]]] ELIXIR. «Process». *Elixir Documentation*. https://hexdocs.pm/elixir/Process.html[Documentación oficial].

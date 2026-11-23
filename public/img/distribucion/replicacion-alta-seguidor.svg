@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="370" viewBox="0 0 920 370" role="img" aria-labelledby="title desc">
+  <title id="title">Poner al día un seguidor nuevo</title>
+  <desc id="desc">El líder toma una instantánea en el punto 120 del log. El seguidor copia ese estado, reproduce las entradas 121 en adelante y se incorpora a las réplicas al alcanzar el estado actual.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52677a"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#357a57"/>
+    </marker>
+  </defs>
+  <rect width="920" height="370" rx="14" fill="#f8fafc"/>
+  <g font-family="Arial, sans-serif" fill="#263746">
+    <text x="460" y="34" text-anchor="middle" font-size="21" font-weight="700">Incorporar un seguidor sin perder cambios concurrentes</text>
+    <text x="65" y="77" font-size="15" font-weight="700">Líder</text>
+    <rect x="140" y="53" width="105" height="42" rx="8" fill="#eaf2fb" stroke="#3570a3" stroke-width="2"/>
+    <text x="192" y="80" text-anchor="middle" font-size="14">snapshot</text>
+    <rect x="270" y="53" width="115" height="42" rx="8" fill="#fff" stroke="#718096" stroke-width="2"/>
+    <text x="327" y="80" text-anchor="middle" font-size="14">121, 122</text>
+    <rect x="410" y="53" width="115" height="42" rx="8" fill="#fff" stroke="#718096" stroke-width="2"/>
+    <text x="467" y="80" text-anchor="middle" font-size="14">123, 124</text>
+    <rect x="550" y="53" width="115" height="42" rx="8" fill="#fff" stroke="#718096" stroke-width="2"/>
+    <text x="607" y="80" text-anchor="middle" font-size="14">125, 126</text>
+    <rect x="690" y="53" width="115" height="42" rx="8" fill="#edf7f0" stroke="#4b8c68" stroke-width="2"/>
+    <text x="747" y="80" text-anchor="middle" font-size="14">estado actual</text>
+    <text x="192" y="113" text-anchor="middle" font-size="12" fill="#52677a">punto 120</text>
+    <line x1="245" y1="74" x2="260" y2="74" stroke="#52677a" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="385" y1="74" x2="400" y2="74" stroke="#52677a" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="525" y1="74" x2="540" y2="74" stroke="#52677a" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="665" y1="74" x2="680" y2="74" stroke="#52677a" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <text x="65" y="183" font-size="15" font-weight="700">Seguidor</text>
+    <rect x="140" y="158" width="105" height="42" rx="8" fill="#eaf2fb" stroke="#3570a3" stroke-width="2"/>
+    <text x="192" y="185" text-anchor="middle" font-size="14">copia snapshot</text>
+    <rect x="270" y="158" width="115" height="42" rx="8" fill="#fff" stroke="#718096" stroke-width="2"/>
+    <text x="327" y="185" text-anchor="middle" font-size="14">aplica 121, 122</text>
+    <rect x="410" y="158" width="115" height="42" rx="8" fill="#fff" stroke="#718096" stroke-width="2"/>
+    <text x="467" y="185" text-anchor="middle" font-size="14">aplica 123, 124</text>
+    <rect x="550" y="158" width="115" height="42" rx="8" fill="#fff" stroke="#718096" stroke-width="2"/>
+    <text x="607" y="185" text-anchor="middle" font-size="14">aplica 125, 126</text>
+    <rect x="690" y="158" width="115" height="42" rx="8" fill="#edf7f0" stroke="#4b8c68" stroke-width="2"/>
+    <text x="747" y="185" text-anchor="middle" font-size="14">al día</text>
+    <line x1="192" y1="95" x2="192" y2="148" stroke="#3570a3" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <text x="210" y="133" font-size="12" fill="#3570a3">transferir</text>
+    <line x1="327" y1="95" x2="327" y2="148" stroke="#357a57" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+    <line x1="467" y1="95" x2="467" y2="148" stroke="#357a57" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+    <line x1="607" y1="95" x2="607" y2="148" stroke="#357a57" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+    <line x1="747" y1="95" x2="747" y2="148" stroke="#357a57" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+
+    <rect x="58" y="241" width="804" height="91" rx="12" fill="#fff" stroke="#d7dee6"/>
+    <text x="82" y="271" font-size="15" font-weight="700">La idea clave</text>
+    <text x="82" y="296" font-size="14">La instantánea fija un punto consistente del estado. El log conserva el puente entre ese punto</text>
+    <text x="82" y="317" font-size="14">y las escrituras que siguen llegando; el seguidor se incorpora al alcanzar el log actual.</text>
+    <text x="460" y="354" text-anchor="middle" font-size="12" fill="#52677a">Secuencia conceptual: los mecanismos concretos dependen del sistema de almacenamiento.</text>
+  </g>
+</svg>

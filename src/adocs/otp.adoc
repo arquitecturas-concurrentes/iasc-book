@@ -1,77 +1,127 @@
-== Modulos de OTP
+== Introducción a OTP
 
-Existen algunos módulos que fuimos viendo, en mayor o menor medida, o que merecen ser mencionados son:
+OTP (Open Telecom Platform) es el conjunto de bibliotecas, herramientas y principios de diseño que acompaña a Erlang/BEAM y que también se usa desde Elixir. No es otro lenguaje ni un único framework: ofrece comportamientos reutilizables para construir procesos, organizar su ciclo de vida y recuperarse ante fallas. En lugar de escribir a mano el bucle de recepción de cada proceso, se puede implementar un comportamiento estándar y dejar que OTP gestione ese bucle.
 
-* GenServer
-* Application
-* Registry
-* Agent
-* Supervisor
-* Genserver (https://hexdocs.pm/elixir/GenServer.html[Genserver Hexdocs])
+En esta clase nos enfocamos en tres abstracciones:
 
-Para una descripcion un poco mas amena de lo que es un Genserver y de lo que hace, junto con ejemplos bastante claros, se puede ver en https://elixir-lang.org/getting-started/mix-otp/genserver.html[hexdocs un poco mas de las especificaciones y temas puntuales de genserver]
+* `GenServer`, para procesos con estado y un protocolo de solicitudes;
+* `Agent`, para mantener estado simple sin escribir callbacks propios;
+* `Task`, para ejecutar trabajo acotado de manera concurrente.
 
-Un servidor OTP es un módulo que nos permite modelar un servidor o un cliente en una comunicación de cliente-servidor, y nos va a poder ayudar a que nuestro proceso pueda recibir tanto llamadas sincronicas como asincrónicas por medio de la convención de OTP.
-En su nivel más básico, un GenServer es un proceso único que ejecuta un bucle que maneja un mensaje por iteración y que siempre devuelve un estado que es el en el que queda el proceso, y también ayuda a modelar, mediante una convención, las distintas respuestas al cliente. También tiene las funciones que nos permiten hacer las llamadas a un servidor Genserver, las llamadas son:
+Estas abstracciones no reemplazan el modelo de actores ni el paso de mensajes. Encapsulan patrones comunes sobre procesos BEAM. `Application`, `Supervisor` y `Registry` completan el contexto de cómo se inicia y organiza una aplicación real.
 
-* Call: Para realizar llamadas sincrónicas a otro proceso Genserver, que requieren una respuesta del servidor, por medio de un handle_call (https://hexdocs.pm/elixir/GenServer.html#call/3[Hexdocs])
-* Cast: Para realizar llamadas asincronicas a otro proceso Genserver, que no necesariamente require una respuesta del servidor, por medio de un handle_cast (https://hexdocs.pm/elixir/GenServer.html#cast/2[Hexdocs])
+== GenServer
 
-Tenemos tipos de mensajes, tanto asincrónicos como sincronicos, los tipos de mensajes que podemos utilizar son para manejar las llamadas:
+`GenServer` es un comportamiento de OTP para implementar un proceso servidor. El módulo define su estado inicial y callbacks que procesan solicitudes; OTP implementa el ciclo de vida y el bucle que recibe mensajes. Por convención, se separa la API pública del módulo —las funciones que usan sus clientes— de los callbacks que ejecuta el proceso servidor.
 
-* Handle_call: Si bien todos los procesos de Elixir el envio de mensajes son asincrónicos, podemos siempre modelar una llamada asincrónica como sincrónica, mediante una espera activa, esperando una respuesta, handle_call nos permite que un proceso Genserver pueda exponer un callback que requiere una respuesta del cliente, por lo que una vez que se procesa este callback, se debe retornar una respuesta o un :reply que está conformado por la tupla {:reply, response, state}. Podemos ver todas la opciones de lo que puede retornar un handle_call (https://hexdocs.pm/elixir/GenServer.html#c:handle_call/3[Hexdocs])
-* Handle_cast: Permite manejar mensajes asincronicos mediate llamadas cast, y que pueden devolver un resultado o no necesariamente. (https://hexdocs.pm/elixir/GenServer.html#c:handle_cast/2[Hexdocs])
-* Handle_info: Permite manejar cualquier otro tipo de mensajes (https://hexdocs.pm/elixir/GenServer.html#c:handle_info/2[Hexdocs]))
+La llamada subyacente entre procesos sigue siendo por mensajes. `GenServer.call/3` implementa un intercambio de solicitud y respuesta: el cliente espera la respuesta o un timeout, mientras el servidor procesa la solicitud en `handle_call/3`. En cambio, `GenServer.cast/2` envía una solicitud asincrónica sin esperar una respuesta; el cliente no obtiene confirmación de que la operación se haya procesado.
 
-== Application (https://hexdocs.pm/elixir/Application.html[Hexdocs])
+* `handle_call/3` devuelve una tupla como `{:reply, respuesta, nuevo_estado}`.
+* `handle_cast/2` devuelve, por ejemplo, `{:noreply, nuevo_estado}`.
+* `handle_info/2` procesa otros mensajes recibidos por el proceso, por ejemplo los enviados con `send/2`.
 
-Este modulo permite modelar procesos que sirvan como un punto de entrada a nuestra aplicacion, sea para inicializar una aplicacion Erlang o de OTP, se puede ver un poco mas de detalle de este modulo en https://elixir-lang.org/getting-started/mix-otp/supervisor-and-application.html#understanding-applications[hexdocs]
+En cada callback se devuelve el estado con el que continuará el servidor. Como un proceso maneja sus callbacks de forma secuencial, el estado no se modifica directamente desde el cliente.
 
-Registry (https://hexdocs.pm/elixir/Registry.html[Hexdocs])
+=== Ejemplo: contador de likes
 
-Son un módulo de OTP que nos permite modelar procesos que nos permiten almacenar valores clave/valor de manera descentralizada. Suelen ser usados para algunas cosas como:
+Este ejemplo sigue el `Post` que usamos en la clase. El servidor mantiene el número de likes; los clientes pueden incrementarlo sin esperar una respuesta y consultar el valor mediante una llamada:
 
-* Dispatching
-* Registro de claves clave/valor
-* Registro de claves pub/sub
+[source,elixir]
+----
+defmodule Post do
+  use GenServer
 
-Después hay una manera de tener un sotre pero a lo largo de la instancia llamado ETS (https://elixir-lang.org/getting-started/mix-otp/ets.html[Hexdocs])
+  def start_link(initial_likes) do
+    GenServer.start_link(__MODULE__, initial_likes, name: __MODULE__)
+  end
 
-Si se quiere tener un proceso que guarde un estado que no sea necesariamente algo del estilo clave/valor, podemos optar por otro tipo de módulo llamado Agent
+  @impl true
+  def init(initial_likes), do: {:ok, initial_likes}
 
-== Agent (https://hexdocs.pm/elixir/Agent.html[Hexdocs])
+  def like, do: GenServer.cast(__MODULE__, :like)
+  def likes, do: GenServer.call(__MODULE__, :get)
 
-El agent es un módulo que nos permite modelar un proceso que permita almacenar un estado, y en general se usa solo para este propósito, obviamente este almacenamiento, tanto los Agent como los Registry, es solo en memoria y no se persiste en disco. Pueden ver el link en el titulo para mayor información, algo interesante para ver es la sección de cómo supervisar un Agent (https://hexdocs.pm/elixir/Agent.html#module-how-to-supervise).
+  @impl true
+  def handle_cast(:like, likes) do
+    {:noreply, likes + 1}
+  end
 
-== Supervisores (https://hexdocs.pm/elixir/Supervisor.html[Hexdocs])
+  @impl true
+  def handle_call(:get, _from, likes) do
+    {:reply, likes, likes}
+  end
+end
+----
 
-Un supervisor es un proceso que supervisa otros procesos, a los que nos referimos como procesos secundarios. Los supervisores se utilizan para construir una estructura de proceso jerárquica denominada árbol de supervisión. Los árboles de supervisión proporcionan tolerancia a fallos y resumen cómo se inician y se cierran nuestras aplicaciones. Por lo que podemos reiniciar una lista de procesos por medio de un supervisor en caso de que alguno de esos procesos se caiga, sea por un error o no..
+`start_link/1` inicia el proceso vinculado al proceso que lo inicia y lo registra localmente con el nombre `Post`. `init/1` establece el estado inicial. `like/0` envía un cast y retorna sin esperar que el contador se actualice; `likes/0` hace un call y devuelve el valor procesado por el servidor. En una aplicación, normalmente el proceso se inicia como hijo de un supervisor.
 
-Se tiene que tener varias cosas en cuentas sobre un esquema de supervisión...
+Más información: https://hexdocs.pm/elixir/GenServer.html[documentación de GenServer] y https://elixir-lang.org/getting-started/mix-otp/genserver.html[guía de GenServer].
 
-La especificación de los hijos o procesos que serán especificados
+== Agent
 
-https://hexdocs.pm/elixir/Supervisor.html#module-child-specification[Documentacion de la especificacion]
+`Agent` es una abstracción más directa para un proceso cuyo propósito principal es mantener estado. El estado permanece encapsulado en el proceso y se consulta o actualiza mediante funciones como `Agent.get/3` y `Agent.update/3`. Conviene cuando la lógica de transición es sencilla; si el proceso necesita un protocolo más elaborado, callbacks específicos o manejar varios tipos de mensajes, `GenServer` suele ser más apropiado.
 
-Dos de los argumentos de las especificaciones del child spec son:
+Este ejemplo modela un mapa en memoria y está basado en el `KV.Agent` de la clase:
 
-el valor de https://hexdocs.pm/elixir/Supervisor.html#module-shutdown-values-shutdown[shutdown], que es la estrategia de cómo se debería cerrar o matar el proceso, cuando falla o se cae.
+[source,elixir]
+----
+defmodule KV.Agent do
+  def start_link do
+    Agent.start_link(fn -> %{} end)
+  end
 
-Y más importante es la del https://hexdocs.pm/elixir/Supervisor.html#module-restart-values-restart[valor de reinicio de un proceso supervisado]
+  def get(agent, key) do
+    Agent.get(agent, &Map.get(&1, key))
+  end
 
-=== Como se define un Supervisor?
+  def put(agent, key, value) do
+    Agent.update(agent, &Map.put(&1, key, value))
+  end
+end
 
-Mediante un modulo generalmente (https://hexdocs.pm/elixir/Supervisor.html#module-restart-values-restart[Hexdocs])
+{:ok, pid} = KV.Agent.start_link()
+KV.Agent.put(pid, :hello, :world)
+KV.Agent.get(pid, :hello)
+# :world
+----
 
-Ahora el supervisor recibe además de un child_spec una https://hexdocs.pm/elixir/Supervisor.html#module-start_link-2-init-2-and-strategies[estrategia de supervisión], que será la acción que tomará un supervisor cuando se caen los procesos supervisados.
+El estado de un `Agent` vive en memoria: no se persiste automáticamente en disco. Si el proceso termina y se reinicia, vuelve al estado que indique su inicialización, salvo que la aplicación recupere el estado desde otro lugar. Un Agent también puede ser iniciado y supervisado como hijo de un supervisor.
 
-En el child spec siempre vamos no solo a poder supervisar procesos que son hojas, o sea procesos que van a tener lógica de un sistema, o de nuestra aplicación, o pueden ser otros nodos que pueden ser no terminales, o sea, supervisores, por lo que podemos armar un árbol de supervisión de esta manera.
+Más información: https://hexdocs.pm/elixir/Agent.html[documentación de Agent].
 
-Hay otras estrategias deprecadas, tales como las :simple_one_for_one, que hoy fueron reemplazadas por otro tipo de supervisores, esto es porque los Supervisor son para modelar procesos que son supervisores estáticos, o sea que una vez inicializado no se pueden agregar procesos supervisados, por lo que al ser estático, si se quieren hacer cambios, se debe cambiar el childspec, levantar de nuevo la aplicación y volver a inicializar el supervisor.
+== Task
 
-El otro tipo de supervisores que hoy existe en Elixir y que nos permite inicializar dinámicamente procesos supervisados son los Supervisores dinámicos
+`Task` representa trabajo que se ejecuta concurrentemente y tiene un principio y un fin; no es una abstracción para almacenar estado de largo plazo. Para obtener un resultado, `Task.async/1` inicia la tarea y `Task.await/2` espera su respuesta:
 
-Esta es la documentación de los hexdocs con algunos puntos bien puntuales sobre los detalles de los https://hexdocs.pm/elixir/DynamicSupervisor.html#content[supervisores dinamicos]
-Esta es la documentación un poco más https://elixir-lang.org/getting-started/mix-otp/dynamic-supervisor.html[descriptiva de los supervisores dinamicos]
+[source,elixir]
+----
+task = Task.async(fn -> Enum.sum(1..10) end)
+Task.await(task)
+# 55
+----
 
-Recuerden bien que un supervisor no restaura ni guarda el estado del actor supervisado, una vez que muere, si este es reiniciado, vuelve a ser inicializado con el estado inicial, y si tenía un estado distinto antes de su muerte, este se pierde definitivamente, por lo que a veces es bueno tal vez o bien persistirlo o si es algo importante tenerlo en otro actor como puede ser un Agent.
+La espera de `await` ocurre en el proceso cliente; la tarea corre en otro proceso. `Task.start/1` inicia trabajo asincrónico sin recolectar un resultado mediante `await`. Cuando una tarea debe formar parte del ciclo de vida de una aplicación, `Task.start_link/1` o una especificación de hijo de `Task` permiten vincularla al proceso iniciador o iniciarla bajo supervisión, según el caso. Las tareas vinculadas propagan señales de salida de acuerdo con las reglas de links; para aislar y controlar fallas en aplicaciones, se debe elegir conscientemente la estrategia de inicio y supervisión.
+
+En el proyecto de la clase, `IASC.WriteHaiku` usa una tarea para escribir o leer un archivo. Es un trabajo finito: una vez terminada la operación, el proceso de la tarea termina. El ejemplo puede consultarse en el https://github.com/arquitecturas-concurrentes/iasc-actors-intro-elixir/blob/master/intro_actors/lib/intro_task.ex[código de Task].
+
+Más información: https://hexdocs.pm/elixir/Task.html[documentación de Task].
+
+== Application, Registry y ETS
+
+`Application` define el punto de entrada para iniciar una aplicación y, habitualmente, su árbol de supervisión. El callback `start/2` de la aplicación inicia el supervisor raíz y sus procesos hijos.
+
+`Registry` permite asociar nombres o claves con procesos y despachar mensajes a esos procesos. No es un almacenamiento persistente de datos de negocio; su uso habitual es localizar procesos dinámicos o implementar patrones de registro y publicación/suscripción.
+
+ETS (Erlang Term Storage) ofrece tablas en memoria para almacenar y consultar datos desde procesos. Su modelo de acceso y ciclo de vida difieren de los de un `Agent`; elegir entre ambos depende de cómo se comparte y consulta el estado.
+
+Más información: https://hexdocs.pm/elixir/Application.html[Application], https://hexdocs.pm/elixir/Registry.html[Registry] y https://elixir-lang.org/getting-started/mix-otp/ets.html[ETS].
+
+== Supervisores
+
+Un supervisor es un proceso OTP que inicia y supervisa procesos hijos de acuerdo con sus especificaciones. Los supervisores pueden organizarse en árboles: la aplicación inicia un supervisor raíz, que a su vez puede iniciar otros supervisores y procesos de trabajo. Así se declara cómo se inician, se detienen y se reinician los componentes cuando fallan.
+
+La estrategia determina qué hijos reiniciar ante una falla. Por ejemplo, `:one_for_one` reinicia solo al hijo que falló, mientras que `:one_for_all` reinicia todos los hijos. Un `DynamicSupervisor` permite iniciar hijos dinámicamente después de que el supervisor ya está en marcha; para hijos conocidos al iniciar, se declaran especificaciones en el supervisor habitual.
+
+La supervisión no restaura automáticamente el estado que tenía un proceso antes de terminar. Si se reinicia un `GenServer` o un `Agent`, este se inicializa de nuevo; si el estado debe sobrevivir a una falla, hay que persistirlo o reconstruirlo explícitamente. Por eso, la política de reinicio y la recuperación del estado son decisiones distintas.
+
+Más información: https://hexdocs.pm/elixir/Supervisor.html[Supervisor] y https://hexdocs.pm/elixir/DynamicSupervisor.html[DynamicSupervisor].

@@ -1,0 +1,96 @@
+= Broadcast y orden de mensajes
+:description: Difusión en grupos distribuidos, broadcast confiable, orden FIFO, causal y total, y sus garantías.
+
+En un sistema distribuido, *broadcast* es una abstracción de comunicación en la que un proceso envía un mensaje a un grupo de participantes. La abstracción describe qué mensajes reciben los procesos y qué garantías ofrece la entrega. No significa necesariamente que una única trama física de red llegue a todos: una implementación puede reenviar mensajes punto a punto, usar multicast de red, retransmisiones o una combinación de mecanismos.
+
+Esta acepción es distinta del *modo broadcast de NTP*, donde un servidor difunde periódicamente la hora a varios receptores. NTP broadcast es una modalidad concreta de sincronización de relojes; los algoritmos de esta página estudian difusión de mensajes de aplicación y sus garantías. Para sincronización temporal, véase la página sobre https://arquitecturas-concurrentes.github.io/iasc-book/relojes/[relojes físicos y lógicos].
+
+== De enviar a entregar
+
+Supongamos que un proceso A anuncia una actualización a los procesos B, C y D. En una llamada local bastaría con invocar una función para cada destinatario. En una red, sin embargo, cada envío puede demorarse, perderse o repetirse, el emisor puede fallar en medio de la operación y los destinatarios pueden observar órdenes diferentes.
+
+Un algoritmo de broadcast define quién forma parte del grupo, cómo se disemina cada mensaje, cuándo un proceso puede declararlo *entregado* y qué ocurre si fallan el emisor o algún receptor. La entrega es un evento local: B puede entregar el mensaje antes que C, y un proceso no sabe solo por haber entregado que todos los demás ya lo hicieron.
+
+[.center.iasc-image]
+image::distribucion/broadcast-reenvio.svg[Difusión confiable mediante reenvío del mensaje recibido por primera vez, width=760]
+
+La figura ilustra una estrategia de reenvío: A inicia la difusión y B, después de recibir el mensaje, lo retransmite a otros participantes. El reenvío puede ayudar a que la información sobreviva a la caída del emisor original, pero las garantías finales dependen del protocolo, del modelo de fallas, de la membresía conocida y de que los mensajes puedan volver a circular después de una interrupción.
+
+== Difusión best-effort y broadcast confiable
+
+La difusión *best-effort* intenta enviar un mensaje a todos los participantes conocidos, pero ofrece garantías limitadas ante pérdidas y fallas. En un modelo habitual con fallas por caída (*crash failures*), puede expresarse con estas propiedades:
+
+* *Validez:* si un proceso correcto inicia la difusión de un mensaje, todos los procesos correctos del grupo finalmente lo entregan.
+* *Integridad:* un proceso entrega cada mensaje a lo sumo una vez y no entrega mensajes que nadie difundió.
+
+La difusión best-effort no garantiza que los procesos correctos coincidan cuando el emisor falla durante el envío: algunos pueden haber recibido el mensaje y otros no.
+
+El *reliable broadcast* agrega una propiedad de acuerdo:
+
+* *Acuerdo:* si algún proceso correcto entrega un mensaje, todos los procesos correctos del grupo finalmente lo entregan.
+
+La propiedad *validez* sigue exigiendo que una difusión de un emisor correcto alcance a los procesos correctos, e *integridad* evita entregas duplicadas o inventadas. La formulación exacta se adapta al modelo de fallas y a la definición del grupo. En algunas especificaciones, el *uniform reliable broadcast* fortalece el acuerdo: si cualquier proceso entrega un mensaje, incluso uno que después falla, todos los procesos correctos terminan entregándolo. Esta distinción importa si una aplicación puede observar el efecto de un proceso antes de que este caiga <<Cachin2011>>.
+
+Una estrategia intuitiva para lograr mayor tolerancia a la caída del emisor es que cada proceso retransmita un mensaje la primera vez que lo recibe. Si A falla luego de enviarlo solo a B, B puede seguir diseminándolo. Los receptores mantienen identificadores de mensajes para suprimir duplicados. Esta idea explica el mecanismo, pero no es una receta completa para todos los sistemas: deben definirse membresía, confirmaciones, expiración del historial, reintegración de participantes y comportamiento ante particiones.
+
+== El orden de entrega es una garantía independiente
+
+Un broadcast confiable determina *quién termina entregando cada mensaje*, pero no necesariamente el orden entre distintos mensajes. Si A difunde `m1` y después `m2`, B podría entregar `m1, m2`, mientras C entrega `m2, m1`, salvo que el protocolo restrinja ese comportamiento.
+
+[.center.iasc-image]
+image::distribucion/broadcast-orden-mensajes.svg[Un mismo mensaje m1 se entrega en momentos distintos a los procesos B y C, width=760]
+
+En el primer esquema, A difunde `m1` a B y C. Aunque ambas copias pertenecen a la misma difusión, la red tiene demoras distintas: B puede recibirla antes que C. Eso no es por sí mismo una violación de confiabilidad. El problema aparece si otro evento depende de que B haya recibido `m1` y se difunde antes de que C entregue la copia original.
+
+Se pueden añadir garantías de orden según las necesidades de la aplicación:
+
+* *Sin orden adicional:* los procesos correctos entregan los mismos mensajes, pero pueden hacerlo en órdenes diferentes.
+* *FIFO:* si el mismo emisor difunde `m1` antes que `m2`, ningún receptor entrega `m2` antes que `m1`. No ordena mensajes de emisores distintos.
+* *Causal:* si la difusión de `m1` causa la difusión de `m2`, los procesos que entregan ambos respetan ese orden. Los mensajes concurrentes todavía pueden entregarse en órdenes distintos.
+* *Total:* todos los procesos correctos entregan los mensajes en el mismo orden, aunque hayan llegado por rutas diferentes.
+
+Un *atomic broadcast* suele referirse a una abstracción que combina entrega confiable y orden total. La terminología varía entre textos y protocolos, por lo que conviene especificar explícitamente las propiedades en lugar de depender solo del nombre.
+
+=== FIFO y orden de un mismo emisor
+
+Para imponer FIFO, un emisor puede numerar sus mensajes `1, 2, 3, ...`. El receptor conserva el próximo número esperado y retiene temporalmente mensajes que llegan adelantados. Cuando recibe el faltante, puede entregar la secuencia contigua. En la práctica se necesitan además reglas para retransmitir números ausentes y distinguir el estado de un emisor que se reinició de la instancia anterior.
+
+FIFO preserva el orden local de un único emisor, no la causalidad entre procesos distintos. Si A difunde un mensaje que B recibe y B luego difunde una respuesta, FIFO por emisor no basta para expresar esa dependencia si los mensajes provienen de emisores diferentes.
+
+=== Broadcast causal y relojes lógicos
+
+La entrega causal exige que los mensajes relacionados por una cadena de causas respeten ese orden. Si B recibe `m1` y, como consecuencia, difunde `m2`, ningún proceso que entregue ambos debe entregar `m2` antes que `m1`. En cambio, dos mensajes difundidos sin una relación causal pueden ser concurrentes.
+
+[.center.iasc-image]
+image::distribucion/broadcast-orden-causal.svg[Una entrega tardía de m1 llega a C después de que m2, causado por m1, ya fue entregado, width=760]
+
+El diagrama ilustra una entrega sin garantía causal. A difunde `m1` a B y C; B lo recibe y, como consecuencia, difunde `m2`. La copia de `m1` dirigida a C se demora, mientras que `m2` llega primero. C observa entonces `m2` antes que el evento que lo causó. Un broadcast causal retendría `m2` en C hasta entregar `m1`, preservando la dependencia aun cuando las rutas y sus demoras difieran.
+
+Los relojes vectoriales pueden ayudar a representar dependencias: el mensaje lleva un resumen causal y el receptor retrasa su entrega hasta haber recibido los antecedentes requeridos. Así, la información de orden lógico descrita en la página de https://arquitecturas-concurrentes.github.io/iasc-book/relojes/[relojes] puede usarse para implementar o explicar la entrega causal. El vector no transmite por sí mismo los mensajes ausentes; el protocolo también debe garantizar su difusión y recuperación <<Birman1991>>.
+
+=== Broadcast de orden total
+
+El orden total requiere que todos los procesos correctos que entregan los mismos mensajes respeten una secuencia relativa común. Una solución puede proponer secuencias o posiciones y acordarlas con un protocolo de coordinación; al mismo tiempo debe manejar emisores que fallan, cambios de membresía y mensajes retrasados. No alcanza con ordenar por timestamps físicos: relojes desfasados pueden asignar marcas incompatibles con el orden observado, y marcas iguales necesitan una regla adicional.
+
+En sistemas asíncronos con fallas por caída, el broadcast atómico y el consenso están estrechamente relacionados: bajo los supuestos usuales, cada abstracción puede construirse a partir de la otra. Esto explica por qué acordar el orden de mensajes no es solo una cuestión de ordenar una cola; puede requerir resolver quién propone el siguiente elemento y cómo se recupera el grupo ante fallas <<Schneider1990>>.
+
+== Elegir las garantías de difusión
+
+La garantía se elige según la semántica que debe preservar la aplicación. FIFO puede bastar para mantener el orden de eventos de un mismo productor. El orden causal resulta apropiado cuando una actualización depende de otra, pero no se necesita ordenar arbitrariamente los cambios concurrentes. El orden total es relevante cuando todos los participantes deben aplicar los mensajes en la misma secuencia, como ocurre en una máquina de estados replicada.
+
+La decisión también depende de la membresía, del modelo de fallas y del costo operativo. Un grupo estable que solo contempla caídas de procesos presenta requisitos distintos de uno que admite particiones frecuentes o participantes bizantinos. Si el emisor puede fallar durante una difusión, deben considerarse cuáles receptores pudieron observar el mensaje, cómo se propaga a los restantes y cómo se evitan entregas duplicadas. Las garantías más fuertes pueden requerir coordinación adicional, más mensajes y mayor latencia; deben incorporarse solo cuando la aplicación depende de ellas.
+
+Las garantías de broadcast deben entenderse bajo el modelo de fallas declarado. Los protocolos clásicos de difusión confiable suelen suponer participantes que pueden dejar de ejecutar, pero no mentir deliberadamente. Si se contemplan nodos bizantinos que envían valores contradictorios o falsifican mensajes, hacen falta mecanismos de autenticación y protocolos bizantinos, con supuestos y costos adicionales. Para estos casos, véase también la página sobre https://arquitecturas-concurrentes.github.io/iasc-book/protocolos_bft/[protocolos BFT].
+
+== Broadcast, gossip y confiabilidad de transporte
+
+Un protocolo *gossip* selecciona pares para intercambiar y propagar información de manera epidémica. Puede ser una estrategia escalable para transportar actualizaciones o membresía, pero el uso de gossip no implica automáticamente las propiedades de reliable broadcast: la probabilidad y el tiempo de propagación, la reparación de mensajes omitidos y el acuerdo deben quedar definidos por el protocolo. La página sobre https://arquitecturas-concurrentes.github.io/iasc-book/heartbeat_gossip/[heartbeats y gossip] profundiza en diseminación epidémica y anti-entropy.
+
+Del mismo modo, que TCP entregue bytes en orden dentro de una conexión no crea por sí solo broadcast confiable, orden causal o total entre múltiples conexiones y participantes. Las garantías de transporte se aplican a un canal; las del broadcast se refieren a los eventos de entrega observados por el grupo. La aplicación debe elegir la abstracción que corresponde a su necesidad.
+
+[bibliography]
+== Referencias
+
+* [[[Birman1991]]] BIRMAN, Kenneth P.; SCHIPER, André; y STEPHENSON, Pat. «Lightweight Causal and Atomic Group Multicast». *ACM Transactions on Computer Systems*, 9(3), 1991, pp. 272–314. https://doi.org/10.1145/128738.128742[DOI].
+* [[[Cachin2011]]] CACHIN, Christian; GUERRAOUI, Rachid; y RODRIGUES, Luís. *Introduction to Reliable and Secure Distributed Programming*. 2.ª ed. Springer, 2011. https://doi.org/10.1007/978-3-642-15260-3[DOI].
+* [[[Schneider1990]]] SCHNEIDER, Fred B. «Implementing Fault-Tolerant Services Using the State Machine Approach: A Tutorial». *ACM Computing Surveys*, 22(4), 1990, pp. 299–319. https://doi.org/10.1145/98163.98167[DOI].

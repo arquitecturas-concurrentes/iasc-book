@@ -69,6 +69,10 @@ export const sidearContent = [
         title: 'Introduccion a Actores',
       },
       {
+        href: '/tema/elixir_procesos',
+        title: 'Procesos y mensajes en Elixir',
+      },
+      {
         href: '/tema/otp',
         title: 'Elixir/Erlang OTP',
       },
@@ -107,15 +111,47 @@ export const sidearContent = [
     child: [
       {
         href: '/tema/distribucion',
-        title: 'Introduccion a Distribucion',
+        title: 'Sistemas distribuidos',
+      },
+      {
+        href: '/tema/escalabilidad',
+        title: 'Escalabilidad',
+      },
+      {
+        href: '/tema/replicacion',
+        title: 'Replicación',
+      },
+      {
+        href: '/tema/particionamiento',
+        title: 'Particionamiento',
+      },
+      {
+        href: '/tema/heartbeat_gossip',
+        title: 'Heartbeats y gossip',
+      },
+      {
+        href: '/tema/relojes',
+        title: 'Relojes físicos y lógicos',
+      },
+      {
+        href: '/tema/broadcast',
+        title: 'Broadcast y orden de mensajes',
       },
       {
         href: '/tema/interleaving',
         title: 'Interleaving y Netsplits',
       },
       {
+        href: '/tema/dos_generales',
+        title: 'Dos generales y consenso bizantino',
+      },
+      {
+        href: '/tema/protocolos_bft',
+        title: 'Protocolos BFT',
+      },
+      {
         href: '/tema/cap',
-        title: 'Notas sobre CAP',
+        title: 'CAP: particiones y consistencia',
       },
       {
         href: '/tema/mitos_distribucion',
@@ -129,6 +165,21 @@ export const sidearContent = [
         href: '/tema/raft',
         title: 'Raft',
       }
+    ],
+  },
+  {
+    href: '#dist-elixir',
+    title: 'Distribución en Elixir',
+    icon: 'fa fa-chevron-down',
+    child: [
+      {
+        href: '/tema/distribucion_elixir',
+        title: 'Distribución en BEAM',
+      },
+      {
+        href: '/tema/seguridad_beam',
+        title: 'Seguridad de BEAM',
+      },
     ],
   },
   {

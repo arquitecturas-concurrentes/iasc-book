@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="420" viewBox="0 0 920 420" role="img" aria-labelledby="title desc">
+  <title id="title">Lecturas monotónicas entre réplicas</title>
+  <desc id="desc">Una sesión lee la versión 42 en el seguidor A. Al cambiar al seguidor B, que solo tiene la versión 39, el sistema evita devolver un estado anterior: espera a que B alcance al menos la versión 42.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52677a"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#357a57"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#bd7828"/>
+    </marker>
+  </defs>
+  <rect width="920" height="420" rx="14" fill="#f8fafc"/>
+  <g font-family="Arial, sans-serif" fill="#263746">
+    <text x="460" y="34" text-anchor="middle" font-size="21" font-weight="700">Una sesión no retrocede a una versión ya superada</text>
+
+    <rect x="34" y="65" width="852" height="145" rx="12" fill="#fff" stroke="#d7dee6"/>
+    <text x="55" y="93" font-size="17" font-weight="700" fill="#bd7828">Sin lecturas monotónicas</text>
+    <rect x="62" y="116" width="160" height="64" rx="10" fill="#fff" stroke="#718096" stroke-width="2"/>
+    <text x="142" y="143" text-anchor="middle" font-size="16" font-weight="700">Sesión</text>
+    <text x="142" y="164" text-anchor="middle" font-size="13">misma persona</text>
+    <rect x="650" y="103" width="194" height="49" rx="9" fill="#edf7f0" stroke="#4b8c68" stroke-width="2"/>
+    <text x="747" y="124" text-anchor="middle" font-size="14" font-weight="700">Seguidor A · v42</text>
+    <text x="747" y="142" text-anchor="middle" font-size="12">respuesta: mensaje 42 visible</text>
+    <rect x="650" y="158" width="194" height="40" rx="9" fill="#fff5e8" stroke="#c58b32" stroke-width="2"/>
+    <text x="747" y="183" text-anchor="middle" font-size="14" font-weight="700">Seguidor B · v39</text>
+    <line x1="222" y1="132" x2="640" y2="125" stroke="#52677a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="427" y="119" text-anchor="middle" font-size="12">1. primera lectura → ve v42</text>
+    <line x1="222" y1="164" x2="640" y2="179" stroke="#bd7828" stroke-width="2" marker-end="url(#arrow-orange)"/>
+    <text x="428" y="190" text-anchor="middle" font-size="12" fill="#a65e17">2. siguiente lectura → podría volver a v39</text>
+    <text x="460" y="203" text-anchor="middle" font-size="12" fill="#a65e17">El mensaje 42 desaparece de la vista, aunque la persona ya lo había leído.</text>
+
+    <rect x="34" y="226" width="852" height="163" rx="12" fill="#fff" stroke="#d7dee6"/>
+    <text x="55" y="254" font-size="17" font-weight="700" fill="#357a57">Con lecturas monotónicas</text>
+    <rect x="62" y="279" width="160" height="64" rx="10" fill="#fff" stroke="#718096" stroke-width="2"/>
+    <text x="142" y="306" text-anchor="middle" font-size="16" font-weight="700">Sesión</text>
+    <text x="142" y="327" text-anchor="middle" font-size="13">token mínimo: v42</text>
+    <rect x="650" y="265" width="194" height="47" rx="9" fill="#fff5e8" stroke="#c58b32" stroke-width="2"/>
+    <text x="747" y="285" text-anchor="middle" font-size="14" font-weight="700">Seguidor B · v39</text>
+    <text x="747" y="302" text-anchor="middle" font-size="12">todavía está atrasado</text>
+    <rect x="650" y="334" width="194" height="42" rx="9" fill="#edf7f0" stroke="#4b8c68" stroke-width="2"/>
+    <text x="747" y="360" text-anchor="middle" font-size="14" font-weight="700">Seguidor B · v42 o posterior</text>
+    <line x1="222" y1="297" x2="640" y2="288" stroke="#52677a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="430" y="279" text-anchor="middle" font-size="12">3. consulta con requisito v42</text>
+    <line x1="747" y1="313" x2="747" y2="325" stroke="#357a57" stroke-width="2" marker-end="url(#arrow-green)"/>
+    <text x="580" y="326" text-anchor="middle" font-size="12" fill="#357a57">espera a que se ponga al día</text>
+    <line x1="640" y1="355" x2="232" y2="331" stroke="#357a57" stroke-width="2" marker-end="url(#arrow-green)"/>
+    <text x="430" y="370" text-anchor="middle" font-size="12" fill="#357a57">4. responde sin retroceder</text>
+  </g>
+</svg>
