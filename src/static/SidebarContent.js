@@ -126,6 +126,14 @@ export const sidearContent = [
         title: 'Heartbeats y gossip',
       },
       {
+        href: '/tema/relojes',
+        title: 'Relojes físicos y lógicos',
+      },
+      {
+        href: '/tema/broadcast',
+        title: 'Broadcast y orden de mensajes',
+      },
+      {
         href: '/tema/interleaving',
         title: 'Interleaving y Netsplits',
       },

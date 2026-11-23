@@ -20,7 +20,7 @@ Una operación que realiza muchas llamadas remotas consecutivas acumula sus demo
 
 La asincronía permite que un proceso continúe con otro trabajo mientras espera un mensaje, pero no elimina el tiempo de comunicación. Si una operación depende del resultado remoto, en algún momento debe esperar, manejar la demora o aceptar que el resultado todavía no se conoce.
 
-Los relojes físicos de dos máquinas tampoco ofrecen, por sí solos, un orden exacto de los eventos: pueden diferir o ajustarse de manera distinta. Cuando importa razonar sobre causalidad, los relojes lógicos permiten representar relaciones de orden entre eventos, aunque no miden cuánto tiempo real transcurrió <<Lamport1978>>.
+Los relojes físicos de dos máquinas tampoco ofrecen, por sí solos, un orden exacto de los eventos: pueden diferir o ajustarse de manera distinta. Cuando importa razonar sobre causalidad, los relojes lógicos permiten representar relaciones de orden entre eventos, aunque no miden cuánto tiempo real transcurrió <<Lamport1978>>. La página sobre https://arquitecturas-concurrentes.github.io/iasc-book/relojes/[relojes físicos y lógicos] desarrolla la sincronización de relojes, NTP y los relojes de Lamport y vectoriales.
 
 === 3. El ancho de banda es infinito
 

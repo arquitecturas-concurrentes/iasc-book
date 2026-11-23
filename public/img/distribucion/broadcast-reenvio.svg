@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="360" viewBox="0 0 900 360" role="img" aria-labelledby="title desc">
+  <title id="title">Reenvío en una difusión confiable</title>
+  <desc id="desc">A inicia la difusión de un mensaje. B lo recibe, lo entrega una sola vez y lo reenvía a C y D. C y D lo reenvían a E, que descarta una copia duplicada.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#546e7a"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1565c0"/>
+    </marker>
+  </defs>
+  <rect width="900" height="360" rx="18" fill="#fff"/>
+  <text x="450" y="40" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="700" fill="#172b4d">Reenvío para propagar una difusión</text>
+  <g stroke="#cfd8dc" stroke-width="3" fill="none" marker-end="url(#arrow)">
+    <line x1="180" y1="170" x2="355" y2="115"/>
+    <line x1="390" y1="120" x2="565" y2="85"/>
+    <line x1="390" y1="135" x2="565" y2="230"/>
+    <line x1="600" y1="95" x2="755" y2="165"/>
+    <line x1="600" y1="220" x2="755" y2="175"/>
+  </g>
+  <line x1="180" y1="170" x2="355" y2="115" stroke="#1565c0" stroke-width="3" marker-end="url(#arrowBlue)"/>
+  <g font-family="sans-serif" text-anchor="middle">
+    <circle cx="160" cy="176" r="27" fill="#1565c0"/>
+    <text x="160" y="183" font-size="18" font-weight="700" fill="#fff">A</text>
+    <text x="160" y="225" font-size="14" fill="#263238">inicia m</text>
+    <circle cx="375" cy="111" r="27" fill="#00897b"/>
+    <text x="375" y="118" font-size="18" font-weight="700" fill="#fff">B</text>
+    <text x="375" y="157" font-size="14" fill="#263238">entrega m una vez</text>
+    <circle cx="585" cy="83" r="27" fill="#00897b"/>
+    <text x="585" y="90" font-size="18" font-weight="700" fill="#fff">C</text>
+    <circle cx="585" cy="232" r="27" fill="#00897b"/>
+    <text x="585" y="239" font-size="18" font-weight="700" fill="#fff">D</text>
+    <circle cx="775" cy="170" r="27" fill="#00897b"/>
+    <text x="775" y="177" font-size="18" font-weight="700" fill="#fff">E</text>
+    <text x="775" y="220" font-size="14" fill="#263238">suprime duplicados</text>
+  </g>
+  <text x="450" y="315" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#455a64">Esquema conceptual: las garantías dependen del protocolo, las fallas y la membresía.</text>
+</svg>

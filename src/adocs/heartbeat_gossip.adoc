@@ -1,6 +1,6 @@
 = Heartbeats y gossip
 
-En un sistema distribuido, cada nodo observa solo una parte del sistema y la comunicación puede demorarse o interrumpirse. Aun así, muchas decisiones dependen de saber qué nodos parecen activos, qué miembros pertenecen al grupo y cómo hacer circular cambios. Los *heartbeats* y los protocolos de *gossip* ayudan con estos problemas, pero no convierten una observación incierta en una verdad absoluta ni reemplazan la coordinación cuando se necesita una decisión consistente.
+En un sistema distribuido, cada nodo observa solo una parte del sistema y la comunicación puede demorarse o interrumpirse. Aun así, muchas decisiones dependen de saber qué nodos parecen activos, qué miembros pertenecen al grupo y cómo hacer circular cambios. Los *heartbeats* y los protocolos de *gossip* ayudan con estos problemas, pero no convierten una observación incierta en una verdad absoluta ni reemplazan la coordinación cuando se necesita una decisión consistente. Esta página desarrolla primero la detección de actividad y luego la diseminación epidémica; para ordenar causalmente eventos entre nodos, véase también la página sobre https://arquitecturas-concurrentes.github.io/iasc-book/relojes/[relojes físicos y lógicos].
 
 == Actividad, disponibilidad y salud
 
@@ -75,6 +75,11 @@ Resultado:     los nodos alcanzables aprenden el cambio
 
 Cada nodo puede seleccionar pares al azar, intercambiar una o varias actualizaciones y repetir el proceso. En condiciones favorables, la información puede alcanzar a muchos nodos en pocas rondas; la rapidez y el tráfico reales dependen del tamaño del grupo, la frecuencia, el número de pares elegidos, las pérdidas, la topología y las particiones. La difusión no es instantánea ni garantiza que cada nodo tenga la misma vista en todo momento.
 
+Si cada participante elige al azar un número acotado de pares por ronda, la cantidad de nodos que conoce el rumor puede crecer rápidamente al comienzo. En un modelo idealizado de contactos independientes, la propagación suele abarcar un grupo grande en un número de rondas que crece aproximadamente con el logaritmo del tamaño del grupo. Es una propiedad probabilística del modelo, no una cota temporal garantizada: particiones, nodos sobrecargados, membresía obsoleta y elecciones correlacionadas pueden retrasar la convergencia.
+
+[.center.iasc-image]
+image::distribucion/gossip-difusion.svg[Diseminación epidémica de una actualización mediante intercambios entre pares, width=760]
+
 === Formas de intercambio
 
 Los mecanismos más comunes se pueden combinar:
@@ -100,6 +105,16 @@ La distinción entre *sospechoso* y *caído* permite no convertir inmediatamente
 
 El protocolo SWIM separa conceptualmente la detección de fallas de la diseminación de membresía: combina sondeos directos e indirectos con difusión de actualizaciones. Esto evita que cada nodo necesite sondear a todos los demás en cada ronda, aunque no elimina las sospechas erróneas ni garantiza una vista idéntica en todo instante <<Das2002>>.
 
+En una ronda de sondeo de SWIM, un miembro elige otro participante y le envía una comprobación directa. Si no recibe respuesta a tiempo, solicita a un conjunto pequeño de miembros intermediarios que intenten contactar al objetivo. Una respuesta indirecta permite distinguir algunos problemas de ruta entre dos nodos de una falta de respuesta más amplia. Si las comprobaciones fallan, se difunde primero una sospecha con un período de gracia; el miembro sospechado puede refutarla incrementando su número de *incarnation*. La duración de la sospecha y la interpretación de mensajes son parámetros del protocolo y de la implementación, no una prueba matemática de que el nodo haya terminado.
+
+La detección y la difusión tienen funciones diferentes. Los sondeos buscan evidencia de alcanzabilidad entre participantes; el *gossip* propaga las observaciones y los cambios de membresía. Un nodo puede recibir rápidamente una sospecha sin que todo el grupo la haya visto, y las opiniones pueden diferir durante la convergencia. Por eso las aplicaciones deben tratar los estados de membresía como observaciones con versión, no como una autoridad global instantánea.
+
+=== Versiones, reconciliación y convergencia
+
+La diseminación de una actualización solo resulta útil si los receptores pueden decidir si es nueva y cómo combinarla con el estado local. Para una misma entidad se suele incluir un identificador estable y una versión, época o contador de generación. Un receptor conserva la versión más reciente según las reglas del protocolo y evita que un mensaje retrasado restaure accidentalmente un estado anterior.
+
+Si se propagan estados completos, una operación de combinación determinista, asociativa, conmutativa e idempotente facilita que réplicas que intercambian las mismas actualizaciones converjan aunque las reciban en distinto orden. Esa propiedad no aparece automáticamente por usar gossip: la aplicación debe definir el tipo de dato, los conflictos y la retención de eliminaciones o *tombstones*. Los mensajes de operación, por su parte, pueden necesitar deduplicación y orden explícito. Para reparar cambios omitidos durante una desconexión, las rondas periódicas de *anti-entropy* comparan resúmenes o versiones y solicitan las diferencias, en lugar de depender solo del primer envío del rumor <<Demers1987>>.
+
 == Qué garantías no ofrece gossip
 
 Gossip es una estrategia de comunicación y propagación; por sí sola no es un protocolo de consenso. En general no garantiza:
@@ -114,19 +129,9 @@ Durante una partición, cada lado puede seguir comunicándose internamente y dej
 
 La relación entre la detección de particiones y las decisiones de consistencia o disponibilidad se trata en la página sobre https://arquitecturas-concurrentes.github.io/iasc-book/cap/[CAP].
 
-== Diseño y operación
+== Consideraciones
 
-Al evaluar una implementación, conviene responder:
-
-* ¿Qué evento concreto hace que un nodo emita o reinicie un heartbeat: un temporizador, tráfico normal o ambos?
-* ¿El detector mide que el proceso vive, que el nodo es alcanzable o que puede realizar una operación?
-* ¿Qué acción se toma ante una sospecha, y se puede revertir si el nodo reaparece?
-* ¿Cómo se versionan cambios de membresía y se rechazan actualizaciones obsoletas?
-* ¿Cómo se incorporan nodos nuevos y cómo recuperan los cambios que se perdieron mientras estuvieron desconectados?
-* ¿Qué tráfico y carga genera la difusión cuando el grupo crece o muchos nodos se reinician a la vez?
-* ¿Cómo se protegen los mensajes y quién puede incorporarse al grupo o anunciar cambios?
-
-También conviene observar métricas como el número de nodos sospechosos, los cambios de membresía, la demora de propagación, los mensajes enviados y las discrepancias detectadas por anti-entropy. Una tasa alta de sospechas puede señalar timeouts demasiado agresivos, saturación o problemas de red; bajar el timeout sin investigar puede esconder el problema o empeorar la inestabilidad.
+Conviene observar métricas como el número de nodos sospechosos, los cambios de membresía, la demora de propagación, los mensajes enviados y las discrepancias detectadas por anti-entropy. Una tasa alta de sospechas puede señalar timeouts demasiado agresivos, saturación o problemas de red; bajar el timeout sin investigar puede esconder el problema o empeorar la inestabilidad.
 
 [bibliography]
 == Referencias

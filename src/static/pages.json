@@ -91,6 +91,16 @@
     "description": "Detección de fallas y diseminación de información en sistemas distribuidos"
   },
   {
+    "path": "relojes",
+    "title": "Relojes físicos y lógicos",
+    "description": "Deriva, sincronización NTP, relojes de Lamport y vectores para razonar sobre eventos distribuidos."
+  },
+  {
+    "path": "broadcast",
+    "title": "Broadcast y orden de mensajes",
+    "description": "Difusión best-effort y confiable, orden FIFO, causal y total en grupos distribuidos."
+  },
+  {
     "path": "interleaving",
     "title": "Intearleaving Y Netsplits",
     "description": "...."
